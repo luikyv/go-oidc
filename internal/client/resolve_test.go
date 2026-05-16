@@ -763,7 +763,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -780,7 +780,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -797,7 +797,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -815,7 +815,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -835,7 +835,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -858,7 +858,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -906,7 +906,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePoll,
 				}
 				c, _ := oidctest.NewClient(t)
@@ -922,7 +922,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -938,7 +938,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
@@ -955,7 +955,7 @@ func TestResolve(t *testing.T) {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-				ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+				ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 					goidc.CIBADeliveryModePing,
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,

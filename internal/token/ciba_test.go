@@ -56,10 +56,12 @@ func TestGenerateCIBAToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func(*testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
+		name            string
+		setup           func(*testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		validate        func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
 	}{
 		{
 			name: "happy path",
@@ -319,7 +321,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeExpiredToken,
+			wantErr:         goidc.ErrorCodeExpiredToken,
+			wantDescription: "auth_req_id expired",
+			wantWrappedErr:  "the auth_req_id lifetime has elapsed",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -345,7 +349,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid auth_req_id",
+			wantWrappedErr:  "the auth_req_id has already been redeemed",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -426,7 +432,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeAuthPending,
+			wantErr:         goidc.ErrorCodeAuthPending,
+			wantDescription: "authentication pending",
+			wantWrappedErr:  "grant was not found and the pending CIBA session is still awaiting approval",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -465,7 +473,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeExpiredToken,
+			wantErr:         goidc.ErrorCodeExpiredToken,
+			wantDescription: "auth_req_id expired",
+			wantWrappedErr:  "grant was not found and the pending CIBA session has expired",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, grant *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -490,7 +500,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid auth_req_id",
+			wantWrappedErr:  "no grant or pending CIBA session was found for the auth_req_id",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -560,7 +572,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			wantWrappedErr:  "the client uses push delivery mode and cannot poll the token endpoint",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -586,7 +600,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid auth_req_id",
+			wantWrappedErr:  "the auth_req_id belongs to a different client",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -609,7 +625,9 @@ func TestGenerateCIBAToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			wantWrappedErr:  "the client is not allowed to use the CIBA grant type",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -693,6 +711,14 @@ func TestGenerateCIBAToken(t *testing.T) {
 				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
 					t.Fatalf("got %v, want error code %s", err, test.wantErr)
 				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
+				}
 			}
 
 			if test.validate != nil {
@@ -763,6 +789,11 @@ func TestGrantCIBARequest(t *testing.T) {
 			ctx := oidctest.NewContext(t)
 			manager := oidctest.Manager(t, ctx)
 			ctx.CIBAManager = manager
+			ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
+				goidc.CIBADeliveryModePoll,
+				goidc.CIBADeliveryModePing,
+				goidc.CIBADeliveryModePush,
+			}
 			client, _ := oidctest.NewClient(t)
 			client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
 			client.CIBATokenDeliveryMode = test.mode

@@ -163,7 +163,7 @@ type Configuration struct {
 	CIBAEndpoint                   string
 	CIBAManager                    goidc.CIBAManager
 	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.
-	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
+	CIBATokenDeliveryModes         []goidc.CIBATokenDeliveryMode
 	CIBAIDFunc                     goidc.RandomFunc
 	CIBAHandleSessionFunc          goidc.HandleSessionFunc
 	CIBAUserCodeIsEnabled          bool
@@ -280,7 +280,7 @@ type Configuration struct {
 
 	DeviceAuthManager                          goidc.DeviceAuthManager
 	DeviceAuthEndpoint                         string
-	DeviceAuthDeviceEndpoint                   string
+	DeviceAuthVerificationEndpoint             string
 	DeviceAuthVerificationURICompleteIsEnabled bool
 	DeviceAuthLifetimeSecs                     int
 	DeviceAuthPollingIntervalSecs              int

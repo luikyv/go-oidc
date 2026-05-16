@@ -64,31 +64,27 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		},
 	}
 
-	if err := op.WithOptions(opts...); err != nil {
-		return nil, err
-	}
-
-	return op, nil
-}
-
-func (op *Provider) WithOptions(opts ...Option) error {
 	for _, opt := range opts {
 		if err := opt(op); err != nil {
-			return err
+			return nil, err
 		}
 	}
 
 	if err := op.validate(); err != nil {
-		return err
+		return nil, err
 	}
 
 	op.setDefaults()
 
 	if !op.profileValidationIsEnabled {
-		return nil
+		return op, nil
 	}
 
-	return op.validateProfile()
+	if err := op.validateProfile(); err != nil {
+		return nil, err
+	}
+
+	return op, nil
 }
 
 func (op *Provider) validate() error {
@@ -382,7 +378,7 @@ func (op *Provider) setDefaults() {
 	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
 		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
 		op.config.CIBAManager = nonZeroOrDefault(op.config.CIBAManager, goidc.CIBAManager(manager))
-		op.config.CIBATokenDeliveryModels = nonZeroOrDefault(op.config.CIBATokenDeliveryModels, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
+		op.config.CIBATokenDeliveryModes = nonZeroOrDefault(op.config.CIBATokenDeliveryModes, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
 		op.config.CIBAIDFunc = nonZeroOrDefault(op.config.CIBAIDFunc, defaultCIBAIDFunc)
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
 		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
@@ -398,7 +394,7 @@ func (op *Provider) setDefaults() {
 	if slices.Contains(op.config.GrantTypes, goidc.GrantDeviceCode) {
 		op.config.DeviceAuthManager = nonZeroOrDefault(op.config.DeviceAuthManager, goidc.DeviceAuthManager(manager))
 		op.config.DeviceAuthEndpoint = nonZeroOrDefault(op.config.DeviceAuthEndpoint, defaultEndpointDeviceAuthorization)
-		op.config.DeviceAuthDeviceEndpoint = nonZeroOrDefault(op.config.DeviceAuthDeviceEndpoint, defaultEndpointDevice)
+		op.config.DeviceAuthVerificationEndpoint = nonZeroOrDefault(op.config.DeviceAuthVerificationEndpoint, defaultEndpointDeviceVerification)
 		op.config.DeviceAuthLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthLifetimeSecs, defaultDeviceAuthLifetimeSecs)
 		op.config.DeviceAuthPollingIntervalSecs = nonZeroOrDefault(op.config.DeviceAuthPollingIntervalSecs, defaultDeviceAuthPollingIntervalSecs)
 		op.config.DeviceCodeFunc = nonZeroOrDefault(op.config.DeviceCodeFunc, defaultDeviceCodeFunc)
@@ -593,7 +589,7 @@ const (
 	defaultEndpointSSFVerification              = "/ssf/verify"
 	defaultEndpointSSFPolling                   = "/ssf/poll"
 	defaultEndpointDeviceAuthorization          = "/device_authorization"
-	defaultEndpointDevice                       = "/device"
+	defaultEndpointDeviceVerification           = "/device"
 )
 
 func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
@@ -621,7 +617,7 @@ func defaultPARIDFunc(_ context.Context) string {
 }
 
 func defaultCIBAIDFunc(_ context.Context) string {
-	return uuid.NewString()
+	return strutil.Random(50)
 }
 
 func defaultDeviceCodeFunc(_ context.Context) string {

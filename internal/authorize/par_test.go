@@ -673,8 +673,8 @@ func TestPushAuth(t *testing.T) {
 				if !errors.Is(err, goidc.ErrNotFound) {
 					t.Fatalf("expected wrapped not found error, got %v", err)
 				}
-				if got := err.Error(); got != "invalid_client client not found: not found" {
-					t.Fatalf("error = %q, want %q", got, "invalid_client client not found: not found")
+				if got := err.Error(); got != "invalid_client invalid client: not found" {
+					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client: not found")
 				}
 				if len(oidctest.AuthnSessions(t, ctx)) != 0 {
 					t.Fatal("expected no sessions to be created")
@@ -714,8 +714,8 @@ func TestPushAuth(t *testing.T) {
 				if !errors.Is(err, goidc.ErrNotFound) {
 					t.Fatalf("expected wrapped not found error, got %v", err)
 				}
-				if got := err.Error(); got != "invalid_client client not found: not found" {
-					t.Fatalf("error = %q, want %q", got, "invalid_client client not found: not found")
+				if got := err.Error(); got != "invalid_client invalid client: not found" {
+					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client: not found")
 				}
 				if len(oidctest.AuthnSessions(t, ctx)) != 0 {
 					t.Fatal("expected no sessions to be created")

@@ -32,11 +32,12 @@ func ExtractID(ctx oidc.Context, tkn string) (string, error) {
 
 	parsedToken, err := jwt.ParseSigned(tkn, algs)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not parse the token", err)
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
 	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid header kid")
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("the token header must contain exactly one entry with a kid"))
 	}
 
 	keyID := parsedToken.Headers[0].KeyID
@@ -211,7 +212,7 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 
 	jwk, err := client.JWKByAlg(ctx, c, string(c.IDTokenKeyEncAlg))
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not encrypt the id token", err)
+		return "", fmt.Errorf("could not resolve an encryption key for the id token: %w", err)
 	}
 
 	contentEncAlg := ctx.IDTokenDefaultContentEncAlg
@@ -221,7 +222,7 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 
 	encIDToken, err := joseutil.Encrypt(idToken, jwk, contentEncAlg)
 	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not encrypt the id token", err)
+		return "", fmt.Errorf("could not encrypt the id token: %w", err)
 	}
 	return encIDToken, nil
 }

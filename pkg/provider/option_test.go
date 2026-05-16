@@ -687,7 +687,7 @@ func TestWithCIBAGrant(t *testing.T) {
 		goidc.CIBADeliveryModePoll,
 		goidc.CIBADeliveryModePush,
 	}
-	if diff := cmp.Diff(p.config.CIBATokenDeliveryModels, wantModes); diff != "" {
+	if diff := cmp.Diff(p.config.CIBATokenDeliveryModes, wantModes); diff != "" {
 		t.Error(diff)
 	}
 }

@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -19,7 +20,7 @@ import (
 
 func initAuth(ctx oidc.Context, req request) error {
 	if req.ClientID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidClient, "invalid client_id")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", errors.New("client_id is required"))
 	}
 
 	var shouldRegisterFedClient bool
@@ -53,33 +54,36 @@ func initAuth(ctx oidc.Context, req request) error {
 		return c, nil
 	}()
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", fmt.Errorf("could not load the client: %w", err))
 	}
 
 	// Check that the client is allowed to call the authorization endpoint.
 	if !slices.ContainsFunc(c.GrantTypes, func(gt goidc.GrantType) bool {
 		return gt == goidc.GrantAuthorizationCode || gt == goidc.GrantImplicit
 	}) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "client not allowed",
-			errors.New("client is missing grant type to call the authorization endpoint"))
+		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the client is not allowed to use the authorization endpoint grant types"))
 	}
 
 	as, err := func() (*goidc.AuthnSession, error) {
 		par := ctx.PARIsEnabled && (ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
 		if par {
 			if req.RequestURI == "" {
-				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request_uri is required")
+				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request_uri is required"))
 			}
 
 			as, err := ctx.PARSessionByPushedAuthReqID(strings.TrimPrefix(req.RequestURI, parRequestURIPrefix))
 			if err != nil {
-				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request_uri")
+				if errors.Is(err, goidc.ErrNotFound) {
+					return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the pushed authorization request identified by request_uri was not found"))
+				}
+				return nil, fmt.Errorf("could not load the pushed authorization request session: %w", err)
 			}
 
 			if err := validateRequestWithPAR(ctx, req, as, c); err != nil {
 				// If any of the parameters is invalid, we delete the session right away.
 				if deleteErr := ctx.AuthDeleteSession(as.ID); deleteErr != nil {
-					return nil, deleteErr
+					return nil, fmt.Errorf("could not delete the invalid pushed authorization request session: %w", deleteErr)
 				}
 				return nil, err
 			}
@@ -111,7 +115,7 @@ func initAuth(ctx oidc.Context, req request) error {
 					return nil, err
 				}
 			default:
-				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
+				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request object is required when JAR is enabled"))
 			}
 
 			if err := validateRequestWithJAR(ctx, req, jar, c); err != nil {
@@ -141,7 +145,8 @@ func initAuth(ctx oidc.Context, req request) error {
 
 	policy, ok := ctx.AvailablePolicy(as, c)
 	if !ok {
-		return redirectError(ctx, newRedirectionError(goidc.ErrorCodeInvalidRequest, "no policy available", as.AuthorizationParameters), c)
+		return redirectError(ctx, wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request", as.AuthorizationParameters,
+			errors.New("no authentication policy is available for the authorization request")), c)
 	}
 
 	as.PolicyID = policy.ID
@@ -159,7 +164,11 @@ func initAuth(ctx oidc.Context, req request) error {
 			Resources: as.Resources,
 		})
 		if err != nil {
-			return redirectError(ctx, err, c)
+			var oidcErr goidc.Error
+			if errors.As(err, &oidcErr) {
+				return redirectError(ctx, wrapRedirectionError(oidcErr.Code, oidcErr.Description, as.AuthorizationParameters, err), c)
+			}
+			return fmt.Errorf("could not resolve verifiable credential metadata for the authorization request: %w", err)
 		}
 		if len(configIDs) > 0 {
 			as.VCInfo = &struct {
@@ -174,7 +183,7 @@ func initAuth(ctx oidc.Context, req request) error {
 
 	if shouldRegisterFedClient {
 		if err := ctx.OpenIDFedSaveClient(c); err != nil {
-			return redirectError(ctx, err, c)
+			return fmt.Errorf("could not save the federated client: %w", err)
 		}
 	}
 
@@ -188,21 +197,24 @@ func initAuth(ctx oidc.Context, req request) error {
 func continueAuth(ctx oidc.Context, id string) error {
 	as, err := ctx.AuthSession(id)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
+		if errors.Is(err, goidc.ErrNotFound) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the authentication session was not found"))
+		}
+		return fmt.Errorf("could not load the authentication session: %w", err)
 	}
 
 	if as.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the authentication session has expired"))
 	}
 
 	// TODO: Review this.
 	if as.ResponseMode.IsJSON() && ctx.RequestMethod() != http.MethodPost {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request method for json response mode")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("json response mode requires an HTTP POST callback request"))
 	}
 
 	c, err := client.Client(ctx, as.ClientID)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load client", err)
+		return fmt.Errorf("could not load the client for the authentication session: %w", err)
 	}
 
 	if oauthErr := authenticate(ctx, as, c); oauthErr != nil {
@@ -219,15 +231,15 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 	// error returned.
 	if as.PolicyID == "" {
 		if err := ctx.AuthDeleteSession(as.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
+			return fmt.Errorf("could not delete the authentication session with a missing policy id: %w", err)
 		}
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", errors.New("the policy id is not set in the session"))
+		return fmt.Errorf("the authentication session is missing the policy id")
 	}
 
 	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
 		if err := ctx.AuthDeleteSession(as.ID); err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "internal error", as.AuthorizationParameters, err)
+			return fmt.Errorf("could not delete the completed authentication session: %w", err)
 		}
 
 		grant, err := token.NewGrant(ctx, c, token.GrantOptions{
@@ -267,7 +279,7 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 			Store:      as.Store,
 		})
 		if err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the grant", as.AuthorizationParameters, err)
+			return fmt.Errorf("could not generate the grant for the authentication session: %w", err)
 		}
 
 		redirectParams := response{
@@ -277,7 +289,7 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 		if as.ResponseType.Contains(goidc.ResponseTypeToken) {
 			tkn, tokenValue, err := token.Issue(ctx, grant, c, nil)
 			if err != nil {
-				return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the access token", as.AuthorizationParameters, err)
+				return fmt.Errorf("could not generate the access token for the authentication session: %w", err)
 			}
 			redirectParams.accessToken = tokenValue
 			redirectParams.tokenType = tkn.Type
@@ -293,25 +305,31 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 				Claims:            ctx.IDTokenClaims(grant),
 			})
 			if err != nil {
-				return wrapRedirectionError(goidc.ErrorCodeInternalError, "could not generate the id token", as.AuthorizationParameters, err)
+				return fmt.Errorf("could not generate the id token for the authentication session: %w", err)
 			}
 			redirectParams.idToken = idToken
 		}
 		return redirectResponse(ctx, c, as.AuthorizationParameters, redirectParams)
 	case goidc.StatusInProgress:
-		return ctx.AuthSaveSession(as)
+		if err := ctx.AuthSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the in-progress authentication session: %w", err)
+		}
+		return nil
 	default:
 		if err := ctx.AuthDeleteSession(as.ID); err != nil {
-			return wrapRedirectionError(goidc.ErrorCodeInternalError, "internal error", as.AuthorizationParameters, err)
+			return fmt.Errorf("could not delete the failed authentication session: %w", err)
 		}
 
 		var oidcErr goidc.Error
 		if errors.As(authErr, &oidcErr) {
-			return newRedirectionError(oidcErr.Code, oidcErr.Description, as.AuthorizationParameters)
+			return redirectionError{
+				err:                     oidcErr,
+				AuthorizationParameters: as.AuthorizationParameters,
+			}
 		}
 
 		if authErr != nil {
-			return newRedirectionError(goidc.ErrorCodeAccessDenied, authErr.Error(), as.AuthorizationParameters)
+			return wrapRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", as.AuthorizationParameters, authErr)
 		}
 
 		return newRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", as.AuthorizationParameters)
@@ -321,8 +339,8 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 func federationClient(ctx oidc.Context, req request) (*goidc.Client, error) {
 	jwksIsUsed := ctx.JARIsEnabled && req.RequestObject != ""
 	if !jwksIsUsed {
-		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied",
+			errors.New("automatic federation registration requires a signed request object"))
 	}
 
 	c, err := federation.Client(ctx, req.ClientID, &federation.Options{
@@ -334,7 +352,8 @@ func federationClient(ctx oidc.Context, req request) (*goidc.Client, error) {
 	// TODO: Validate the jar alg for the client.
 
 	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeAutomatic) {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the client is not registered for automatic registration")
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("the client is not registered for automatic federation registration"))
 	}
 
 	return c, nil

@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"errors"
 	"net/url"
 	"slices"
 	"strings"
@@ -129,7 +130,8 @@ func (chain trustChain) resolve(ctx oidc.Context) (entityStatement, error) {
 			// [OpenID Fed 1.0 §6.2.1] Check if the number of entities between the current entity the subject is greater than the max path length.
 			// A max path length of 0 means that there should be no intermediate entities between the current entity and the subject.
 			if maxPathLength, dist := constraints.MaxPathLength, i; maxPathLength != nil && dist > *maxPathLength {
-				return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "max path length exceeded")
+				return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidTrustChain, "invalid trust chain",
+					errors.New("the max_path_length constraint was exceeded"))
 			}
 
 			// [OpenID Fed 1.0 §6.2.2] Naming constraints apply to all entity identifiers from this point down to the subject.
@@ -139,12 +141,14 @@ func (chain trustChain) resolve(ctx oidc.Context) (entityStatement, error) {
 					if namingConstraints.Permitted != nil && !slices.ContainsFunc(namingConstraints.Permitted, func(namespace string) bool {
 						return matchesNamespace(entityID, namespace)
 					}) {
-						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+						return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidTrustChain, "invalid trust chain",
+							errors.New("the naming constraints are not satisfied"))
 					}
 					if slices.ContainsFunc(namingConstraints.Excluded, func(namespace string) bool {
 						return matchesNamespace(entityID, namespace)
 					}) {
-						return entityStatement{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "naming constraint not met")
+						return entityStatement{}, goidc.WrapError(goidc.ErrorCodeInvalidTrustChain, "invalid trust chain",
+							errors.New("the naming constraints are not satisfied"))
 					}
 				}
 			}

@@ -20,7 +20,8 @@ func handleOffer(ctx oidc.Context) {
 	offer, err := offer(ctx, id)
 	if err != nil {
 		if errors.Is(err, goidc.ErrNotFound) {
-			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "offer not found").WithStatusCode(http.StatusNotFound))
+			ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+				errors.New("offer not found")).WithStatusCode(http.StatusNotFound))
 			return
 		}
 		ctx.WriteError(err)

@@ -49,6 +49,7 @@ type OpenIDConfiguration struct {
 	TokenRevocationEndpoint             string                             `json:"revocation_endpoint,omitempty"`
 	TokenRevocationAuthnMethods         []goidc.AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	TokenRevocationAuthnSigAlgs         []goidc.SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
+	DeviceAuthorizationEndpoint         string                             `json:"device_authorization_endpoint,omitempty"`
 
 	CIBATokenDeliveryModes []goidc.CIBATokenDeliveryMode `json:"backchannel_token_delivery_modes_supported,omitempty"`
 	CIBAEndpoint           string                        `json:"backchannel_authentication_endpoint,omitempty"`

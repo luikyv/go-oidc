@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/x509"
 	"errors"
+	"strconv"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -55,10 +56,12 @@ func TestGenerateRefreshToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func() (oidc.Context, request, *goidc.Client, *goidc.Grant)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
+		name            string
+		setup           func() (oidc.Context, request, *goidc.Client, *goidc.Grant)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		validateErr     func(*testing.T, error, *goidc.Client, *goidc.Grant)
+		validate        func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
 	}{
 		{
 			name: "happy path",
@@ -256,7 +259,20 @@ func TestGenerateRefreshToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			validateErr: func(t *testing.T, err error, _ *goidc.Client, grant *goidc.Grant) {
+				t.Helper()
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				want := "the refresh token expired at " + strconv.Itoa(grant.RefreshTokenExpiresAt)
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != want {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, want)
+				}
+			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -334,7 +350,20 @@ func TestGenerateRefreshToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			validateErr: func(t *testing.T, err error, c *goidc.Client, grant *goidc.Grant) {
+				t.Helper()
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				want := "the refresh token belongs to client \"" + grant.ClientID + "\", not \"" + c.ID + "\""
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != want {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, want)
+				}
+			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -349,7 +378,20 @@ func TestGenerateRefreshToken(t *testing.T) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			validateErr: func(t *testing.T, err error, _ *goidc.Client, _ *goidc.Grant) {
+				t.Helper()
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				want := "the client is not allowed to use the refresh_token grant type"
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != want {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, want)
+				}
+			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -364,7 +406,8 @@ func TestGenerateRefreshToken(t *testing.T) {
 				req.refreshToken = ""
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -379,7 +422,8 @@ func TestGenerateRefreshToken(t *testing.T) {
 				req.refreshToken = "invalid_refresh_token"
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -486,6 +530,12 @@ func TestGenerateRefreshToken(t *testing.T) {
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
 					t.Fatalf("got %v, want error code %s", err, test.wantErr)
+				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.validateErr != nil {
+					test.validateErr(t, err, c, grant)
 				}
 			}
 

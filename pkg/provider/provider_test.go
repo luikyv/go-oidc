@@ -154,7 +154,7 @@ func TestNew(t *testing.T) {
 				TokenRevocationIsEnabled:       true,
 				TokenRevocationEndpoint:        defaultEndpointTokenRevocation,
 				CIBAProfile:                    goidc.CIBAProfileOpenID,
-				CIBATokenDeliveryModels:        []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
+				CIBATokenDeliveryModes:         []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
 				CIBAEndpoint:                   defaultEndpointCIBA,
 				CIBADefaultSessionLifetimeSecs: 60,
 				CIBAPollingIntervalSecs:        5,

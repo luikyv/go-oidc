@@ -56,10 +56,12 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func() (oidc.Context, request, *goidc.Client, *goidc.Grant)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
+		name            string
+		setup           func() (oidc.Context, request, *goidc.Client, *goidc.Grant)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		validate        func(*testing.T, oidc.Context, response, *goidc.Client, *goidc.Grant)
 	}{
 		{
 			name: "happy path",
@@ -246,7 +248,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				grant.AuthCodeConsumedAt = timeutil.TimestampNow()
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			wantWrappedErr:  "the authorization code has already been redeemed",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -587,7 +591,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				req.code = ""
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "code is required",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -631,7 +637,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			wantWrappedErr:  "the authorization code has expired",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -650,7 +658,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				req.redirectURI = "https://wrong.example.com/callback"
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			wantWrappedErr:  "the redirect_uri does not match the authorization code",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -672,7 +682,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			wantWrappedErr:  "the authorization code belongs to a different client",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -691,7 +703,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantClientCredentials}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			wantWrappedErr:  "the client is not allowed to use the authorization_code grant type",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
 				tokens := oidctest.Tokens(t, ctx)
 				if len(tokens) != 0 {
@@ -763,6 +777,14 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
 					t.Fatalf("got %v, want error code %s", err, test.wantErr)
+				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
 				}
 			}
 

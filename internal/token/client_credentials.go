@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -16,7 +17,8 @@ func generateClientCredentialsToken(ctx oidc.Context, req request) (response, er
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the client is not allowed to use the client_credentials grant type"))
 	}
 
 	if err := ValidateBinding(ctx, c, nil); err != nil {

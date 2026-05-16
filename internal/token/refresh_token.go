@@ -13,7 +13,8 @@ import (
 
 func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 	if req.refreshToken == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid refresh token")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			fmt.Errorf("refresh_token is required"))
 	}
 
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
@@ -23,19 +24,19 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 
 	grant, err := ctx.RefreshGrantByRefreshToken(req.refreshToken)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid refresh_token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("could not load the grant by refresh token: %w", err))
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", fmt.Errorf("the client is not allowed to use the %s grant type", goidc.GrantRefreshToken))
 	}
 
 	if c.ID != grant.ClientID {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "the refresh token was not issued to the client")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("the refresh token belongs to client %q, not %q", grant.ClientID, c.ID))
 	}
 
 	if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "the refresh token is expired")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("the refresh token expired at %d", grant.RefreshTokenExpiresAt))
 	}
 
 	cnf := goidc.TokenConfirmation{

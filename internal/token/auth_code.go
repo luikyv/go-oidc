@@ -20,29 +20,30 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if req.code == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "missing auth code")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("code is required"))
 	}
 
 	grant, err := ctx.GrantByAuthCode(req.code)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", err)
 	}
 
 	resp, err := func() (response, error) {
 		if grant.AuthCodeConsumedAt != 0 {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", errors.New("auth code already used"))
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has already been redeemed"))
 		}
 
 		if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
-			return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "invalid grant", errors.New("client is not allowed to use auth code grant"))
+			return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the authorization_code grant type"))
 		}
 
 		if c.ID != grant.ClientID {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code was not issued to the client"))
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code belongs to a different client"))
 		}
 
 		if timeutil.TimestampNow() > grant.AuthCodeExpiresAt {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the auth code is expired"))
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has expired"))
 		}
 
 		if err := ValidateBinding(ctx, c, &bindindValidationOptions{
@@ -55,7 +56,7 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		}
 
 		if req.redirectURI != grant.AuthParams.RedirectURI {
-			return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the redirect_uri does not match the authorization code"))
 		}
 
 		if err := validatePKCE(ctx, req, grant); err != nil {

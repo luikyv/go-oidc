@@ -128,12 +128,16 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 
 	if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 		config.CIBAEndpoint = ctx.BaseURL() + ctx.CIBAEndpoint
-		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
+		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModes
 		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled
 
 		if ctx.CIBAJARIsEnabled {
 			config.CIBAJARSigAlgs = ctx.CIBAJARSigAlgs
 		}
+	}
+
+	if slices.Contains(ctx.GrantTypes, goidc.GrantDeviceCode) {
+		config.DeviceAuthorizationEndpoint = ctx.BaseURL() + ctx.DeviceAuthEndpoint
 	}
 
 	if ctx.LogoutIsEnabled {

@@ -1,6 +1,8 @@
 package token
 
 import (
+	"errors"
+
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -30,7 +32,8 @@ func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfir
 	dpopJWT, ok := dpop.JWT(ctx)
 	if !ok {
 		// The session was created with DPoP, then the DPoP header must be passed.
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid DPoP header")
+		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("a DPoP proof is required for this token"))
 	}
 
 	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
@@ -49,13 +52,12 @@ func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) erro
 
 	clientCert, err := ctx.ClientCert()
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidToken,
-			"the client certificate is required", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
 	}
 
 	if confirmation.CertThumbprint != hashutil.Thumbprint(string(clientCert.Raw)) {
-		return goidc.NewError(goidc.ErrorCodeInvalidToken,
-			"invalid client certificate")
+		return goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token",
+			errors.New("the client certificate does not match the token binding thumbprint"))
 	}
 
 	return nil

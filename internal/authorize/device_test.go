@@ -23,10 +23,12 @@ func TestInitDeviceAuth(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func(*testing.T) (oidc.Context, request, *goidc.Client)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, deviceResponse, *goidc.Client)
+		name            string
+		setup           func(*testing.T) (oidc.Context, request, *goidc.Client)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		validate        func(*testing.T, oidc.Context, deviceResponse, *goidc.Client)
 	}{
 		{
 			name: "happy path",
@@ -75,7 +77,7 @@ func TestInitDeviceAuth(t *testing.T) {
 				wantResp := deviceResponse{
 					DeviceCode:      "random_device_code",
 					UserCode:        "random_user_code",
-					VerificationURI: ctx.BaseURL() + ctx.DeviceAuthDeviceEndpoint,
+					VerificationURI: ctx.BaseURL() + ctx.DeviceAuthVerificationEndpoint,
 					ExpiresIn:       ctx.DeviceAuthLifetimeSecs,
 					Interval:        ctx.DeviceAuthPollingIntervalSecs,
 				}
@@ -98,7 +100,7 @@ func TestInitDeviceAuth(t *testing.T) {
 				return ctx, req, client
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp deviceResponse, _ *goidc.Client) {
-				want := ctx.BaseURL() + ctx.DeviceAuthDeviceEndpoint + "?user_code=random_user_code"
+				want := ctx.BaseURL() + ctx.DeviceAuthVerificationEndpoint + "?user_code=random_user_code"
 				if resp.VerificationURIComplete != want {
 					t.Errorf("VerificationURIComplete = %q, want %q", resp.VerificationURIComplete, want)
 				}
@@ -130,7 +132,9 @@ func TestInitDeviceAuth(t *testing.T) {
 				req := request{ClientID: client.ID}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			wantWrappedErr:  "the client is not allowed to use the device_code grant type",
 		},
 		{
 			name: "openid required",
@@ -145,7 +149,9 @@ func TestInitDeviceAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeInvalidScope,
+			wantErr:         goidc.ErrorCodeInvalidScope,
+			wantDescription: "invalid scope",
+			wantWrappedErr:  "scope openid is required",
 		},
 		{
 			name: "no policy available",
@@ -160,7 +166,9 @@ func TestInitDeviceAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "no authentication policy is available for the device request",
 		},
 	}
 
@@ -185,6 +193,14 @@ func TestInitDeviceAuth(t *testing.T) {
 				if oidcErr.Code != test.wantErr {
 					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
 				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
+				}
 			} else if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -198,10 +214,12 @@ func TestInitDeviceAuth(t *testing.T) {
 
 func TestStartDeviceAuth(t *testing.T) {
 	tests := []struct {
-		name     string
-		setup    func(*testing.T) (oidc.Context, *goidc.Client, string)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, *goidc.Client)
+		name            string
+		setup           func(*testing.T) (oidc.Context, *goidc.Client, string)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		validate        func(*testing.T, oidc.Context, *goidc.Client)
 	}{
 		{
 			name: "without user code prompts for code",
@@ -278,7 +296,7 @@ func TestStartDeviceAuth(t *testing.T) {
 			ctx, client, userCode := test.setup(t)
 
 			// When.
-			err := startDeviceAuth(ctx, userCode)
+			err := initDeviceAuthVerification(ctx, userCode)
 
 			// Then.
 			if test.wantErr != "" {
@@ -293,6 +311,14 @@ func TestStartDeviceAuth(t *testing.T) {
 				if oidcErr.Code != test.wantErr {
 					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
 				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
+				}
 			} else if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -306,10 +332,13 @@ func TestStartDeviceAuth(t *testing.T) {
 
 func TestContinueDeviceAuth(t *testing.T) {
 	tests := []struct {
-		name     string
-		setup    func(*testing.T) (oidc.Context, *goidc.Client, string)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, *goidc.Client)
+		name            string
+		setup           func(*testing.T) (oidc.Context, *goidc.Client, string)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		wantInternalErr string
+		validate        func(*testing.T, oidc.Context, *goidc.Client)
 	}{
 		{
 			name: "successful authentication renders confirmation and creates grant",
@@ -365,7 +394,9 @@ func TestContinueDeviceAuth(t *testing.T) {
 				ctx, client := setUpDevice(t)
 				return ctx, client, "missing_session"
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "the device authentication session was not found",
 		},
 		{
 			name: "expired session",
@@ -376,7 +407,9 @@ func TestContinueDeviceAuth(t *testing.T) {
 				})
 				return ctx, client, session.ID
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "the device authentication session has expired",
 		},
 		{
 			name: "missing policy id deletes the session",
@@ -387,7 +420,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 				})
 				return ctx, client, session.ID
 			},
-			wantErr: goidc.ErrorCodeInternalError,
+			wantInternalErr: "the device session is missing the policy id",
 			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client) {
 				sessions := deviceSessions(t, ctx)
 				if len(sessions) != 0 {
@@ -423,10 +456,21 @@ func TestContinueDeviceAuth(t *testing.T) {
 			ctx, client, sessionID := test.setup(t)
 
 			// When.
-			err := continueDeviceAuth(ctx, sessionID)
+			err := continueDeviceAuthVerification(ctx, sessionID)
 
 			// Then.
-			if test.wantErr != "" {
+			if test.wantInternalErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantInternalErr)
+				}
+				var oidcErr goidc.Error
+				if errors.As(err, &oidcErr) {
+					t.Fatalf("expected internal error, got goidc.Error %v", oidcErr)
+				}
+				if err.Error() != test.wantInternalErr {
+					t.Fatalf("error = %q, want %q", err.Error(), test.wantInternalErr)
+				}
+			} else if test.wantErr != "" {
 				if err == nil {
 					t.Fatalf("expected error %q", test.wantErr)
 				}
@@ -437,6 +481,14 @@ func TestContinueDeviceAuth(t *testing.T) {
 				}
 				if oidcErr.Code != test.wantErr {
 					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
 				}
 			} else if err != nil {
 				t.Fatalf("unexpected error: %v", err)
@@ -458,7 +510,7 @@ func setUpDevice(t *testing.T) (oidc.Context, *goidc.Client) {
 	ctx.DeviceAuthManager = manager
 	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantDeviceCode)
 	ctx.DeviceAuthEndpoint = "/device_authorization"
-	ctx.DeviceAuthDeviceEndpoint = "/device"
+	ctx.DeviceAuthVerificationEndpoint = "/device"
 	ctx.DeviceAuthLifetimeSecs = 300
 	ctx.DeviceAuthPollingIntervalSecs = 5
 	ctx.AuthSessionIDFunc = func(context.Context) string {

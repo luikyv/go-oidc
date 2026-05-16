@@ -2,6 +2,7 @@ package logout
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"time"
 
@@ -58,7 +59,8 @@ func initLogout(ctx oidc.Context, req request) error {
 
 	policy, ok := ctx.AvailableLogoutPolicy(ls)
 	if !ok {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "no logout policy available")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("no logout policy is available for this logout request"))
 	}
 
 	ls.PolicyID = policy.ID
@@ -77,11 +79,16 @@ func initLogout(ctx oidc.Context, req request) error {
 func continueLogout(ctx oidc.Context, id string) error {
 	session, err := ctx.LogoutSession(id)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
+		if errors.Is(err, goidc.ErrNotFound) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+				errors.New("the logout session was not found"))
+		}
+		return fmt.Errorf("could not load the logout session: %w", err)
 	}
 
 	if session.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("the logout session has expired"))
 	}
 
 	return logout(ctx, session)
@@ -90,9 +97,9 @@ func continueLogout(ctx oidc.Context, id string) error {
 func logout(ctx oidc.Context, ls *goidc.LogoutSession) error {
 	if ls.PolicyID == "" {
 		if err := ctx.DeleteLogoutSession(ls.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
+			return fmt.Errorf("could not delete the logout session: %w", err)
 		}
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", errors.New("the policy id is not set in the session"))
+		return errors.New("the logout policy id is not set in the session")
 	}
 
 	policy := ctx.LogoutPolicy(ls.PolicyID)
@@ -116,13 +123,13 @@ func logout(ctx oidc.Context, ls *goidc.LogoutSession) error {
 		return ctx.SaveLogoutSession(ls)
 	default:
 		if deleteErr := ctx.DeleteLogoutSession(ls.ID); deleteErr != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "failed to logout", deleteErr)
+			return fmt.Errorf("could not delete the logout session after logout failure: %w", deleteErr)
 		}
 
 		if err != nil {
 			return err
 		}
-		return goidc.NewError(goidc.ErrorCodeInternalError, "failed to logout")
+		return errors.New("logout failed")
 	}
 }
 
@@ -140,7 +147,8 @@ func validatePostLogoutRedirectURI(_ oidc.Context, req request, c *goidc.Client)
 	}
 
 	if !slices.Contains(c.PostLogoutRedirectURIs, req.PostLogoutRedirectURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "post_logout_redirect_uri not allowed")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("post_logout_redirect_uri is not registered for the client"))
 	}
 
 	return nil
@@ -152,27 +160,29 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 	}
 
 	if !joseutil.IsJWS(req.IDTokenHint) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("id_token_hint must be a signed JWT"))
 	}
 
 	// TODO: What if the id token is signed with "none" alg? joseutil.IsUnsignedJWT
 	parsedIDToken, err := jwt.ParseSigned(req.IDTokenHint, ctx.IDTokenSigAlgs)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
 	if len(parsedIDToken.Headers) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid id token hint")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("id_token_hint must contain exactly one JOSE header"))
 	}
 
 	publicKey, err := ctx.PublicJWK(parsedIDToken.Headers[0].KeyID)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
 	var claims jwt.Claims
 	if err := parsedIDToken.Claims(publicKey.Key, &claims); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
 	var aud []string
@@ -184,7 +194,7 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 		Issuer:      ctx.Issuer(),
 		AnyAudience: aud,
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id token hint", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
 	return nil

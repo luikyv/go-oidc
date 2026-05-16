@@ -89,6 +89,8 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Pushed Authorization Requests (PAR)](#pushed-authorization-requests-par)
 - [Authentication Policies](#authentication-policies)
 - [Logout](#logout)
+- [ID Tokens](#id-tokens)
+- [UserInfo Endpoint](#userinfo-endpoint)
 - [Token Introspection](#token-introspection)
 - [Token Revocation](#token-revocation)
 - [Signing and Encryption](#signing-and-encryption)
@@ -186,6 +188,24 @@ op, _ := provider.New(
 
 Use `goidc.NewOpaqueTokenOptions(...)` to keep opaque access tokens, or
 `goidc.NewJWTTokenOptions(...)` to issue JWT access tokens.
+
+Additional access token claims can be added with
+`provider.WithTokenClaims(...)`. The function receives the issued
+`goidc.Token` and its source `goidc.Grant`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithTokenClaims(func(_ context.Context, token *goidc.Token, grant *goidc.Grant) map[string]any {
+    return map[string]any{
+      "roles":  grant.Store["roles"],
+      "tenant": grant.Store["tenant"],
+    }
+  }),
+)
+```
 
 It is created from a `goidc.Grant` and captures the exact authorization state
 attached to that token at issuance time. A token may therefore contain:
@@ -572,6 +592,82 @@ used to store pending logout sessions. Use
 `provider.WithLogoutSessionTimeoutSecs(...)` to control how long a pending
 logout session remains valid, and `provider.WithLogoutEndpoint(...)` to
 override the default endpoint path.
+
+## ID Tokens
+
+ID tokens are signed JWTs that represent the authentication event for the
+subject.
+
+go-oidc issues ID tokens from the same `goidc.Grant` used for access token
+issuance. Additional ID token claims can be added with
+`provider.WithIDTokenClaims(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithIDTokenClaims(func(_ context.Context, grant *goidc.Grant) map[string]any {
+    return map[string]any{
+      "acr":   "urn:example:loa:2",
+      "roles": grant.Store["roles"],
+    }
+  }),
+)
+```
+
+By default, ID tokens are signed. The provider-side signing and lifetime
+settings are controlled with:
+
+- `provider.WithIDTokenSignatureAlgs(...)`
+- `provider.WithIDTokenLifetime(...)`
+
+If you want to support encrypted ID tokens, enable it in the provider with:
+
+- `provider.WithIDTokenEncryption(...)`
+- `provider.WithIDTokenContentEncryptionAlgs(...)`
+
+The client metadata can then choose the signing and encryption algorithms it
+requires through the standard ID token settings.
+
+## UserInfo Endpoint
+
+The UserInfo endpoint is enabled by default at `/userinfo`.
+
+It is called with an access token and returns claims about the authenticated
+subject. The access token must:
+
+- be active
+- include the `openid` scope
+- satisfy any proof-of-possession binding such as DPoP or mTLS
+
+The response starts from the subject in the `goidc.Grant`. Additional claims
+can be added with `provider.WithUserInfoClaims(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithClaims("email", "name"),
+  provider.WithUserInfoClaims(func(_ context.Context, grant *goidc.Grant) map[string]any {
+    return map[string]any{
+      "email": grant.Store["email"],
+      "name":  grant.Store["name"],
+    }
+  }),
+)
+```
+
+By default, the endpoint returns a JSON object. go-oidc only signs or encrypts
+the UserInfo response when that behavior is enabled in the provider and the
+client metadata is configured to require it. The provider-side options are:
+
+- `provider.WithUserInfoSignatureAlgs(...)`
+- `provider.WithUserInfoEncryption(...)`
+- `provider.WithUserInfoContentEncryptionAlgs(...)`
+
+Use `provider.WithUserInfoEndpoint(...)` to override the default endpoint path.
 
 ## [Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 

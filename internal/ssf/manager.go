@@ -2,7 +2,6 @@ package ssf
 
 import (
 	"context"
-	"errors"
 	"slices"
 	"sync"
 	"time"
@@ -60,7 +59,7 @@ func (m *EventManager) EventStream(_ context.Context, id string) (*goidc.SSFEven
 	if stream, ok := m.streams[id]; ok {
 		return stream, nil
 	}
-	return nil, errors.New("stream not found")
+	return nil, goidc.ErrNotFound
 }
 
 func (m *EventManager) EventStreams(_ context.Context, receiverID string) ([]*goidc.SSFEventStream, error) {

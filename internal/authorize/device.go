@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
@@ -27,11 +28,11 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantDeviceCode) {
-		return deviceResponse{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "urn:ietf:params:oauth:grant-type:device_code not allowed")
+		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the device_code grant type"))
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
-		return deviceResponse{}, goidc.NewError(goidc.ErrorCodeInvalidScope, "scope openid is required")
+		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("scope openid is required"))
 	}
 
 	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {
@@ -41,7 +42,7 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	as := newAuthnSession(ctx, req.AuthorizationParameters, c)
 	policy, ok := ctx.AvailablePolicy(as, c)
 	if !ok {
-		return deviceResponse{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "no policy available")
+		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("no authentication policy is available for the device request"))
 	}
 
 	as.ExpiresAt = as.CreatedAt + ctx.DeviceAuthLifetimeSecs
@@ -49,13 +50,13 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	as.DeviceCode = ctx.DeviceCode()
 	as.UserCode = ctx.DeviceUserCode()
 	if err := ctx.DeviceSaveSession(as); err != nil {
-		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInternalError, "could not save the session", err)
+		return deviceResponse{}, fmt.Errorf("could not save the device session: %w", err)
 	}
 
 	resp := deviceResponse{
 		DeviceCode:      as.DeviceCode,
 		UserCode:        as.UserCode,
-		VerificationURI: ctx.BaseURL() + ctx.DeviceAuthDeviceEndpoint,
+		VerificationURI: ctx.BaseURL() + ctx.DeviceAuthVerificationEndpoint,
 		ExpiresIn:       ctx.DeviceAuthLifetimeSecs,
 		Interval:        ctx.DeviceAuthPollingIntervalSecs,
 	}
@@ -65,7 +66,7 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	return resp, nil
 }
 
-func startDeviceAuth(ctx oidc.Context, userCode string) error {
+func initDeviceAuthVerification(ctx oidc.Context, userCode string) error {
 	// No user code, just render the verification page.
 	if userCode == "" {
 		return ctx.DeviceAuthPromptUserCode()
@@ -76,23 +77,18 @@ func startDeviceAuth(ctx oidc.Context, userCode string) error {
 		if errors.Is(err, goidc.ErrNotFound) {
 			return ctx.DeviceAuthPromptUserCode()
 		}
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load the session", err)
+		return fmt.Errorf("could not load the device session by user code: %w", err)
 	}
-	if as.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
-	}
-
 	return authenticateDevice(ctx, as)
 }
 
-func continueDeviceAuth(ctx oidc.Context, id string) error {
+func continueDeviceAuthVerification(ctx oidc.Context, id string) error {
 	as, err := ctx.DeviceSession(id)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not load the session", err)
-	}
-
-	if as.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session timeout")
+		if errors.Is(err, goidc.ErrNotFound) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the device authentication session was not found"))
+		}
+		return fmt.Errorf("could not load the device session by id: %w", err)
 	}
 
 	return authenticateDevice(ctx, as)
@@ -105,20 +101,24 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 	// error returned.
 	if as.PolicyID == "" {
 		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
+			return fmt.Errorf("could not delete the device session with a missing policy id: %w", err)
 		}
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", errors.New("the policy id is not set in the session"))
+		return fmt.Errorf("the device session is missing the policy id")
+	}
+
+	if as.IsExpired() {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the device authentication session has expired"))
 	}
 
 	c, err := client.Client(ctx, as.ClientID)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInternalError, "could not load client", err)
+		return fmt.Errorf("could not load the client for the device session: %w", err)
 	}
 
 	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
 		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "could not save session", err)
+			return fmt.Errorf("could not delete the completed device session: %w", err)
 		}
 
 		_, err = token.NewGrant(ctx, c, token.GrantOptions{
@@ -135,26 +135,29 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 			Store:               as.Store,
 		})
 		if err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "could not generate the grant", err)
+			return fmt.Errorf("could not generate the grant for the device session: %w", err)
 		}
 
 		return ctx.DeviceAuthRenderConfirmation()
 	case goidc.StatusInProgress:
-		return ctx.DeviceSaveSession(as)
+		if err := ctx.DeviceSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the in-progress device session: %w", err)
+		}
+		return nil
 	default:
 		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInternalError, "internal error", err)
+			return fmt.Errorf("could not delete the failed device session: %w", err)
 		}
 
 		var oidcErr goidc.Error
 		if errors.As(authErr, &oidcErr) {
-			return newRedirectionError(oidcErr.Code, oidcErr.Description, as.AuthorizationParameters)
+			return oidcErr
 		}
 
 		if authErr != nil {
-			return newRedirectionError(goidc.ErrorCodeAccessDenied, authErr.Error(), as.AuthorizationParameters)
+			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", authErr)
 		}
 
-		return newRedirectionError(goidc.ErrorCodeAccessDenied, "access denied", as.AuthorizationParameters)
+		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("authentication policy failed"))
 	}
 }

@@ -25,6 +25,7 @@ type GrantOptions struct {
 	DeviceCodeExpiresAt  int
 	AuthReqID            string
 	AuthReqIDExpiresAt   int
+	AuthReqIDConsumedAt  int
 	JWKThumbprint        string
 	ClientCertThumbprint string
 	AuthParams           goidc.AuthorizationParameters
@@ -41,6 +42,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		DeviceCodeExpiresAt: opts.DeviceCodeExpiresAt,
 		AuthReqID:           opts.AuthReqID,
 		AuthReqIDExpiresAt:  opts.AuthReqIDExpiresAt,
+		AuthReqIDConsumedAt: opts.AuthReqIDConsumedAt,
 		Subject:             opts.Subject,
 		Username:            opts.Username,
 		ClientID:            opts.ClientID,

@@ -26,8 +26,10 @@ func main() {
 	scope := goidc.NewScope("ssf.events")
 	client := authutil.ClientSecretPost("client_one", "ssf_secret", scope)
 
-	op, _ := provider.New(authutil.Issuer, nil, authutil.PrivateJWKSFunc())
-	_ = op.WithOptions(
+	op, _ := provider.New(
+		authutil.Issuer,
+		nil,
+		authutil.PrivateJWKSFunc(),
 		provider.WithScopes(scope),
 		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClients(client),

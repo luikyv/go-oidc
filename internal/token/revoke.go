@@ -13,7 +13,7 @@ import (
 
 func revoke(ctx oidc.Context, req queryRequest) error {
 	if req.token == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token parameter is required")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("token is required"))
 	}
 
 	c, err := client.Authenticated(ctx, client.AuthnContextTokenRevocation)
@@ -22,7 +22,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 	}
 
 	if !ctx.TokenRevocationIsClientAllowed(c) {
-		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "could not revoke token", errors.New("client not allowed to revoke tokens"))
+		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the client is not allowed to use the revocation endpoint"))
 	}
 
 	err = func() error {
@@ -41,7 +41,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 		}
 
 		if c.ID != token.ClientID {
-			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "could not revoke token", errors.New("token was not issued for this client"))
+			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the token belongs to a different client"))
 		}
 
 		if !ctx.TokenRevocationDeleteGrantOnAccessTokenIsEnabled {
@@ -80,7 +80,7 @@ func revoke(ctx oidc.Context, req queryRequest) error {
 		}
 
 		if c.ID != grant.ClientID {
-			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "could not revoke token", errors.New("token was not issued for this client"))
+			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the token belongs to a different client"))
 		}
 
 		if err := ctx.DeleteGrant(grant.ID); err != nil {

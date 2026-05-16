@@ -55,10 +55,14 @@ func handleExplicitRegistration(ctx oidc.Context) {
 		entityStatement, regErr = registerEntityConfiguration(ctx, string(signedStatement))
 	case contentTypeTrustChain:
 		var chainStatements []string
-		_ = json.NewDecoder(ctx.Request.Body).Decode(&chainStatements)
+		if err := json.NewDecoder(ctx.Request.Body).Decode(&chainStatements); err != nil {
+			regErr = goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
+			break
+		}
 		entityStatement, regErr = registerChainStatements(ctx, chainStatements)
 	default:
-		regErr = fmt.Errorf("unsupported content type: %s", mediaType)
+		regErr = goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			fmt.Errorf("unsupported content type %q", mediaType))
 	}
 
 	if regErr != nil {

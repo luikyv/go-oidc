@@ -20,7 +20,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 
 		token, err := ctx.Token(id)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("error fetching token: %w", err)
+			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the token for introspection: %w", err)
 		}
 
 		if token.IsExpired() {
@@ -29,7 +29,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 
 		grant, err := ctx.Grant(token.GrantID)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("error fetching grant: %w", err)
+			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the grant for token introspection: %w", err)
 		}
 
 		var cnf *goidc.TokenConfirmation
@@ -72,7 +72,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	info, err = func() (goidc.TokenInfo, error) {
 		grant, err := ctx.RefreshGrantByRefreshToken(tkn)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("token not found: %w", err)
+			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the refresh token grant for introspection: %w", err)
 		}
 
 		if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
@@ -120,7 +120,8 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	}
 
 	if req.token == "" {
-		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "token is missing")
+		return goidc.TokenInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("token is required"))
 	}
 
 	// The information of an invalid token must not be sent as an error.
@@ -132,7 +133,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	}
 
 	if info.IsActive && !ctx.TokenIntrospectionIsClientAllowed(c, info) {
-		return goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "client not allowed to introspect the token")
+		return goidc.TokenInfo{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the client is not allowed to introspect this token"))
 	}
 
 	return info, nil

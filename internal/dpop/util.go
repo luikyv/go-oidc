@@ -52,46 +52,50 @@ func JWT(ctx oidc.Context) (string, bool) {
 func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error {
 	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
 	if len(parsedDPoPJWT.Headers) != 1 {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the DPoP proof must contain exactly one JOSE header"))
 	}
 
 	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest,
-			"invalid typ header, it should be dpop+jwt")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the typ header must be dpop+jwt"))
 	}
 
 	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk header")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the jwk header must contain a valid public key"))
 	}
 
 	var claims jwt.Claims
 	var dpopClaims Claims
 	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid dpop jwt", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
 	if claims.IssuedAt == nil ||
 		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JWTLifetimeSecs {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient,
-			"invalid dpop jwt issuance time")
+		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the DPoP proof issuance time is invalid"))
 	}
 
 	if claims.ID == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jti claim")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the jti claim is required"))
 	}
 
 	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid jti claim", err)
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htm claim")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the htm claim does not match the request method"))
 	}
 
 	httpURI, err := strutil.NormalizeURL(dpopClaims.HTTPURI)
@@ -100,21 +104,22 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
 	}
 	if err != nil || !slices.Contains(auds, httpURI) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid htu claim")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the htu claim does not match the request URI"))
 	}
 
 	if opts.AccessToken != "" && dpopClaims.AccessTokenHash != hashutil.Thumbprint(opts.AccessToken) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid ath claim")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the ath claim does not match the access token"))
 	}
 
-	if opts.JWKThumbprint != "" &&
-		JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs) != opts.JWKThumbprint {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid jwk thumbprint")
+	if opts.JWKThumbprint != "" && JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs) != opts.JWKThumbprint {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
+			errors.New("the DPoP key thumbprint does not match the expected binding"))
 	}
 
-	err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second)
-	if err != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop")
+	if err = claims.ValidateWithLeeway(jwt.Expected{}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
 	return nil

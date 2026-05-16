@@ -549,8 +549,8 @@ func TestInitAuth(t *testing.T) {
 				if !errors.Is(err, goidc.ErrNotFound) {
 					t.Fatalf("expected wrapped not found error, got %v", err)
 				}
-				if got := err.Error(); got != "invalid_client invalid client_id: not found" {
-					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client_id: not found")
+				if got := err.Error(); got != "invalid_client invalid client_id: could not load the client: not found" {
+					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client_id: could not load the client: not found")
 				}
 			},
 		},
@@ -570,8 +570,8 @@ func TestInitAuth(t *testing.T) {
 				if !errors.Is(err, goidc.ErrNotFound) {
 					t.Fatalf("expected wrapped not found error, got %v", err)
 				}
-				if got := err.Error(); got != "invalid_client invalid client_id: not found" {
-					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client_id: not found")
+				if got := err.Error(); got != "invalid_client invalid client_id: could not load the client: not found" {
+					t.Fatalf("error = %q, want %q", got, "invalid_client invalid client_id: could not load the client: not found")
 				}
 			},
 		},
@@ -772,6 +772,127 @@ func TestInitAuth(t *testing.T) {
 				}
 				if diff := cmp.Diff(session.AuthorizationParameters, req.AuthorizationParameters, cmpopts.EquateEmpty()); diff != "" {
 					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "verifiable credentials populate session vc info",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
+				ctx, client := setup(t)
+				ctx.VCIsEnabled = true
+				ctx.Policies = []goidc.AuthnPolicy{
+					goidc.NewPolicy(
+						"policy_id",
+						func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
+							return true
+						},
+						func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
+							return goidc.StatusInProgress, nil
+						},
+					),
+				}
+				ctx.VCIssuers = []goidc.VCIssuer{
+					{
+						ID: "https://issuer.example.com",
+						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						},
+					},
+				}
+				ctx.Scopes = append(ctx.Scopes, goidc.NewScope("vc_scope1"))
+				client.ScopeIDs = "openid vc_scope1"
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						RedirectURI:  client.RedirectURIs[0],
+						Scopes:       "openid vc_scope1",
+						ResponseType: goidc.ResponseTypeCode,
+						ResponseMode: goidc.ResponseModeQuery,
+					},
+				}
+				return ctx, client, req
+			},
+			validate: func(t *testing.T, ctx oidc.Context, client *goidc.Client, req request) {
+				statusCode := ctx.Response.(*httptest.ResponseRecorder).Result().StatusCode
+				if statusCode != http.StatusOK {
+					t.Errorf("statusCode = %d, want %d", statusCode, http.StatusOK)
+				}
+
+				sessions := oidctest.AuthnSessions(t, ctx)
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+
+				session := sessions[0]
+				if session.ClientID != client.ID {
+					t.Errorf("ClientID = %q, want %q", session.ClientID, client.ID)
+				}
+				if diff := cmp.Diff(session.AuthorizationParameters, req.AuthorizationParameters, cmpopts.EquateEmpty()); diff != "" {
+					t.Error(diff)
+				}
+				if session.VCInfo == nil {
+					t.Fatal("expected VCInfo to be populated")
+				}
+				if session.VCInfo.Issuer != "https://issuer.example.com" {
+					t.Fatalf("VCInfo.Issuer = %q, want %q", session.VCInfo.Issuer, "https://issuer.example.com")
+				}
+				if diff := cmp.Diff(session.VCInfo.ConfigurationIDs, []goidc.VCConfigurationID{"cred1"}); diff != "" {
+					t.Fatal(diff)
+				}
+			},
+		},
+		{
+			name: "verifiable credentials validation error redirects",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
+				ctx, client := setup(t)
+				ctx.VCIsEnabled = true
+				ctx.RARIsEnabled = true
+				ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
+				ctx.VCIssuers = []goidc.VCIssuer{
+					{
+						ID: "https://issuer.example.com",
+						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						},
+					},
+				}
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						RedirectURI:  client.RedirectURIs[0],
+						Scopes:       "openid",
+						ResponseType: goidc.ResponseTypeCode,
+						ResponseMode: goidc.ResponseModeQuery,
+						AuthDetails: []goidc.AuthDetail{
+							{
+								"type":                        string(goidc.AuthDetailTypeOpenIDCredential),
+								"credential_configuration_id": "unknown_cred",
+								"locations":                   []any{"https://issuer.example.com"},
+							},
+						},
+					},
+				}
+				return ctx, client, req
+			},
+			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client, _ request) {
+				redirectURL, err := url.Parse(ctx.Response.Header().Get("Location"))
+				if err != nil {
+					t.Fatalf("could not parse redirect url: %v", err)
+				}
+				if redirectURL.Query().Get("error") != string(goidc.ErrorCodeInvalidRequest) {
+					t.Errorf("error = %q, want %q", redirectURL.Query().Get("error"), goidc.ErrorCodeInvalidRequest)
+				}
+				if redirectURL.Query().Get("error_description") != "invalid verifiable credentials request" {
+					t.Errorf("error_description = %q, want %q", redirectURL.Query().Get("error_description"), "invalid verifiable credentials request")
+				}
+
+				sessions := oidctest.AuthnSessions(t, ctx)
+				if len(sessions) != 0 {
+					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
 				}
 			},
 		},

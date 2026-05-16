@@ -1,6 +1,7 @@
 package userinfo
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -22,7 +23,10 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 func handle(ctx oidc.Context) {
 	if ctx.Request.Method == http.MethodPost {
 		if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+			ctx.WriteError(
+				goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("unsupported content type for the userinfo endpoint")).
+					WithStatusCode(http.StatusUnsupportedMediaType),
+			)
 			return
 		}
 	}

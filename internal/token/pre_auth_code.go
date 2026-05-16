@@ -13,7 +13,8 @@ import (
 
 func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	if req.preAuthCode == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid pre-authorized_code")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("pre-authorized_code is required"))
 	}
 
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
@@ -44,7 +45,7 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantPreAuthorizedCode) {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the urn:ietf:params:oauth:grant-type:pre-authorized_code grant type"))
 	}
 
 	if err := ValidateBinding(ctx, c, nil); err != nil {
@@ -82,19 +83,19 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 
 	for id := range result.ConfigurationIDs {
 		if _, ok := issuer.Configurations[id]; !ok {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest, "unknown credential_configuration_id %s returned by pre-auth code handler", id)
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the pre-authorized code handler returned an unknown credential_configuration_id: "+string(id)))
 		}
 	}
 
 	var details []goidc.AuthDetail
 	for _, detail := range req.authDetails {
 		if detail.Type() != goidc.AuthDetailTypeOpenIDCredential {
-			return response{}, goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "only openid_credential authorization details are allowed in pre-authorized code grant")
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", errors.New("only openid_credential authorization details are allowed in the pre-authorized code grant"))
 		}
 		credID, _ := detail["credential_configuration_id"].(string)
 		credIDs, ok := result.ConfigurationIDs[goidc.VCConfigurationID(credID)]
 		if !ok {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInvalidRequest, "requested credential_configuration_id %s not in pre-auth code result", credID)
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the requested credential_configuration_id was not returned by the pre-authorized code handler: "+credID))
 		}
 		detail["credential_identifiers"] = credIDs
 		details = append(details, detail)
@@ -109,7 +110,7 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 			}
 		}
 		if !isVCScope {
-			return response{}, goidc.Errorf(goidc.ErrorCodeInvalidScope, "scope %s is not associated with any credential configuration", scope)
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("the requested scope is not associated with any credential configuration: "+scope))
 		}
 	}
 

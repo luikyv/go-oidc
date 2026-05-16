@@ -41,7 +41,7 @@ func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantJWTBearer) {
-		return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the urn:ietf:params:oauth:grant-type:jwt-bearer grant type"))
 	}
 
 	if err := ValidateBinding(ctx, c, nil); err != nil {
@@ -49,7 +49,8 @@ func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if req.assertion == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid assertion")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion",
+			errors.New("assertion is required"))
 	}
 
 	if err := validateScopes(ctx, req, c, ""); err != nil {

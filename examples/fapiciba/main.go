@@ -6,6 +6,7 @@ import (
 	"context"
 	"crypto/tls"
 	"log"
+	"log/slog"
 	"net/http"
 	"net/url"
 	"time"
@@ -16,8 +17,8 @@ import (
 )
 
 func main() {
-	op, _ := provider.New(authutil.Issuer, nil, authutil.PrivateJWKSFunc())
-	_ = op.WithOptions(
+	var op *provider.Provider
+	op, _ = provider.New(authutil.Issuer, nil, authutil.PrivateJWKSFunc(),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
@@ -100,7 +101,12 @@ func cibaActionHandler(op *provider.Provider) http.HandlerFunc {
 			return
 		}
 
-		as, _ := op.CIBAManager().Session(r.Context(), authReqID)
+		as, err := op.CIBAManager().SessionByAuthReqID(r.Context(), authReqID)
+		if err != nil {
+			slog.Error("could not fetch session", "error", err)
+			http.Error(w, "could not fetch session", http.StatusBadRequest)
+			return
+		}
 		as.Subject = as.LoginHint
 		as.GrantedScopes = as.Scopes
 		if as.ACRValues != "" {

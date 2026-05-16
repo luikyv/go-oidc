@@ -41,6 +41,8 @@ func WithProfileValidation() Option {
 //
 // If any implicit or hybrid response type is informed, the provider also adds
 // the implicit grant type internally.
+//
+// If manager is nil, the default in-memory storage is used.
 func WithAuthCodeGrant(manager goidc.AuthManager, rts ...goidc.ResponseType) Option {
 	return func(p *Provider) error {
 		p.config.AuthManager = manager
@@ -284,6 +286,7 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 }
 
 // WithDCR allows clients to be registered dynamically.
+// If manager is nil, the default in-memory storage is used.
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
 func WithDCR(manager goidc.DCRManager) Option {
 	return func(p *Provider) error {
@@ -385,13 +388,13 @@ func WithRefreshTokenRotation() Option {
 // clients are allowed to use.
 //
 // The manager is used to persist pending CIBA sessions and grants resolved from
-// them.
+// them. If manager is nil, the default in-memory storage is used.
 func WithCIBAGrant(manager goidc.CIBAManager, mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
 	modes = appendIfNotIn(modes, mode)
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
 		p.config.CIBAManager = manager
-		p.config.CIBATokenDeliveryModels = modes
+		p.config.CIBATokenDeliveryModes = modes
 		return nil
 	}
 }
@@ -532,7 +535,8 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 // an existing grant by its refresh token and issue a new access token under the
 // same grant.
 //
-// The manager is used to resolve grants by refresh token.
+// The manager is used to resolve grants by refresh token. If manager is nil,
+// the default in-memory storage is used.
 func WithRefreshTokenGrant(manager goidc.RefreshTokenManager) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenManager = manager
@@ -578,6 +582,8 @@ func WithPreAuthorizedCodeGrant() Option {
 	}
 }
 
+// WithDeviceGrant enables the device authorization grant.
+// If manager is nil, the default in-memory storage is used.
 func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFunc, confirmationFunc goidc.RenderFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantDeviceCode)
@@ -609,7 +615,8 @@ func WithScopes(scopes ...goidc.Scope) Option {
 // request endpoint.
 //
 // The manager stores the pushed authorization request session that will later
-// be resolved by `request_uri` at the authorization endpoint.
+// be resolved by `request_uri` at the authorization endpoint. If manager is
+// nil, the default in-memory storage is used.
 func WithPAR(manager goidc.PARManager) Option {
 	return func(p *Provider) error {
 		p.config.PARIsEnabled = true
@@ -620,6 +627,7 @@ func WithPAR(manager goidc.PARManager) Option {
 
 // WithPARRequired forces authorization flows to start at the pushed
 // authorization request endpoint.
+// If manager is nil, the default in-memory storage is used.
 // For more info, see [WithPAR].
 func WithPARRequired(manager goidc.PARManager) Option {
 	return func(p *Provider) error {
@@ -1193,6 +1201,8 @@ func WithErrorURI(uri string) Option {
 // through signed entity statements rather than pre-configured client registrations.
 //
 // Parameters:
+//   - manager: The storage used to persist federated clients. If nil, the
+//     default in-memory storage is used.
 //   - jwksFunc: A function that returns the provider's Federation JWKS, used to sign
 //     the provider's entity configuration. This JWKS is separate from the provider's
 //     regular signing keys. See [WithSignerFunc] if the private keys are not available.
@@ -1359,7 +1369,8 @@ func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
 }
 
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
-// The manager stores pending logout sessions while the flow is in progress.
+// The manager stores pending logout sessions while the flow is in progress. If
+// manager is nil, the default in-memory storage is used.
 // The default logout function is used when the flow is completed and the client
 // does not provide a post_logout_redirect_uri. Use [WithLogoutPolicies] to
 // configure which logout flows will be executed. The default logout session
@@ -1479,7 +1490,8 @@ func WithSSFEventTypes(eventType goidc.SSFEventType, events ...goidc.SSFEventTyp
 
 // WithSSFEventStreamManager replaces the default in-memory event stream storage.
 // The event stream manager is responsible for persisting event stream configurations
-// created by receivers.
+// created by receivers. If manager is nil, the default in-memory storage is
+// used.
 // For more information, see [WithSSF].
 func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	return func(p *Provider) error {
@@ -1502,7 +1514,8 @@ func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSF
 
 // WithSSFEventPollManager replaces the default in-memory poll event storage.
 // The poll manager is responsible for queuing events for receivers using the poll
-// delivery method and tracking acknowledgements.
+// delivery method and tracking acknowledgements. If manager is nil, the default
+// in-memory storage is used.
 // For more information, see [WithSSF].
 func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 	return func(p *Provider) error {

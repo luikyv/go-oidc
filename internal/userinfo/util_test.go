@@ -272,6 +272,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
+				t.Helper()
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) {
 					t.Fatalf("expected goidc.Error, got %v", err)
@@ -290,12 +291,19 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
+				t.Helper()
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) {
 					t.Fatalf("expected goidc.Error, got %v", err)
 				}
 				if oidcErr.Code != goidc.ErrorCodeInvalidToken {
 					t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+				}
+				if oidcErr.Description != "invalid token" {
+					t.Fatalf("Description = %q, want %q", oidcErr.Description, "invalid token")
+				}
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != "the access token is inactive or expired" {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, "the access token is inactive or expired")
 				}
 			},
 		},
@@ -308,12 +316,19 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
+				t.Helper()
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) {
 					t.Fatalf("expected goidc.Error, got %v", err)
 				}
 				if oidcErr.Code != goidc.ErrorCodeAccessDenied {
 					t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+				}
+				if oidcErr.Description != "access denied" {
+					t.Fatalf("Description = %q, want %q", oidcErr.Description, "access denied")
+				}
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != "the access token does not include the openid scope" {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, "the access token does not include the openid scope")
 				}
 			},
 		},
@@ -326,12 +341,19 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
+				t.Helper()
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) {
 					t.Fatalf("expected goidc.Error, got %v", err)
 				}
 				if oidcErr.Code != goidc.ErrorCodeInvalidToken {
 					t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+				}
+				if oidcErr.Description != "invalid token" {
+					t.Fatalf("Description = %q, want %q", oidcErr.Description, "invalid token")
+				}
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != "authorization bearer token is required" {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, "authorization bearer token is required")
 				}
 			},
 		},
@@ -344,12 +366,41 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
+				t.Helper()
 				var oidcErr goidc.Error
 				if !errors.As(err, &oidcErr) {
 					t.Fatalf("expected goidc.Error, got %v", err)
 				}
 				if oidcErr.Code != goidc.ErrorCodeInvalidToken {
 					t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+				}
+				if oidcErr.Description != "invalid token" {
+					t.Fatalf("Description = %q, want %q", oidcErr.Description, "invalid token")
+				}
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != "the access token is inactive or expired" {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, "the access token is inactive or expired")
+				}
+			},
+		},
+		{
+			name: "client not found for active token",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
+				ctx, client, tokenEntity := setup(t)
+				tokenEntity.ClientID = "missing_client"
+				if err := ctx.SaveToken(tokenEntity); err != nil {
+					t.Fatalf("error saving the token during setup: %v", err)
+				}
+				return ctx, client, tokenEntity
+			},
+			wantErr: true,
+			validateErr: func(t *testing.T, err error) {
+				t.Helper()
+				var oidcErr goidc.Error
+				if errors.As(err, &oidcErr) {
+					t.Fatalf("expected internal error, got goidc.Error %v", oidcErr)
+				}
+				if got := err.Error(); got != "could not load the client for the active token: not found" {
+					t.Fatalf("error = %q, want %q", got, "could not load the client for the active token: not found")
 				}
 			},
 		},

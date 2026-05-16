@@ -26,7 +26,7 @@ func TestInitBackAuth(t *testing.T) {
 			return "random_auth_req_id"
 		}
 		ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantCIBA)
-		ctx.CIBATokenDeliveryModels = []goidc.CIBATokenDeliveryMode{
+		ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
 			goidc.CIBADeliveryModePoll,
 			goidc.CIBADeliveryModePing,
 			goidc.CIBADeliveryModePush,
@@ -53,10 +53,12 @@ func TestInitBackAuth(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func(*testing.T) (oidc.Context, request, *goidc.Client)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, cibaResponse, *goidc.Client)
+		name            string
+		setup           func(*testing.T) (oidc.Context, request, *goidc.Client)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
+		validate        func(*testing.T, oidc.Context, cibaResponse, *goidc.Client)
 	}{
 		{
 			name: "ping mode",
@@ -310,11 +312,79 @@ func TestInitBackAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
 			validate: func(t *testing.T, ctx oidc.Context, _ cibaResponse, _ *goidc.Client) {
 				sessions := oidctest.AuthnSessions(t, ctx)
 				if len(sessions) != 0 {
 					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				}
+			},
+		},
+		{
+			name: "client lacks ciba grant type",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
+				ctx, client := setup(t)
+				client.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						LoginHint: "random_hint",
+					},
+				}
+				return ctx, req, client
+			},
+			wantErr:         goidc.ErrorCodeUnauthorizedClient,
+			wantDescription: "unauthorized client",
+			wantWrappedErr:  "the client is not allowed to use the CIBA grant type",
+			validate: func(t *testing.T, ctx oidc.Context, _ cibaResponse, _ *goidc.Client) {
+				if got := len(oidctest.AuthnSessions(t, ctx)); got != 0 {
+					t.Fatalf("len(sessions) = %d, want 0", got)
+				}
+			},
+		},
+		{
+			name: "notification mode requires client notification token",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
+				ctx, client := setup(t)
+				client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePing
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						LoginHint: "random_hint",
+					},
+				}
+				return ctx, req, client
+			},
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "client_notification_token is required for ping and push delivery modes",
+			validate: func(t *testing.T, ctx oidc.Context, _ cibaResponse, _ *goidc.Client) {
+				if got := len(oidctest.AuthnSessions(t, ctx)); got != 0 {
+					t.Fatalf("len(sessions) = %d, want 0", got)
+				}
+			},
+		},
+		{
+			name: "exactly one hint must be provided",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
+				ctx, client := setup(t)
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						LoginHint:               "random_hint",
+						ClientNotificationToken: "random_token",
+						IDTokenHint:             "random_id_token_hint",
+					},
+				}
+				return ctx, req, client
+			},
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "exactly one of login_hint, login_hint_token, or id_token_hint must be provided",
+			validate: func(t *testing.T, ctx oidc.Context, _ cibaResponse, _ *goidc.Client) {
+				if got := len(oidctest.AuthnSessions(t, ctx)); got != 0 {
+					t.Fatalf("len(sessions) = %d, want 0", got)
 				}
 			},
 		},
@@ -358,6 +428,14 @@ func TestInitBackAuth(t *testing.T) {
 				}
 				if oidcErr.Code != test.wantErr {
 					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
 				}
 			} else if err != nil {
 				t.Fatalf("unexpected error: %v", err)

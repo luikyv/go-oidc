@@ -17,9 +17,11 @@ import (
 
 func TestJARFromRequestObject(t *testing.T) {
 	tests := []struct {
-		name    string
-		setup   func(*testing.T) (oidc.Context, string, *goidc.Client, request)
-		wantErr goidc.ErrorCode
+		name            string
+		setup           func(*testing.T) (oidc.Context, string, *goidc.Client, request)
+		wantErr         goidc.ErrorCode
+		wantDescription string
+		wantWrappedErr  string
 	}{
 		{
 			name: "signed request object",
@@ -166,7 +168,8 @@ func TestJARFromRequestObject(t *testing.T) {
 
 				return ctx, requestObject, client, request{}
 			},
-			wantErr: goidc.ErrorCodeInvalidResquestObject,
+			wantErr:         goidc.ErrorCodeInvalidResquestObject,
+			wantDescription: "invalid request object",
 		},
 	}
 
@@ -189,6 +192,14 @@ func TestJARFromRequestObject(t *testing.T) {
 				}
 				if oidcErr.Code != test.wantErr {
 					t.Fatalf("error code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				if test.wantDescription != "" && oidcErr.Description != test.wantDescription {
+					t.Fatalf("error description = %q, want %q", oidcErr.Description, test.wantDescription)
+				}
+				if test.wantWrappedErr != "" {
+					if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != test.wantWrappedErr {
+						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
+					}
 				}
 				return
 			}
@@ -279,4 +290,55 @@ func TestJARFromRequestURI(t *testing.T) {
 	if diff := cmp.Diff(jar, want); diff != "" {
 		t.Error(diff)
 	}
+}
+
+func TestJARFromRequestURIErrors(t *testing.T) {
+	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
+	client := &goidc.Client{
+		ID: "test_client",
+		ClientMeta: goidc.ClientMeta{
+			JWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
+		},
+	}
+
+	t.Run("non-200 response", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			w.WriteHeader(http.StatusBadGateway)
+		}))
+		defer server.Close()
+
+		ctx := oidc.Context{
+			Configuration: &oidc.Configuration{
+				Host:                    "https://server.example.com",
+				JARIsEnabled:            true,
+				JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+				JARByReferenceIsEnabled: true,
+				HTTPClientFunc: func(_ context.Context) *http.Client {
+					return http.DefaultClient
+				},
+			},
+			Request: &http.Request{Method: http.MethodPost},
+		}
+
+		_, err := jarFromRequestURI(ctx, server.URL, client)
+		if err == nil {
+			t.Fatal("expected error")
+		}
+
+		var oidcErr goidc.Error
+		if !errors.As(err, &oidcErr) {
+			t.Fatalf("invalid error type: %T", err)
+		}
+		if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+			t.Fatalf("error code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
+		}
+		if oidcErr.Description != "invalid request_uri" {
+			t.Fatalf("error description = %q, want %q", oidcErr.Description, "invalid request_uri")
+		}
+		if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != "request_uri returned HTTP status 502" {
+			t.Fatalf("wrapped error = %v, want %q", unwrapped, "request_uri returned HTTP status 502")
+		}
+	})
 }

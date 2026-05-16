@@ -14,7 +14,8 @@ import (
 
 func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 	if req.deviceCode == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "device_code is required")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("device_code is required"))
 	}
 
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
@@ -25,39 +26,39 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 	grant, err := ctx.GrantByDeviceCode(req.deviceCode)
 	if err != nil {
 		if !errors.Is(err, goidc.ErrNotFound) {
-			return response{}, err
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("could not load the grant by device code: %w", err))
 		}
 
 		as, sessionErr := ctx.DeviceSessionByDeviceCode(req.deviceCode)
 		if sessionErr != nil {
 			if errors.Is(sessionErr, goidc.ErrNotFound) {
-				return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid device code")
+				return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("no grant or pending device session was found for the device code"))
 			}
 			return response{}, sessionErr
 		}
 		if as.IsExpired() {
 			_ = ctx.DeviceDeleteSession(as.ID)
-			return response{}, goidc.NewError(goidc.ErrorCodeExpiredToken, "device code expired")
+			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("grant was not found and the pending device session has expired"))
 		}
 		// The session exists so it's still in progress.
-		return response{}, goidc.NewError(goidc.ErrorCodeAuthPending, "authentication pending")
+		return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending device session is still awaiting approval"))
 	}
 
 	resp, err := func() (response, error) {
 		if timeutil.TimestampNow() >= grant.DeviceCodeExpiresAt {
-			return response{}, goidc.NewError(goidc.ErrorCodeExpiredToken, "device code expired")
+			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("the device code lifetime has elapsed"))
 		}
 
 		if grant.DeviceCodeConsumedAt != 0 {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid device code", errors.New("device code already used"))
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the device code has already been redeemed"))
 		}
 
 		if !slices.Contains(c.GrantTypes, goidc.GrantDeviceCode) {
-			return response{}, goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
+			return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the device_code grant type"))
 		}
 
 		if c.ID != grant.ClientID {
-			return response{}, goidc.NewError(goidc.ErrorCodeInvalidGrant, "the device code was not issued to the client")
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the device code belongs to a different client"))
 		}
 
 		if err := validateResources(ctx, req, grant.Resources); err != nil {

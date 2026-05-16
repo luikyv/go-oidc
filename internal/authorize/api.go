@@ -39,21 +39,19 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 	if slices.Contains(config.GrantTypes, goidc.GrantDeviceCode) {
 		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceInitAuth), middlewares...))
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerInitDeviceAuth), middlewares...))
 
-		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceStartAuth), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint,
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceStartAuth), middlewares...))
+		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthVerificationEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerInitDeviceVerification), middlewares...))
 
-		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
-		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
-		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthDeviceEndpoint+"/{callback}/{callback_path...}",
-			goidc.ApplyMiddlewares(oidc.Handler(config, handlerDeviceCallback), middlewares...))
+		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthVerificationEndpoint+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerContinueDeviceVerification), middlewares...))
+		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthVerificationEndpoint+"/{callback}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerContinueDeviceVerification), middlewares...))
+		router.Handle("POST "+config.EndpointPrefix+config.DeviceAuthVerificationEndpoint+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerContinueDeviceVerification), middlewares...))
+		router.Handle("GET "+config.EndpointPrefix+config.DeviceAuthVerificationEndpoint+"/{callback}/{callback_path...}",
+			goidc.ApplyMiddlewares(oidc.Handler(config, handlerContinueDeviceVerification), middlewares...))
 	}
 }
 
@@ -126,7 +124,7 @@ func handlerCIBA(ctx oidc.Context) {
 	}
 }
 
-func handlerDeviceInitAuth(ctx oidc.Context) {
+func handlerInitDeviceAuth(ctx oidc.Context) {
 	req := newFormRequest(ctx.Request)
 	resp, err := initDeviceAuth(ctx, req)
 	if err != nil {
@@ -139,33 +137,20 @@ func handlerDeviceInitAuth(ctx oidc.Context) {
 	}
 }
 
-func handlerDeviceStartAuth(ctx oidc.Context) {
-	var userCode string
-	if ctx.Request.Method == http.MethodPost {
-		userCode = ctx.Request.PostFormValue("user_code")
-	} else {
-		userCode = ctx.Request.URL.Query().Get("user_code")
-	}
-
-	err := startDeviceAuth(ctx, userCode)
-	if err == nil {
-		return
-	}
-
-	err = ctx.RenderError(err)
-	if err != nil {
-		ctx.WriteError(err)
+func handlerInitDeviceVerification(ctx oidc.Context) {
+	userCode := ctx.Request.URL.Query().Get("user_code")
+	if err := initDeviceAuthVerification(ctx, userCode); err != nil {
+		if renderErr := ctx.RenderError(err); renderErr != nil {
+			ctx.WriteError(renderErr)
+		}
 	}
 }
 
-func handlerDeviceCallback(ctx oidc.Context) {
+func handlerContinueDeviceVerification(ctx oidc.Context) {
 	callbackID := ctx.Request.PathValue("callback")
-	err := continueDeviceAuth(ctx, callbackID)
-	if err == nil {
-		return
-	}
-
-	if err := ctx.RenderError(err); err != nil {
-		ctx.WriteError(err)
+	if err := continueDeviceAuthVerification(ctx, callbackID); err != nil {
+		if renderErr := ctx.RenderError(err); renderErr != nil {
+			ctx.WriteError(renderErr)
+		}
 	}
 }
