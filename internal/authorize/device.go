@@ -32,7 +32,7 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
-		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("scope openid is required"))
+		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "scope openid is required", errors.New("scope openid is required"))
 	}
 
 	if err := validateParamsAsOptionals(ctx, req.AuthorizationParameters, c); err != nil {

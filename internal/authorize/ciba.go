@@ -159,7 +159,7 @@ func validateCIBARequest(ctx oidc.Context, req request, c *goidc.Client) error {
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("scope openid is required"))
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "scope openid is required", errors.New("scope openid is required"))
 	}
 
 	if req.ClientNotificationToken == "" && c.CIBATokenDeliveryMode.IsNotificationMode() {

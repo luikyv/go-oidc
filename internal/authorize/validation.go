@@ -218,7 +218,7 @@ func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *g
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
-		return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params,
+		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "scope openid is required", params,
 			errors.New("scope openid is required"))
 	}
 
@@ -417,7 +417,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 	}
 
 	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
-		return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params,
+		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "scope openid is required", params,
 			errors.New("scope openid is required"))
 	}
 
