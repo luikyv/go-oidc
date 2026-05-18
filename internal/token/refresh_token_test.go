@@ -252,8 +252,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "expired refresh token",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				grant.CreatedAt = timeutil.TimestampNow() - 20
-				grant.RefreshTokenExpiresAt = grant.CreatedAt + 10
+				grant.RefreshTokenExpiresAt = timeutil.TimestampNow()
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
 				}

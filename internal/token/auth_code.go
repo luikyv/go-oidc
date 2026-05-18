@@ -46,7 +46,7 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code belongs to a different client"))
 		}
 
-		if timeutil.TimestampNow() > grant.AuthCodeExpiresAt {
+		if timeutil.TimestampNow() >= grant.AuthCodeExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has expired"))
 		}
 

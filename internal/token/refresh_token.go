@@ -35,7 +35,7 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("the refresh token belongs to client %q, not %q", grant.ClientID, c.ID))
 	}
 
-	if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
+	if timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("the refresh token expired at %d", grant.RefreshTokenExpiresAt))
 	}
 

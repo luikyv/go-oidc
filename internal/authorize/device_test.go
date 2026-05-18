@@ -410,7 +410,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, string) {
 				ctx, client := setUpDevice(t)
 				session := saveDeviceSession(t, ctx, client, func(as *goidc.AuthnSession) {
-					as.ExpiresAt = timeutil.TimestampNow() - 1
+					as.ExpiresAt = timeutil.TimestampNow()
 				})
 				return ctx, client, session.ID
 			},

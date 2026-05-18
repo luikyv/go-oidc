@@ -36,7 +36,7 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 			}
 			return response{}, sessionErr
 		}
-		if timeutil.TimestampNow() > as.ExpiresAt {
+		if timeutil.TimestampNow() >= as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("grant was not found and the pending device session has expired"))
 		}
 		if as.Status == goidc.StatusPending {
@@ -50,7 +50,7 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	resp, err := func() (response, error) {
-		if timeutil.TimestampNow() > grant.DeviceCodeExpiresAt {
+		if timeutil.TimestampNow() >= grant.DeviceCodeExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("the device code lifetime has elapsed"))
 		}
 

@@ -33,7 +33,7 @@ func GrantCIBARequest(ctx oidc.Context, authReqID string) error {
 		return err
 	}
 
-	if timeutil.TimestampNow() > as.ExpiresAt {
+	if timeutil.TimestampNow() >= as.ExpiresAt {
 		return DenyCIBARequest(ctx, authReqID, goidc.NewError(goidc.ErrorCodeExpiredToken, "auth_req_id expired"))
 	}
 
@@ -215,7 +215,7 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 			}
 			return response{}, sessionErr
 		}
-		if timeutil.TimestampNow() > as.ExpiresAt {
+		if timeutil.TimestampNow() >= as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "auth_req_id expired", errors.New("grant was not found and the pending CIBA session has expired"))
 		}
 		if as.Status == goidc.StatusPending {

@@ -46,7 +46,7 @@ func initAuth(ctx oidc.Context, req request) error {
 			return federationClient(ctx, req)
 		}
 
-		if c.ExpiresAt != 0 && timeutil.TimestampNow() > c.ExpiresAt {
+		if c.ExpiresAt != 0 && timeutil.TimestampNow() >= c.ExpiresAt {
 			shouldRegisterFedClient = true
 			return federationClient(ctx, req)
 		}
@@ -204,7 +204,7 @@ func continueAuth(ctx oidc.Context, id string) error {
 		return fmt.Errorf("could not load the authentication session: %w", err)
 	}
 
-	if timeutil.TimestampNow() > as.ExpiresAt {
+	if timeutil.TimestampNow() >= as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the authentication session has expired"))
 	}
 

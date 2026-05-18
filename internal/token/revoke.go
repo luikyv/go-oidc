@@ -24,7 +24,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 			return fmt.Errorf("could not fetch token: %w", err)
 		}
 
-		if timeutil.TimestampNow() > token.ExpiresAt || token.RevokedAt != 0 {
+		if timeutil.TimestampNow() >= token.ExpiresAt || token.RevokedAt != 0 {
 			return nil
 		}
 
@@ -68,7 +68,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 			return fmt.Errorf("could not fetch grant by refresh token: %w", err)
 		}
 
-		if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {
+		if timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {
 			return nil
 		}
 

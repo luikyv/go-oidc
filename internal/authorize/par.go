@@ -44,7 +44,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 			return federationClientForPAR(ctx, id, req)
 		}
 
-		if c.ExpiresAt != 0 && timeutil.TimestampNow() > c.ExpiresAt {
+		if c.ExpiresAt != 0 && timeutil.TimestampNow() >= c.ExpiresAt {
 			shouldRegisterFedClient = true
 			return federationClientForPAR(ctx, id, req)
 		}

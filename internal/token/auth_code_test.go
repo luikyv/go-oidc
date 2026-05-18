@@ -649,7 +649,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "expired auth code",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				grant.AuthCodeExpiresAt = timeutil.TimestampNow() - 10
+				grant.AuthCodeExpiresAt = timeutil.TimestampNow()
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
 				}

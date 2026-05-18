@@ -177,7 +177,7 @@ func TestIntrospect(t *testing.T) {
 					ID:        accessToken,
 					GrantID:   "random_grant_id",
 					ClientID:  c.ID,
-					ExpiresAt: now - 10,
+					ExpiresAt: now,
 					Scopes:    goidc.ScopeOpenID.ID,
 				}
 				_ = ctx.SaveToken(token)
@@ -270,7 +270,7 @@ func TestIntrospect(t *testing.T) {
 				grant := &goidc.Grant{
 					ID:                    "random_grant_id",
 					RefreshToken:          refreshToken,
-					RefreshTokenExpiresAt: now - 10,
+					RefreshTokenExpiresAt: now,
 					CreatedAt:             now - 20,
 					ClientID:              c.ID,
 					Scopes:                goidc.ScopeOpenID.ID,

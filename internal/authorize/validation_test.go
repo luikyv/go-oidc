@@ -295,6 +295,31 @@ func TestValidateRequestWithPAR(t *testing.T) {
 			},
 			wantRedirectURIs: []string{"https://example.com/callback"},
 		},
+		{
+			name: "request uri expires at exact boundary",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.AuthnSession, *goidc.Client) {
+				ctx := oidctest.NewContext(t)
+				client, _ := oidctest.NewClient(t)
+				session := &goidc.AuthnSession{
+					ClientID:  client.ID,
+					ExpiresAt: timeutil.TimestampNow(),
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						RedirectURI:  client.RedirectURIs[0],
+						ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					},
+				}
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						Scopes:       goidc.ScopeOpenID.ID,
+						Nonce:        "random_nonce",
+						ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					},
+				}
+				return ctx, req, session, client
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
 	}
 
 	for _, test := range tests {

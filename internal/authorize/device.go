@@ -108,7 +108,7 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 		return fmt.Errorf("the device session is missing the policy id")
 	}
 
-	if timeutil.TimestampNow() > as.ExpiresAt {
+	if timeutil.TimestampNow() >= as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the device authentication session has expired"))
 	}
 
