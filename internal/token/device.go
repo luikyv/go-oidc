@@ -36,16 +36,21 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 			}
 			return response{}, sessionErr
 		}
-		if as.IsExpired() {
-			_ = ctx.DeviceDeleteSession(as.ID)
+		if timeutil.TimestampNow() > as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("grant was not found and the pending device session has expired"))
 		}
-		// The session exists so it's still in progress.
-		return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending device session is still awaiting approval"))
+		if as.Status == goidc.StatusPending {
+			return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending device session is still awaiting approval"))
+		}
+		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied"))
+	}
+
+	if grant.RevokedAt != 0 {
+		return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "invalid grant", errors.New("grant was revoked"))
 	}
 
 	resp, err := func() (response, error) {
-		if timeutil.TimestampNow() >= grant.DeviceCodeExpiresAt {
+		if timeutil.TimestampNow() > grant.DeviceCodeExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("the device code lifetime has elapsed"))
 		}
 
@@ -112,8 +117,10 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 		return tokenResp, nil
 	}()
 	if err != nil {
-		_ = ctx.DeleteGrant(grant.ID)
-		_ = ctx.DeleteTokenByGrantID(grant.ID)
+		grant.RevokedAt = timeutil.TimestampNow()
+		if err := ctx.SaveGrant(grant); err != nil {
+			return response{}, fmt.Errorf("could not revoke grant: %w", err)
+		}
 		return response{}, err
 	}
 	return resp, nil

@@ -12,6 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -28,7 +29,7 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the request_uri belongs to a different client"))
 	}
 
-	if as.IsExpired() {
+	if timeutil.TimestampNow() > as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the request_uri has expired"))
 	}
 

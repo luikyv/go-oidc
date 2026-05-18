@@ -270,6 +270,7 @@ type cibaResponse struct {
 func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
 		ID:                      ctx.AuthnSessionID(),
+		Status:                  goidc.StatusPending,
 		ClientID:                c.ID,
 		AuthorizationParameters: params,
 		CreatedAt:               timeutil.TimestampNow(),

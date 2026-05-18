@@ -257,8 +257,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -340,8 +343,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -367,8 +373,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -394,8 +403,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -445,8 +457,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -579,8 +594,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -646,8 +664,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -667,8 +688,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -691,8 +715,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -712,8 +739,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -753,8 +783,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},

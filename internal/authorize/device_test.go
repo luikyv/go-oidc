@@ -51,6 +51,7 @@ func TestInitDeviceAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:         session.ID,
+					Status:     goidc.StatusPending,
 					ClientID:   client.ID,
 					DeviceCode: "random_device_code",
 					UserCode:   "random_user_code",
@@ -149,8 +150,8 @@ func TestInitDeviceAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr:         goidc.ErrorCodeInvalidScope,
-			wantDescription: "invalid scope",
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "scope openid is required",
 			wantWrappedErr:  "scope openid is required",
 		},
 		{
@@ -254,8 +255,11 @@ func TestStartDeviceAuth(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context, client *goidc.Client) {
 				sessions := deviceSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusSuccess {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 
 				grants := oidctest.Grants(t, ctx)
@@ -349,8 +353,11 @@ func TestContinueDeviceAuth(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client) {
 				sessions := deviceSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusSuccess {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 
 				grants := oidctest.Grants(t, ctx)
@@ -368,7 +375,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, string) {
 				ctx, client := setUpDevice(t)
 				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
-					return goidc.StatusInProgress, nil
+					return goidc.StatusPending, nil
 				}
 				session := saveDeviceSession(t, ctx, client, nil)
 				return ctx, client, session.ID
@@ -412,7 +419,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 			wantWrappedErr:  "the device authentication session has expired",
 		},
 		{
-			name: "missing policy id deletes the session",
+			name: "missing policy id marks the session as failed",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, string) {
 				ctx, client := setUpDevice(t)
 				session := saveDeviceSession(t, ctx, client, func(as *goidc.AuthnSession) {
@@ -423,13 +430,16 @@ func TestContinueDeviceAuth(t *testing.T) {
 			wantInternalErr: "the device session is missing the policy id",
 			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client) {
 				sessions := deviceSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusFailure {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusFailure)
 				}
 			},
 		},
 		{
-			name: "authn failure deletes the device session",
+			name: "authn failure marks the device session as failed",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, string) {
 				ctx, client := setUpDevice(t)
 				ctx.AuthManager = storage.NewManager(100)
@@ -443,8 +453,11 @@ func TestContinueDeviceAuth(t *testing.T) {
 			wantErr: goidc.ErrorCodeAccessDenied,
 			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client) {
 				sessions := deviceSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusFailure {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusFailure)
 				}
 			},
 		},
@@ -459,7 +472,8 @@ func TestContinueDeviceAuth(t *testing.T) {
 			err := continueDeviceAuthVerification(ctx, sessionID)
 
 			// Then.
-			if test.wantInternalErr != "" {
+			switch {
+			case test.wantInternalErr != "":
 				if err == nil {
 					t.Fatalf("expected error %q", test.wantInternalErr)
 				}
@@ -470,7 +484,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 				if err.Error() != test.wantInternalErr {
 					t.Fatalf("error = %q, want %q", err.Error(), test.wantInternalErr)
 				}
-			} else if test.wantErr != "" {
+			case test.wantErr != "":
 				if err == nil {
 					t.Fatalf("expected error %q", test.wantErr)
 				}
@@ -490,7 +504,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 						t.Fatalf("wrapped error = %v, want %q", unwrapped, test.wantWrappedErr)
 					}
 				}
-			} else if err != nil {
+			case err != nil:
 				t.Fatalf("unexpected error: %v", err)
 			}
 

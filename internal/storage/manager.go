@@ -111,14 +111,6 @@ func (m *Manager) SessionByUserCode(_ context.Context, code string) (*goidc.Auth
 	return as, nil
 }
 
-func (m *Manager) DeleteSession(_ context.Context, id string) error {
-	m.sessionMutex.Lock()
-	defer m.sessionMutex.Unlock()
-
-	delete(m.Sessions, id)
-	return nil
-}
-
 func (m *Manager) firstSession(condition func(*goidc.AuthnSession) bool) (*goidc.AuthnSession, bool) {
 	m.sessionMutex.RLock()
 	defer m.sessionMutex.RUnlock()
@@ -246,14 +238,6 @@ func (m *Manager) GrantByDeviceCode(_ context.Context, code string) (*goidc.Gran
 	return nil, goidc.ErrNotFound
 }
 
-func (m *Manager) DeleteGrant(_ context.Context, id string) error {
-	m.grantMutex.Lock()
-	defer m.grantMutex.Unlock()
-
-	delete(m.Grants, id)
-	return nil
-}
-
 func (m *Manager) SaveToken(_ context.Context, token *goidc.Token) error {
 	m.tokenMutex.Lock()
 	defer m.tokenMutex.Unlock()
@@ -276,27 +260,6 @@ func (m *Manager) Token(_ context.Context, id string) (*goidc.Token, error) {
 	}
 
 	return token, nil
-}
-
-func (m *Manager) DeleteToken(_ context.Context, id string) error {
-	m.tokenMutex.Lock()
-	defer m.tokenMutex.Unlock()
-
-	delete(m.Tokens, id)
-	return nil
-}
-
-func (m *Manager) DeleteTokenByGrantID(_ context.Context, grantID string) error {
-	m.tokenMutex.Lock()
-	defer m.tokenMutex.Unlock()
-
-	for id, token := range m.Tokens {
-		if token.GrantID == grantID {
-			delete(m.Tokens, id)
-		}
-	}
-
-	return nil
 }
 
 func (m *Manager) SaveLogoutSession(_ context.Context, session *goidc.LogoutSession) error {
@@ -328,14 +291,6 @@ func (m *Manager) LogoutSession(_ context.Context, id string) (*goidc.LogoutSess
 	}
 
 	return session, nil
-}
-
-func (m *Manager) DeleteLogoutSession(_ context.Context, id string) error {
-	m.logoutMutex.Lock()
-	defer m.logoutMutex.Unlock()
-
-	delete(m.LogoutSessions, id)
-	return nil
 }
 
 // findFirst returns the first element in a slice for which the condition is true.

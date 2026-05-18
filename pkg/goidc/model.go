@@ -13,17 +13,13 @@ import (
 type GrantManager interface {
 	SaveGrant(context.Context, *Grant) error
 	Grant(context.Context, string) (*Grant, error)
-	DeleteGrant(context.Context, string) error
 	SaveToken(context.Context, *Token) error
 	Token(context.Context, string) (*Token, error)
-	DeleteToken(context.Context, string) error
-	DeleteTokenByGrantID(context.Context, string) error
 }
 
 type AuthManager interface {
 	SaveSession(context.Context, *AuthnSession) error
 	Session(context.Context, string) (*AuthnSession, error)
-	DeleteSession(context.Context, string) error
 	GrantByAuthCode(context.Context, string) (*Grant, error)
 }
 
@@ -50,7 +46,6 @@ type CIBAManager interface {
 	SaveSession(context.Context, *AuthnSession) error
 	Session(context.Context, string) (*AuthnSession, error)
 	SessionByAuthReqID(context.Context, string) (*AuthnSession, error)
-	DeleteSession(context.Context, string) error
 	GrantByAuthReqID(context.Context, string) (*Grant, error)
 }
 
@@ -59,7 +54,6 @@ type DeviceAuthManager interface {
 	Session(context.Context, string) (*AuthnSession, error)
 	SessionByUserCode(context.Context, string) (*AuthnSession, error)
 	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
-	DeleteSession(context.Context, string) error
 	GrantByDeviceCode(context.Context, string) (*Grant, error)
 }
 
@@ -251,9 +245,9 @@ const (
 type Status string
 
 const (
-	StatusSuccess    Status = "success"
-	StatusInProgress Status = "in_progress"
-	StatusFailure    Status = "failure"
+	StatusSuccess Status = "success"
+	StatusPending Status = "pending"
+	StatusFailure Status = "failure"
 )
 
 type TokenFormat string
@@ -463,7 +457,7 @@ func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 // If it returns [StatusFailure] or an error the flow will end with failure and
 // the client will be denied access.
 //
-// If it return [StatusInProgress], the flow will be suspended so an interaction
+// If it return [StatusPending], the flow will be suspended so an interaction
 // with the user via the user agent can happen, e.g. an HTML page is rendered to
 // to gather user credentials.
 // The flow can be resumed at the callback endpoint with the session callback ID.

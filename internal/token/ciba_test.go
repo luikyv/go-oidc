@@ -330,8 +330,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -358,8 +361,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -409,13 +415,12 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "auth pending when grant is not issued yet",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				if err := ctx.DeleteGrant(grant.ID); err != nil {
-					t.Fatalf("DeleteGrant() error = %v", err)
-				}
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				session := &goidc.AuthnSession{
 					ID:            "random_ciba_session_id",
 					AuthReqID:     grant.AuthReqID,
 					ClientID:      c.ID,
+					Status:        goidc.StatusPending,
 					GrantedScopes: grant.Scopes,
 					AuthorizationParameters: goidc.AuthorizationParameters{
 						Nonce: "random_nonce",
@@ -450,13 +455,12 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "expired token when pending session is expired",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				if err := ctx.DeleteGrant(grant.ID); err != nil {
-					t.Fatalf("DeleteGrant() error = %v", err)
-				}
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				session := &goidc.AuthnSession{
 					ID:            "random_ciba_session_id",
 					AuthReqID:     grant.AuthReqID,
 					ClientID:      c.ID,
+					Status:        goidc.StatusPending,
 					GrantedScopes: grant.Scopes,
 					AuthorizationParameters: goidc.AuthorizationParameters{
 						Nonce: "random_nonce",
@@ -485,8 +489,12 @@ func TestGenerateCIBAToken(t *testing.T) {
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
 				}
-				if _, err := ctx.CIBASessionByAuthReqID(grant.AuthReqID); !errors.Is(err, goidc.ErrNotFound) {
-					t.Fatalf("CIBASessionByAuthReqID() error = %v, want %v", err, goidc.ErrNotFound)
+				session, err := ctx.CIBASessionByAuthReqID(grant.AuthReqID)
+				if err != nil {
+					t.Fatalf("CIBASessionByAuthReqID() error = %v", err)
+				}
+				if session.Status != goidc.StatusPending {
+					t.Fatalf("session.Status = %q, want %q", session.Status, goidc.StatusPending)
 				}
 			},
 		},
@@ -581,8 +589,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -609,8 +620,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -634,8 +648,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -686,8 +703,11 @@ func TestGenerateCIBAToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -905,8 +925,15 @@ func TestDenyCIBARequest(t *testing.T) {
 			}
 
 			_, err := ctx.CIBASession(session.ID)
-			if err == nil {
-				t.Fatal("expected session deletion")
+			if err != nil {
+				t.Fatalf("CIBASession() error = %v", err)
+			}
+			gotSession, err := ctx.CIBASession(session.ID)
+			if err != nil {
+				t.Fatalf("CIBASession() error = %v", err)
+			}
+			if gotSession.Status != goidc.StatusFailure {
+				t.Fatalf("session.Status = %q, want %q", gotSession.Status, goidc.StatusFailure)
 			}
 			if test.validate != nil {
 				test.validate(t, gotBody, oidcErr, session.AuthReqID)

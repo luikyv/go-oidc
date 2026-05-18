@@ -242,14 +242,7 @@ func (op *Provider) CIBAManager() goidc.CIBAManager {
 }
 
 func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
-	oidcCtx := oidc.NewContext(ctx, &op.config)
-	info, err := token.Introspect(oidcCtx, tkn)
-	if err != nil {
-		return err
-	}
-	_ = oidcCtx.DeleteGrant(info.GrantID)
-	_ = oidcCtx.DeleteTokenByGrantID(info.GrantID)
-	return nil
+	return token.Revoke(oidc.NewContext(ctx, &op.config), tkn, nil)
 }
 
 func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {

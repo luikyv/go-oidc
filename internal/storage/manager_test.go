@@ -120,28 +120,6 @@ func TestManagerSessions(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "delete session existing and missing",
-			run: func(t *testing.T, manager *storage.Manager) {
-				// Given.
-				manager.Sessions["session_1"] = &goidc.AuthnSession{ID: "session_1"}
-
-				// When.
-				err := manager.DeleteSession(context.Background(), "session_1")
-				if err != nil {
-					t.Fatalf("unexpected error deleting existing session: %v", err)
-				}
-				err = manager.DeleteSession(context.Background(), "missing")
-				if err != nil {
-					t.Fatalf("unexpected error deleting missing session: %v", err)
-				}
-
-				// Then.
-				if len(manager.Sessions) != 0 {
-					t.Fatalf("len(manager.Sessions) = %d, want 0", len(manager.Sessions))
-				}
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -395,28 +373,6 @@ func TestManagerGrants(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "delete grant existing and missing",
-			run: func(t *testing.T, manager *storage.Manager) {
-				// Given.
-				manager.Grants["grant_1"] = &goidc.Grant{ID: "grant_1"}
-
-				// When.
-				err := manager.DeleteGrant(context.Background(), "grant_1")
-				if err != nil {
-					t.Fatalf("unexpected error deleting existing grant: %v", err)
-				}
-				err = manager.DeleteGrant(context.Background(), "missing")
-				if err != nil {
-					t.Fatalf("unexpected error deleting missing grant: %v", err)
-				}
-
-				// Then.
-				if len(manager.Grants) != 0 {
-					t.Fatalf("len(manager.Grants) = %d, want 0", len(manager.Grants))
-				}
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -494,51 +450,6 @@ func TestManagerTokens(t *testing.T) {
 				}
 			},
 		},
-		{
-			name: "delete token existing and missing",
-			run: func(t *testing.T, manager *storage.Manager) {
-				// Given.
-				manager.Tokens["token_1"] = &goidc.Token{ID: "token_1"}
-
-				// When.
-				err := manager.DeleteToken(context.Background(), "token_1")
-				if err != nil {
-					t.Fatalf("unexpected error deleting existing token: %v", err)
-				}
-				err = manager.DeleteToken(context.Background(), "missing")
-				if err != nil {
-					t.Fatalf("unexpected error deleting missing token: %v", err)
-				}
-
-				// Then.
-				if len(manager.Tokens) != 0 {
-					t.Fatalf("len(manager.Tokens) = %d, want 0", len(manager.Tokens))
-				}
-			},
-		},
-		{
-			name: "delete tokens by grant id",
-			run: func(t *testing.T, manager *storage.Manager) {
-				// Given.
-				manager.Tokens["token_1"] = &goidc.Token{ID: "token_1", GrantID: "grant_1"}
-				manager.Tokens["token_2"] = &goidc.Token{ID: "token_2", GrantID: "grant_1"}
-				manager.Tokens["token_3"] = &goidc.Token{ID: "token_3", GrantID: "grant_2"}
-
-				// When.
-				err := manager.DeleteTokenByGrantID(context.Background(), "grant_1")
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-
-				// Then.
-				if len(manager.Tokens) != 1 {
-					t.Fatalf("len(manager.Tokens) = %d, want 1", len(manager.Tokens))
-				}
-				if _, ok := manager.Tokens["token_3"]; !ok {
-					t.Fatal("expected token for other grant to remain")
-				}
-			},
-		},
 	}
 
 	for _, test := range tests {
@@ -613,28 +524,6 @@ func TestManagerLogoutSessions(t *testing.T) {
 				// Then.
 				if !errors.Is(err, goidc.ErrNotFound) {
 					t.Fatalf("err = %v, want %v", err, goidc.ErrNotFound)
-				}
-			},
-		},
-		{
-			name: "delete logout session existing and missing",
-			run: func(t *testing.T, manager *storage.Manager) {
-				// Given.
-				manager.LogoutSessions["logout_1"] = &goidc.LogoutSession{ID: "logout_1"}
-
-				// When.
-				err := manager.DeleteLogoutSession(context.Background(), "logout_1")
-				if err != nil {
-					t.Fatalf("unexpected error deleting existing logout session: %v", err)
-				}
-				err = manager.DeleteLogoutSession(context.Background(), "missing")
-				if err != nil {
-					t.Fatalf("unexpected error deleting missing logout session: %v", err)
-				}
-
-				// Then.
-				if len(manager.LogoutSessions) != 0 {
-					t.Fatalf("len(manager.LogoutSessions) = %d, want 0", len(manager.LogoutSessions))
 				}
 			},
 		},

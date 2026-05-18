@@ -81,9 +81,10 @@ func initAuth(ctx oidc.Context, req request) error {
 			}
 
 			if err := validateRequestWithPAR(ctx, req, as, c); err != nil {
-				// If any of the parameters is invalid, we delete the session right away.
-				if deleteErr := ctx.AuthDeleteSession(as.ID); deleteErr != nil {
-					return nil, fmt.Errorf("could not delete the invalid pushed authorization request session: %w", deleteErr)
+				as.Status = goidc.StatusFailure
+				// If any of the parameters is invalid, we fail the session right away.
+				if saveErr := ctx.AuthSaveSession(as); saveErr != nil {
+					return nil, fmt.Errorf("could not save the invalid pushed authorization request session: %w", saveErr)
 				}
 				return nil, err
 			}
@@ -203,7 +204,7 @@ func continueAuth(ctx oidc.Context, id string) error {
 		return fmt.Errorf("could not load the authentication session: %w", err)
 	}
 
-	if as.IsExpired() {
+	if timeutil.TimestampNow() > as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the authentication session has expired"))
 	}
 
@@ -230,7 +231,8 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 	// or incomplete authorization flow, so the session must be deleted and an
 	// error returned.
 	if as.PolicyID == "" {
-		if err := ctx.AuthDeleteSession(as.ID); err != nil {
+		as.Status = goidc.StatusFailure
+		if err := ctx.AuthSaveSession(as); err != nil {
 			return fmt.Errorf("could not delete the authentication session with a missing policy id: %w", err)
 		}
 		return fmt.Errorf("the authentication session is missing the policy id")
@@ -238,8 +240,9 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 
 	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
-		if err := ctx.AuthDeleteSession(as.ID); err != nil {
-			return fmt.Errorf("could not delete the completed authentication session: %w", err)
+		as.Status = goidc.StatusSuccess
+		if err := ctx.AuthSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the completed authentication session: %w", err)
 		}
 
 		grant, err := token.NewGrant(ctx, c, token.GrantOptions{
@@ -310,14 +313,16 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 			redirectParams.idToken = idToken
 		}
 		return redirectResponse(ctx, c, as.AuthorizationParameters, redirectParams)
-	case goidc.StatusInProgress:
+	case goidc.StatusPending:
+		as.Status = goidc.StatusPending
 		if err := ctx.AuthSaveSession(as); err != nil {
 			return fmt.Errorf("could not save the in-progress authentication session: %w", err)
 		}
 		return nil
 	default:
-		if err := ctx.AuthDeleteSession(as.ID); err != nil {
-			return fmt.Errorf("could not delete the failed authentication session: %w", err)
+		as.Status = goidc.StatusFailure
+		if err := ctx.AuthSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the failed authentication session: %w", err)
 		}
 
 		var oidcErr goidc.Error

@@ -8,6 +8,7 @@ import (
 type Grant struct {
 	ID        string `json:"id"`
 	CreatedAt int    `json:"created_at"`
+	RevokedAt int    `json:"revoked_at,omitempty"`
 	Subject   string `json:"sub"`
 	ClientID  string `json:"client_id"`
 	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.

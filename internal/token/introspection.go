@@ -23,13 +23,21 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the token for introspection: %w", err)
 		}
 
-		if token.IsExpired() {
+		if timeutil.TimestampNow() > token.ExpiresAt {
+			return goidc.TokenInfo{IsActive: false}, nil
+		}
+
+		if token.RevokedAt != 0 {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
 		grant, err := ctx.Grant(token.GrantID)
 		if err != nil {
 			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the grant for token introspection: %w", err)
+		}
+
+		if grant.RevokedAt != 0 {
+			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
 		var cnf *goidc.TokenConfirmation
@@ -73,6 +81,10 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 		grant, err := ctx.RefreshGrantByRefreshToken(tkn)
 		if err != nil {
 			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the refresh token grant for introspection: %w", err)
+		}
+
+		if grant.RevokedAt != 0 {
+			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
 		if timeutil.TimestampNow() > grant.RefreshTokenExpiresAt {

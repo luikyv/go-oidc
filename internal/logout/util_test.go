@@ -44,8 +44,10 @@ func TestInitLogout(t *testing.T) {
 				}
 
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusSuccess {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 			},
 		},
@@ -67,8 +69,10 @@ func TestInitLogout(t *testing.T) {
 				}
 
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusSuccess {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 			},
 		},
@@ -91,8 +95,10 @@ func TestInitLogout(t *testing.T) {
 				}
 
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusSuccess {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 			},
 		},
@@ -107,7 +113,7 @@ func TestInitLogout(t *testing.T) {
 							return true
 						},
 						Logout: func(_ http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) (goidc.Status, error) {
-							return goidc.StatusInProgress, nil
+							return goidc.StatusPending, nil
 						},
 					},
 				}
@@ -140,8 +146,10 @@ func TestInitLogout(t *testing.T) {
 			wantErr: true,
 			validate: func(t *testing.T, ctx oidc.Context) {
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusFailure {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusFailure)
 				}
 			},
 		},
@@ -170,8 +178,10 @@ func TestInitLogout(t *testing.T) {
 				}
 
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusSuccess {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 			},
 		},
@@ -408,8 +418,10 @@ func TestContinueLogout(t *testing.T) {
 				}
 
 				sessions := logoutSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Errorf("expected 0 logout sessions, got %d", len(sessions))
+				if len(sessions) != 1 {
+					t.Errorf("expected 1 logout session, got %d", len(sessions))
+				} else if sessions[0].Status != goidc.StatusSuccess {
+					t.Errorf("session status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 			},
 		},

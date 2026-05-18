@@ -224,8 +224,11 @@ func TestInitAuth(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context, client *goidc.Client, req request) {
 				sessions := oidctest.AuthnSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusSuccess {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 
 				grants := oidctest.Grants(t, ctx)
@@ -322,8 +325,11 @@ func TestInitAuth(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context, client *goidc.Client, _ request) {
 				sessions := oidctest.AuthnSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusSuccess {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 
 				grants := oidctest.Grants(t, ctx)
@@ -459,7 +465,7 @@ func TestInitAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
 				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
-					return goidc.StatusInProgress, nil
+					return goidc.StatusPending, nil
 				}
 
 				idToken, err := ctx.Sign(map[string]any{
@@ -707,8 +713,11 @@ func TestInitAuth(t *testing.T) {
 				}
 
 				sessions := oidctest.AuthnSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusFailure {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusFailure)
 				}
 			},
 		},
@@ -723,7 +732,7 @@ func TestInitAuth(t *testing.T) {
 							return true
 						},
 						func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
-							return goidc.StatusInProgress, nil
+							return goidc.StatusPending, nil
 						},
 					),
 				}
@@ -787,7 +796,7 @@ func TestInitAuth(t *testing.T) {
 							return true
 						},
 						func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
-							return goidc.StatusInProgress, nil
+							return goidc.StatusPending, nil
 						},
 					),
 				}
@@ -933,8 +942,11 @@ func TestInitAuth(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context, client *goidc.Client, _ request) {
 				sessions := oidctest.AuthnSessions(t, ctx)
-				if len(sessions) != 0 {
-					t.Fatalf("len(sessions) = %d, want 0", len(sessions))
+				if len(sessions) != 1 {
+					t.Fatalf("len(sessions) = %d, want 1", len(sessions))
+				}
+				if sessions[0].Status != goidc.StatusSuccess {
+					t.Fatalf("session.Status = %q, want %q", sessions[0].Status, goidc.StatusSuccess)
 				}
 
 				grants := oidctest.Grants(t, ctx)
@@ -1251,7 +1263,7 @@ func TestContinueAuthentication(t *testing.T) {
 			return true
 		},
 		func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
-			return goidc.StatusInProgress, nil
+			return goidc.StatusPending, nil
 		},
 	)
 	ctx.Policies = []goidc.AuthnPolicy{policy}

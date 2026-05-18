@@ -374,7 +374,7 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 
 	w.WriteHeader(http.StatusOK)
 	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
-	return goidc.StatusInProgress, nil
+	return goidc.StatusPending, nil
 }
 
 func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession, err string) (goidc.Status, error) {
@@ -401,7 +401,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 
 	w.WriteHeader(http.StatusOK)
 	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
-	return goidc.StatusInProgress, nil
+	return goidc.StatusPending, nil
 }
 
 func mapify(as any) map[string]any {

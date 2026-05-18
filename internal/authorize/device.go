@@ -8,6 +8,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -100,13 +101,14 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 	// or incomplete device flow, so the session must be deleted and an
 	// error returned.
 	if as.PolicyID == "" {
-		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return fmt.Errorf("could not delete the device session with a missing policy id: %w", err)
+		as.Status = goidc.StatusFailure
+		if err := ctx.DeviceSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the failed device session with a missing policy id: %w", err)
 		}
 		return fmt.Errorf("the device session is missing the policy id")
 	}
 
-	if as.IsExpired() {
+	if timeutil.TimestampNow() > as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the device authentication session has expired"))
 	}
 
@@ -117,8 +119,9 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 
 	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
-		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return fmt.Errorf("could not delete the completed device session: %w", err)
+		as.Status = goidc.StatusSuccess
+		if err := ctx.DeviceSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the device session: %w", err)
 		}
 
 		_, err = token.NewGrant(ctx, c, token.GrantOptions{
@@ -139,14 +142,16 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 		}
 
 		return ctx.DeviceAuthRenderConfirmation()
-	case goidc.StatusInProgress:
+	case goidc.StatusPending:
+		as.Status = goidc.StatusPending
 		if err := ctx.DeviceSaveSession(as); err != nil {
-			return fmt.Errorf("could not save the in-progress device session: %w", err)
+			return fmt.Errorf("could not save the pending device session: %w", err)
 		}
 		return nil
 	default:
-		if err := ctx.DeviceDeleteSession(as.ID); err != nil {
-			return fmt.Errorf("could not delete the failed device session: %w", err)
+		as.Status = goidc.StatusFailure
+		if err := ctx.DeviceSaveSession(as); err != nil {
+			return fmt.Errorf("could not save the failed device session: %w", err)
 		}
 
 		var oidcErr goidc.Error

@@ -10,7 +10,6 @@ import (
 type LogoutManager interface {
 	SaveLogoutSession(context.Context, *LogoutSession) error
 	LogoutSession(context.Context, string) (*LogoutSession, error)
-	DeleteLogoutSession(context.Context, string) error
 }
 
 type LogoutSession struct {

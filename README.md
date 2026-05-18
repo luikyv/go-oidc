@@ -505,7 +505,7 @@ The authentication function returns one of:
 
 - `goidc.StatusSuccess`: authentication succeeded. The session must contain the
   data needed to create the grant, especially `Subject`.
-- `goidc.StatusInProgress`: the flow is suspended and the session is persisted.
+- `goidc.StatusPending`: the flow is suspended and the session is persisted.
   The user agent can then continue the flow by calling
   `/authorize/{session_id}`.
 - `goidc.StatusFailure` or an error: authentication fails and the
@@ -521,7 +521,7 @@ policy := goidc.NewPolicy(
     username := r.PostFormValue("username")
     if username == "" {
       renderHTMLPage(w)
-      return goidc.StatusInProgress, nil
+      return goidc.StatusPending, nil
     }
 
     if username == "banned_user" {
@@ -578,7 +578,7 @@ and may also include `post_logout_redirect_uri` and `state`.
 When a logout request is accepted, go-oidc creates a `goidc.LogoutSession`,
 selects the first matching `goidc.LogoutPolicy` configured through
 `provider.WithLogoutPolicies(...)`, and runs it. Like authentication policies,
-a logout policy can complete immediately or return `goidc.StatusInProgress`
+a logout policy can complete immediately or return `goidc.StatusPending`
 and resume later through the stored logout session.
 
 On success, go-oidc:

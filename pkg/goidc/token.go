@@ -2,8 +2,6 @@ package goidc
 
 import (
 	"context"
-
-	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // Token represents an access token issued under a grant session.
@@ -15,6 +13,7 @@ type Token struct {
 	Subject        string             `json:"sub"`
 	CreatedAt      int                `json:"created_at"`
 	ExpiresAt      int                `json:"expires_at"`
+	RevokedAt      int                `json:"revoked_at,omitempty"`
 	Format         TokenFormat        `json:"format"`
 	Type           TokenType          `json:"type"`
 	SigAlg         SignatureAlgorithm `json:"signature_algorithm,omitempty"`
@@ -28,11 +27,6 @@ type Token struct {
 // LifetimeSecs returns the token's total lifetime in seconds.
 func (t *Token) LifetimeSecs() int {
 	return t.ExpiresAt - t.CreatedAt
-}
-
-// IsExpired returns whether the token has expired.
-func (t *Token) IsExpired() bool {
-	return timeutil.TimestampNow() >= t.ExpiresAt
 }
 
 type HandleTokenFunc func(context.Context, *Token, *Grant) error

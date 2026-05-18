@@ -29,6 +29,10 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", err)
 	}
 
+	if grant.RevokedAt != 0 {
+		return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "invalid grant", errors.New("grant was revoked"))
+	}
+
 	resp, err := func() (response, error) {
 		if grant.AuthCodeConsumedAt != 0 {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has already been redeemed"))
@@ -117,8 +121,10 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		return resp, nil
 	}()
 	if err != nil {
-		_ = ctx.DeleteGrant(grant.ID)
-		_ = ctx.DeleteTokenByGrantID(grant.ID)
+		grant.RevokedAt = timeutil.TimestampNow()
+		if err := ctx.SaveGrant(grant); err != nil {
+			return response{}, fmt.Errorf("could not revoke grant: %w", err)
+		}
 		return response{}, err
 	}
 	return resp, nil

@@ -741,12 +741,6 @@ func TestManagerDelegates(t *testing.T) {
 			t.Fatalf("PARSessionByPushedAuthReqID() = %q, want %q", got.PushedAuthReqID, session.PushedAuthReqID)
 		}
 
-		if err := ctx.AuthDeleteSession(session.ID); err != nil {
-			t.Fatalf("AuthDeleteSession() error = %v", err)
-		}
-		if _, err := ctx.AuthSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("AuthSession() error = %v, want %v", err, goidc.ErrNotFound)
-		}
 	})
 
 	t.Run("ciba sessions and grants", func(t *testing.T) {
@@ -796,12 +790,6 @@ func TestManagerDelegates(t *testing.T) {
 			t.Fatalf("GrantByAuthReqID().ID = %q, want %q", gotGrant.ID, grant.ID)
 		}
 
-		if err := ctx.CIBADeleteSession(session.ID); err != nil {
-			t.Fatalf("CIBADeleteSession() error = %v", err)
-		}
-		if _, err := ctx.CIBASession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("CIBASession() error = %v, want %v", err, goidc.ErrNotFound)
-		}
 	})
 
 	t.Run("device sessions and grants", func(t *testing.T) {
@@ -860,12 +848,6 @@ func TestManagerDelegates(t *testing.T) {
 			t.Fatalf("GrantByDeviceCode().ID = %q, want %q", gotGrant.ID, grant.ID)
 		}
 
-		if err := ctx.DeviceDeleteSession(session.ID); err != nil {
-			t.Fatalf("DeviceDeleteSession() error = %v", err)
-		}
-		if _, err := ctx.DeviceSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("DeviceSession() error = %v, want %v", err, goidc.ErrNotFound)
-		}
 	})
 
 	t.Run("dcr clients", func(t *testing.T) {
@@ -957,30 +939,6 @@ func TestManagerDelegates(t *testing.T) {
 			t.Fatalf("Token().ID = %q, want %q", gotToken.ID, token.ID)
 		}
 
-		if err := ctx.DeleteToken(token.ID); err != nil {
-			t.Fatalf("DeleteToken() error = %v", err)
-		}
-		if _, err := ctx.Token(token.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("Token() error = %v, want %v", err, goidc.ErrNotFound)
-		}
-
-		token = &goidc.Token{ID: "token2", GrantID: grant.ID}
-		if err := ctx.SaveToken(token); err != nil {
-			t.Fatalf("SaveToken() error = %v", err)
-		}
-		if err := ctx.DeleteTokenByGrantID(grant.ID); err != nil {
-			t.Fatalf("DeleteTokenByGrantID() error = %v", err)
-		}
-		if _, err := ctx.Token(token.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("Token() error = %v, want %v", err, goidc.ErrNotFound)
-		}
-
-		if err := ctx.DeleteGrant(grant.ID); err != nil {
-			t.Fatalf("DeleteGrant() error = %v", err)
-		}
-		if _, err := ctx.Grant(grant.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("Grant() error = %v, want %v", err, goidc.ErrNotFound)
-		}
 	})
 
 	t.Run("logout sessions", func(t *testing.T) {
@@ -1001,12 +959,6 @@ func TestManagerDelegates(t *testing.T) {
 			t.Fatalf("LogoutSession().ID = %q, want %q", got.ID, session.ID)
 		}
 
-		if err := ctx.DeleteLogoutSession(session.ID); err != nil {
-			t.Fatalf("DeleteLogoutSession() error = %v", err)
-		}
-		if _, err := ctx.LogoutSession(session.ID); !errors.Is(err, goidc.ErrNotFound) {
-			t.Fatalf("LogoutSession() error = %v, want %v", err, goidc.ErrNotFound)
-		}
 	})
 }
 

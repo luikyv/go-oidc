@@ -1,15 +1,12 @@
 package goidc
 
-import (
-	"github.com/luikyv/go-oidc/internal/timeutil"
-)
-
 // AuthnSession is a short lived session that holds information about
 // authorization requests.
 // It can be interacted with so to implement more sophisticated user
 // authentication flows.
 type AuthnSession struct {
-	ID string `json:"id"`
+	ID     string `json:"id"`
+	Status Status `json:"status"`
 	// Subject is the user identifier.
 	//
 	// This value must be informed during the authentication flow.
@@ -59,8 +56,4 @@ type AuthnSession struct {
 		ConfigurationIDs []VCConfigurationID `json:"configuration_ids"`
 	} `json:"vc_info,omitempty"`
 	AuthorizationParameters
-}
-
-func (s *AuthnSession) IsExpired() bool {
-	return timeutil.TimestampNow() >= s.ExpiresAt
 }

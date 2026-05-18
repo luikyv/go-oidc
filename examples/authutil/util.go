@@ -323,7 +323,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 				}); err != nil {
 					return goidc.StatusFailure, err
 				}
-				return goidc.StatusInProgress, nil
+				return goidc.StatusPending, nil
 			}
 
 			if logout != "true" {

@@ -64,10 +64,6 @@ func (ctx Context) AuthSession(id string) (*goidc.AuthnSession, error) {
 	return ctx.AuthManager.Session(ctx, id)
 }
 
-func (ctx Context) AuthDeleteSession(id string) error {
-	return ctx.AuthManager.DeleteSession(ctx, id)
-}
-
 func (ctx Context) GrantByAuthCode(code string) (*goidc.Grant, error) {
 	return ctx.AuthManager.GrantByAuthCode(ctx, code)
 }
@@ -261,10 +257,6 @@ func (ctx Context) CIBASessionByAuthReqID(id string) (*goidc.AuthnSession, error
 	return ctx.CIBAManager.SessionByAuthReqID(ctx, id)
 }
 
-func (ctx Context) CIBADeleteSession(id string) error {
-	return ctx.CIBAManager.DeleteSession(ctx, id)
-}
-
 func (ctx Context) GrantByAuthReqID(id string) (*goidc.Grant, error) {
 	return ctx.CIBAManager.GrantByAuthReqID(ctx, id)
 }
@@ -357,10 +349,6 @@ func (ctx Context) DeviceSessionByDeviceCode(code string) (*goidc.AuthnSession, 
 	return ctx.DeviceAuthManager.SessionByDeviceCode(ctx, code)
 }
 
-func (ctx Context) DeviceDeleteSession(id string) error {
-	return ctx.DeviceAuthManager.DeleteSession(ctx, id)
-}
-
 func (ctx Context) GrantByDeviceCode(code string) (*goidc.Grant, error) {
 	return ctx.DeviceAuthManager.GrantByDeviceCode(ctx, code)
 }
@@ -397,24 +385,12 @@ func (ctx Context) Token(id string) (*goidc.Token, error) {
 	return ctx.GrantManager.Token(ctx, id)
 }
 
-func (ctx Context) DeleteToken(id string) error {
-	return ctx.GrantManager.DeleteToken(ctx, id)
-}
-
-func (ctx Context) DeleteTokenByGrantID(grantID string) error {
-	return ctx.GrantManager.DeleteTokenByGrantID(ctx, grantID)
-}
-
 func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
 	return ctx.LogoutManager.SaveLogoutSession(ctx, session)
 }
 
 func (ctx Context) LogoutSession(id string) (*goidc.LogoutSession, error) {
 	return ctx.LogoutManager.LogoutSession(ctx, id)
-}
-
-func (ctx Context) DeleteLogoutSession(id string) error {
-	return ctx.LogoutManager.DeleteLogoutSession(ctx, id)
 }
 
 //---------------------------------------- HTTP Utils ----------------------------------------//
@@ -592,10 +568,6 @@ func (ctx Context) HandleToken(tkn *goidc.Token, grant *goidc.Grant) error {
 
 func (ctx Context) Grant(id string) (*goidc.Grant, error) {
 	return ctx.GrantManager.Grant(ctx, id)
-}
-
-func (ctx Context) DeleteGrant(id string) error {
-	return ctx.GrantManager.DeleteGrant(ctx, id)
 }
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {

@@ -82,11 +82,19 @@ func TestRevoke(t *testing.T) {
 				}
 
 				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				if len(tokens) != 2 {
+					t.Fatalf("len(tokens) = %d, want 2", len(tokens))
 				}
-				if tokens[0].ID != "sibling_access_token" {
-					t.Fatalf("remaining token = %q, want %q", tokens[0].ID, "sibling_access_token")
+				var revoked, active int
+				for _, token := range tokens {
+					if token.RevokedAt != 0 {
+						revoked++
+					} else {
+						active++
+					}
+				}
+				if revoked != 1 || active != 1 {
+					t.Fatalf("revoked=%d active=%d, want 1/1", revoked, active)
 				}
 			},
 		},
@@ -115,13 +123,16 @@ func TestRevoke(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 
 				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				if len(tokens) != 2 {
+					t.Fatalf("len(tokens) = %d, want 2", len(tokens))
 				}
 			},
 		},
@@ -150,13 +161,16 @@ func TestRevoke(t *testing.T) {
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 
 				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
 				}
 			},
 		},

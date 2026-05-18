@@ -33,7 +33,7 @@ func GrantCIBARequest(ctx oidc.Context, authReqID string) error {
 		return err
 	}
 
-	if as.IsExpired() {
+	if timeutil.TimestampNow() > as.ExpiresAt {
 		return DenyCIBARequest(ctx, authReqID, goidc.NewError(goidc.ErrorCodeExpiredToken, "auth_req_id expired"))
 	}
 
@@ -72,8 +72,9 @@ func GrantCIBARequest(ctx oidc.Context, authReqID string) error {
 		return err
 	}
 
-	if err := ctx.CIBADeleteSession(as.ID); err != nil {
-		return err
+	as.Status = goidc.StatusSuccess
+	if err := ctx.CIBASaveSession(as); err != nil {
+		return fmt.Errorf("could not save authn session: %w", err)
 	}
 
 	// The client is configured to poll, so no notification is sent.
@@ -134,7 +135,11 @@ func DenyCIBARequest(ctx oidc.Context, authReqID string, goidcErr goidc.Error) e
 	if err != nil {
 		return err
 	}
-	_ = ctx.CIBADeleteSession(as.ID)
+
+	as.Status = goidc.StatusFailure
+	if err := ctx.CIBASaveSession(as); err != nil {
+		return fmt.Errorf("could not save authn session: %w", err)
+	}
 
 	c, err := client.Client(ctx, as.ClientID)
 	if err != nil {
@@ -153,10 +158,6 @@ func DenyCIBARequest(ctx oidc.Context, authReqID string, goidcErr goidc.Error) e
 	}
 	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePing {
 		return sendClientNotification(ctx, c, as, resp)
-	}
-
-	if err := ctx.CIBADeleteSession(as.ID); err != nil {
-		return err
 	}
 
 	resp.Error = goidcErr
@@ -214,12 +215,17 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 			}
 			return response{}, sessionErr
 		}
-		if as.IsExpired() {
-			_ = ctx.CIBADeleteSession(as.ID)
+		if timeutil.TimestampNow() > as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "auth_req_id expired", errors.New("grant was not found and the pending CIBA session has expired"))
 		}
-		// The session exists so it's still in progress.
-		return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending CIBA session is still awaiting approval"))
+		if as.Status == goidc.StatusPending {
+			return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending CIBA session is still awaiting approval"))
+		}
+		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied"))
+	}
+
+	if grant.RevokedAt != 0 {
+		return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "invalid grant", errors.New("grant was revoked"))
 	}
 
 	resp, err := func() (response, error) {
@@ -298,7 +304,10 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 		return resp, nil
 	}()
 	if err != nil {
-		_ = ctx.DeleteGrant(grant.ID)
+		grant.RevokedAt = timeutil.TimestampNow()
+		if err := ctx.SaveGrant(grant); err != nil {
+			return response{}, fmt.Errorf("could not revoke grant: %w", err)
+		}
 		return response{}, err
 	}
 	return resp, nil

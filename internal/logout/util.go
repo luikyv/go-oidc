@@ -50,7 +50,7 @@ func initLogout(ctx oidc.Context, req request) error {
 
 	ls := &goidc.LogoutSession{
 		ID:               ctx.LogoutSessionID(),
-		Status:           goidc.StatusInProgress,
+		Status:           goidc.StatusPending,
 		ClientID:         c.ID,
 		ExpiresAt:        timeutil.TimestampNow() + ctx.LogoutSessionTimeoutSecs,
 		CreatedAt:        timeutil.TimestampNow(),
@@ -96,8 +96,9 @@ func continueLogout(ctx oidc.Context, id string) error {
 
 func logout(ctx oidc.Context, ls *goidc.LogoutSession) error {
 	if ls.PolicyID == "" {
-		if err := ctx.DeleteLogoutSession(ls.ID); err != nil {
-			return fmt.Errorf("could not delete the logout session: %w", err)
+		ls.Status = goidc.StatusFailure
+		if err := ctx.SaveLogoutSession(ls); err != nil {
+			return fmt.Errorf("could not save the failed logout session: %w", err)
 		}
 		return errors.New("the logout policy id is not set in the session")
 	}
@@ -105,8 +106,9 @@ func logout(ctx oidc.Context, ls *goidc.LogoutSession) error {
 	policy := ctx.LogoutPolicy(ls.PolicyID)
 	switch status, err := policy.Logout(ctx.Response, ctx.Request, ls); status {
 	case goidc.StatusSuccess:
-		if err := ctx.DeleteLogoutSession(ls.ID); err != nil {
-			return err
+		ls.Status = goidc.StatusSuccess
+		if err := ctx.SaveLogoutSession(ls); err != nil {
+			return fmt.Errorf("could not save the logout session: %w", err)
 		}
 
 		if ls.PostLogoutRedirectURI != "" {
@@ -119,11 +121,16 @@ func logout(ctx oidc.Context, ls *goidc.LogoutSession) error {
 		}
 
 		return ctx.HandleDefaultPostLogout(ls)
-	case goidc.StatusInProgress:
-		return ctx.SaveLogoutSession(ls)
+	case goidc.StatusPending:
+		ls.Status = goidc.StatusPending
+		if err := ctx.SaveLogoutSession(ls); err != nil {
+			return fmt.Errorf("could not save the pending logout session: %w", err)
+		}
+		return nil
 	default:
-		if deleteErr := ctx.DeleteLogoutSession(ls.ID); deleteErr != nil {
-			return fmt.Errorf("could not delete the logout session after logout failure: %w", deleteErr)
+		ls.Status = goidc.StatusFailure
+		if saveErr := ctx.SaveLogoutSession(ls); saveErr != nil {
+			return fmt.Errorf("could not save the logout session after logout failure: %w", saveErr)
 		}
 
 		if err != nil {

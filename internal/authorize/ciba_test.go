@@ -83,6 +83,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					Status:    goidc.StatusPending,
 					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
@@ -129,6 +130,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					Status:    goidc.StatusPending,
 					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
@@ -175,6 +177,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					Status:    goidc.StatusPending,
 					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,
@@ -241,6 +244,7 @@ func TestInitBackAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:        session.ID,
+					Status:    goidc.StatusPending,
 					AuthReqID: session.AuthReqID,
 					ClientID:  client.ID,
 					ExpiresAt: session.ExpiresAt,

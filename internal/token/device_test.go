@@ -117,8 +117,11 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -139,8 +142,11 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
 				}
 				grants := oidctest.Grants(t, ctx)
-				if len(grants) != 0 {
-					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
 				}
 			},
 		},
@@ -148,13 +154,12 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			name: "auth pending when grant is not issued yet",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				if err := ctx.DeleteGrant(grant.ID); err != nil {
-					t.Fatalf("DeleteGrant() error = %v", err)
-				}
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				session := &goidc.AuthnSession{
 					ID:         "random_device_session_id",
 					DeviceCode: grant.DeviceCode,
 					ClientID:   c.ID,
+					Status:     goidc.StatusPending,
 					CreatedAt:  timeutil.TimestampNow(),
 					ExpiresAt:  timeutil.TimestampNow() + 60,
 				}
@@ -179,13 +184,12 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			name: "expired token when pending session is expired",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				if err := ctx.DeleteGrant(grant.ID); err != nil {
-					t.Fatalf("DeleteGrant() error = %v", err)
-				}
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				session := &goidc.AuthnSession{
 					ID:         "random_device_session_id",
 					DeviceCode: grant.DeviceCode,
 					ClientID:   c.ID,
+					Status:     goidc.StatusPending,
 					CreatedAt:  timeutil.TimestampNow() - 120,
 					ExpiresAt:  timeutil.TimestampNow() - 60,
 				}
@@ -204,8 +208,12 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
 				}
-				if _, err := ctx.DeviceSessionByDeviceCode("random_device_code"); !errors.Is(err, goidc.ErrNotFound) {
-					t.Fatalf("DeviceSessionByDeviceCode() error = %v, want %v", err, goidc.ErrNotFound)
+				session, err := ctx.DeviceSessionByDeviceCode("random_device_code")
+				if err != nil {
+					t.Fatalf("DeviceSessionByDeviceCode() error = %v", err)
+				}
+				if session.Status != goidc.StatusPending {
+					t.Fatalf("session.Status = %q, want %q", session.Status, goidc.StatusPending)
 				}
 			},
 		},
@@ -213,9 +221,7 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			name: "invalid grant when grant and session are missing",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				if err := ctx.DeleteGrant(grant.ID); err != nil {
-					t.Fatalf("DeleteGrant() error = %v", err)
-				}
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				return ctx, req, c, grant
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
