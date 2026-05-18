@@ -438,9 +438,9 @@ The user then visits the device verification endpoint and enters the
 pending session:
 
 - if authentication succeeds, the session becomes a `goidc.Grant`
-- if authentication is still in progress, the session is persisted and can be
+- if authentication is still pending, the session is persisted and can be
   resumed
-- if authentication fails, the session is deleted and the request is denied
+- if authentication fails, the session is marked as failed and the request is denied
 
 Later, the client exchanges the `device_code` at the token endpoint using the
 device code grant type and receives tokens derived from the resulting grant.
