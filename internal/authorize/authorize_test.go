@@ -914,6 +914,7 @@ func TestInitAuth(t *testing.T) {
 
 				session := &goidc.AuthnSession{
 					ID:              "random_par_session",
+					Status:          goidc.StatusPending,
 					PushedAuthReqID: "random_pushed_auth_req_id",
 					ClientID:        client.ID,
 					CreatedAt:       timeutil.TimestampNow(),

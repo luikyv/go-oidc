@@ -73,6 +73,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 			return &goidc.AuthnSession{
 				ID:                      ctx.AuthnSessionID(),
+				Status:                  goidc.StatusPending,
 				PushedAuthReqID:         ctx.PARID(),
 				ClientID:                c.ID,
 				AuthorizationParameters: jar.AuthorizationParameters,
@@ -90,6 +91,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 		return &goidc.AuthnSession{
 			ID:                      ctx.AuthnSessionID(),
+			Status:                  goidc.StatusPending,
 			PushedAuthReqID:         ctx.PARID(),
 			ClientID:                c.ID,
 			AuthorizationParameters: req.AuthorizationParameters,

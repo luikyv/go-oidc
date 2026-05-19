@@ -29,7 +29,11 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the request_uri belongs to a different client"))
 	}
 
-	if timeutil.TimestampNow() >= as.ExpiresAt {
+	if as.Status != goidc.StatusPending {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the request_uri has already been used"))
+	}
+
+	if timeutil.TimestampNow() > as.ExpiresAt {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the request_uri has expired"))
 	}
 

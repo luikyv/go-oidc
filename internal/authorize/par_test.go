@@ -212,6 +212,7 @@ func TestPushAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:              session.ID,
+					Status:          goidc.StatusPending,
 					PushedAuthReqID: session.PushedAuthReqID,
 					ClientID:        client.ID,
 					ExpiresAt:       session.ExpiresAt,
@@ -278,6 +279,7 @@ func TestPushAuth(t *testing.T) {
 
 				wantSession := goidc.AuthnSession{
 					ID:              session.ID,
+					Status:          goidc.StatusPending,
 					PushedAuthReqID: session.PushedAuthReqID,
 					ClientID:        client.ID,
 					ExpiresAt:       session.ExpiresAt,
