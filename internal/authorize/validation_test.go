@@ -374,6 +374,32 @@ func TestValidateRequestWithPAR(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
 		},
+		{
+			name: "request uri expires at current timestamp",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.AuthnSession, *goidc.Client) {
+				ctx := oidctest.NewContext(t)
+				client, _ := oidctest.NewClient(t)
+				session := &goidc.AuthnSession{
+					Status:    goidc.StatusPending,
+					ClientID:  client.ID,
+					ExpiresAt: timeutil.TimestampNow(),
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						RedirectURI:  client.RedirectURIs[0],
+						ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					},
+				}
+				req := request{
+					ClientID: client.ID,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						Scopes:       goidc.ScopeOpenID.ID,
+						Nonce:        "random_nonce",
+						ResponseType: goidc.ResponseTypeCodeAndIDToken,
+					},
+				}
+				return ctx, req, session, client
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
 	}
 
 	for _, test := range tests {

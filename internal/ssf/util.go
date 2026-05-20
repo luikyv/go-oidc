@@ -687,7 +687,7 @@ func authorizedStream(ctx oidc.Context, id string) (*goidc.SSFEventStream, error
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
-	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp < timeutil.TimestampNow() {
+	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp <= timeutil.TimestampNow() {
 		if err := ctx.SSFHandleExpiredEventStream(stream); err != nil {
 			return nil, fmt.Errorf("could not handle the expired event stream: %w", err)
 		}

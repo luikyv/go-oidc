@@ -9,6 +9,7 @@ import (
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -1731,6 +1732,33 @@ func TestReceiverAndStream_ExpiredStream(t *testing.T) {
 	}
 	if !handlerCalled {
 		t.Error("expired stream handler should be called")
+	}
+}
+
+func TestReceiverAndStream_ExpiredStreamAtCurrentTimestamp(t *testing.T) {
+	// Given.
+	ctx := setUp(t)
+	ctx.SSFInactivityTimeoutSecs = 1
+	handlerCalled := false
+	ctx.SSFHandleExpiredEventStreamFunc = func(_ context.Context, _ *goidc.SSFEventStream) error {
+		handlerCalled = true
+		return nil
+	}
+	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
+
+	s, _ := ctx.SSFEventStream(stream.ID)
+	s.ExpiresAtTimestamp = timeutil.TimestampNow()
+	_ = ctx.SSFUpdateEventStream(s)
+
+	// When.
+	_, err := fetchStream(ctx, stream.ID)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if !handlerCalled {
+		t.Error("expired stream handler should be called when the timeout is reached exactly")
 	}
 }
 
