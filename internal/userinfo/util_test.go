@@ -269,6 +269,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			name: "tls bound token without cert",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
 				ctx, client, tokenEntity := setup(t)
+				ctx.MTLSTokenBindingIsEnabled = true
 				tokenEntity.CertThumbprint = "random_thumbprint"
 				return ctx, client, tokenEntity
 			},
