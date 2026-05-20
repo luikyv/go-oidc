@@ -24,7 +24,8 @@ func main() {
 		provider.WithUserInfoSignatureAlgs(goidc.RS256, goidc.None),
 		provider.WithPAR(nil),
 		provider.WithJAR(goidc.RS256, goidc.None),
-		provider.WithJARByReference(false),
+		provider.WithJARByReference(),
+		provider.WithJARByReferenceUnregisteredURIs(),
 		provider.WithJARM(goidc.RS256),
 		provider.WithTokenAuthnMethods(
 			goidc.AuthnMethodSecretBasic,
