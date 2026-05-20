@@ -46,7 +46,7 @@ func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfir
 // prove the client's possession of the access token with TLS binding if
 // applicable.
 func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) error {
-	if confirmation.CertThumbprint == "" {
+	if confirmation.CertThumbprint == "" || !ctx.MTLSTokenBindingIsEnabled {
 		return nil
 	}
 
@@ -66,7 +66,10 @@ func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) erro
 // dpopThumbprint returns the DPoP JWK thumbprint from the request context,
 // or an empty string if DPoP is not enabled or no DPoP JWT is present.
 func dpopThumbprint(ctx oidc.Context) string {
-	if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
+	if !ctx.DPoPIsEnabled {
+		return ""
+	}
+	if dpopJWT, ok := dpop.JWT(ctx); ok {
 		return dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
 	return ""
@@ -76,8 +79,12 @@ func dpopThumbprint(ctx oidc.Context) string {
 // context, or an empty string if mTLS token binding is not enabled or no
 // certificate is present.
 func tlsThumbprint(ctx oidc.Context) string {
-	if clientCert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
-		return hashutil.Thumbprint(string(clientCert.Raw))
+	if !ctx.MTLSTokenBindingIsEnabled {
+		return ""
 	}
-	return ""
+	clientCert, err := ctx.ClientCert()
+	if err != nil {
+		return ""
+	}
+	return hashutil.Thumbprint(string(clientCert.Raw))
 }

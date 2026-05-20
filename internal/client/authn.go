@@ -59,6 +59,11 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 }
 
 func Authenticate(ctx oidc.Context, c *goidc.Client, authnCtx AuthnContext) error {
+	if !slices.Contains(ctx.TokenAuthnMethods, c.TokenAuthnMethod) {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
+			errors.New("the client's authentication method is not supported"))
+	}
+
 	switch c.TokenAuthnMethod {
 	case goidc.AuthnMethodNone:
 		return nil

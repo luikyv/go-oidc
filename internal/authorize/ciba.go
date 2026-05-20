@@ -124,12 +124,15 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	// Store binding information only for CIBA push mode.
 	// For other modes, binding occurs at the token endpoint.
 	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
-		if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
-			as.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+		if ctx.DPoPIsEnabled {
+			if dpopJWT, ok := dpop.JWT(ctx); ok {
+				as.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
+			}
 		}
-
-		if cert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
-			as.ClientCertThumbprint = hashutil.Thumbprint(string(cert.Raw))
+		if ctx.MTLSTokenBindingIsEnabled {
+			if cert, err := ctx.ClientCert(); err == nil {
+				as.ClientCertThumbprint = hashutil.Thumbprint(string(cert.Raw))
+			}
 		}
 	}
 

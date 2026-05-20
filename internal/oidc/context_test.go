@@ -1644,8 +1644,8 @@ func newContext() oidc.Context {
 				return uuid.NewString()
 			},
 		},
-		Request:       httptest.NewRequest(http.MethodGet, "https://example.com", nil),
-		Response:      httptest.NewRecorder(),
+		Request:  httptest.NewRequest(http.MethodGet, "https://example.com", nil),
+		Response: httptest.NewRecorder(),
 	}
 }
 

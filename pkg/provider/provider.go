@@ -95,6 +95,10 @@ func (op *Provider) validate() error {
 		return errors.New("mtls must be enabled for tls_client_aut or self_signed_tls_client_auth")
 	}
 
+	if op.config.MTLSTokenBindingIsEnabled && !op.config.MTLSIsEnabled {
+		return errors.New("mtls must be enabled if tls token binding is enabled")
+	}
+
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
 		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}

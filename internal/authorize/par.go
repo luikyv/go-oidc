@@ -141,10 +141,14 @@ func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
 }
 
 func tlsThumbprint(ctx oidc.Context) string {
-	if clientCert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
-		return hashutil.Thumbprint(string(clientCert.Raw))
+	if !ctx.MTLSTokenBindingIsEnabled {
+		return ""
 	}
-	return ""
+	clientCert, err := ctx.ClientCert()
+	if err != nil {
+		return ""
+	}
+	return hashutil.Thumbprint(string(clientCert.Raw))
 }
 
 func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {

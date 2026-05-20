@@ -89,9 +89,10 @@ func validateBindingRequirement(ctx oidc.Context) error {
 		tokenWillBeBound = true
 	}
 
-	_, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		tokenWillBeBound = true
+	if ctx.MTLSTokenBindingIsEnabled {
+		if _, err := ctx.ClientCert(); err == nil {
+			tokenWillBeBound = true
+		}
 	}
 
 	if !tokenWillBeBound {
