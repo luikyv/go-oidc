@@ -223,15 +223,14 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 				ctx, req, c, grant := setup(t)
 				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 
-				otherClient, otherSecret := oidctest.NewClient(t)
+				otherClient, _ := oidctest.NewClient(t)
 				otherClient.ID = "other_device_client"
 				otherClient.Secret = "other_device_secret"
-				otherSecret = otherClient.Secret
 				otherClient.GrantTypes = append(otherClient.GrantTypes, goidc.GrantDeviceCode)
 				ctx.StaticClients = append(ctx.StaticClients, otherClient)
 				ctx.Request.PostForm = map[string][]string{
 					"client_id":     {otherClient.ID},
-					"client_secret": {otherSecret},
+					"client_secret": {otherClient.Secret},
 				}
 
 				session := &goidc.AuthnSession{

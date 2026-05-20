@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -1893,6 +1894,9 @@ func setUp(t *testing.T) oidc.Context {
 		return goidc.SSFReceiver{
 			ID: testReceiverID,
 		}, nil
+	}
+	ctx.SSFEventStreamIDFunc = func(context.Context) string {
+		return uuid.NewString()
 	}
 	ctx.SSFEventStreamManager = manager
 	ctx.SSFEventPollManager = manager

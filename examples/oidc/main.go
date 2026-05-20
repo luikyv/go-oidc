@@ -46,6 +46,7 @@ func main() {
 			goidc.ResponseTypeCodeAndIDTokenAndToken,
 		),
 		provider.WithRefreshTokenGrant(nil),
+		provider.WithFormPostResponseMode(),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithDCR(nil),

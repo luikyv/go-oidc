@@ -184,7 +184,9 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			name: "no claims",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
 				ctx, client, tokenEntity := setup(t)
-				ctx.UserInfoClaimsFunc = nil
+				ctx.UserInfoClaimsFunc = func(context.Context, *goidc.Grant) map[string]any {
+					return nil
+				}
 				return ctx, client, tokenEntity
 			},
 			validateResp: func(t *testing.T, _ oidc.Context, _ *goidc.Client, resp response) {

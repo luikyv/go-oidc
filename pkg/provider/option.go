@@ -338,6 +338,15 @@ func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option
 	}
 }
 
+// WithDCRRegistrationTokenFunc customizes the registration access token issued
+// for DCR and DCM operations.
+func WithDCRRegistrationTokenFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.DCRRegistrationTokenFunc = f
+		return nil
+	}
+}
+
 func WithLocalhostRedirectURIs() Option {
 	return func(p *Provider) error {
 		p.config.LocalhostRedirectURIIsEnabled = true
@@ -842,6 +851,15 @@ func WithJWTLeewayTime(secs int) Option {
 func WithIssuerResponseParameter() Option {
 	return func(p *Provider) error {
 		p.config.IssuerRespParamIsEnabled = true
+		return nil
+	}
+}
+
+// WithFormPostResponseMode enables support for the `form_post` response mode
+// at the authorization endpoint.
+func WithFormPostResponseMode() Option {
+	return func(p *Provider) error {
+		p.config.ResponseModes = appendIfNotIn(p.config.ResponseModes, goidc.ResponseModeFormPost)
 		return nil
 	}
 }
@@ -1686,9 +1704,11 @@ func WithCredentialIssuers(issuers ...goidc.VCIssuer) Option {
 }
 
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
-func appendIfNotIn[T comparable](values []T, value T) []T {
-	if !slices.Contains(values, value) {
-		return append([]T{value}, values...) // Prepend value if not found.
+func appendIfNotIn[T comparable](values []T, newValues ...T) []T {
+	for _, v := range slices.Backward(newValues) {
+		if !slices.Contains(values, v) {
+			values = append([]T{v}, values...)
+		}
 	}
 	return values
 }

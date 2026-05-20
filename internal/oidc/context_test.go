@@ -18,10 +18,12 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -534,6 +536,9 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 		{
 			name: "check jti",
 			run: func(t *testing.T, ctx oidc.Context) {
+				ctx.CheckJTIFunc = func(context.Context, string) error {
+					return nil
+				}
 				if err := ctx.CheckJTI("jti"); err != nil {
 					t.Fatalf("CheckJTI() error = %v", err)
 				}
@@ -1582,7 +1587,63 @@ func TestDecryptWithDecrypterFunc(t *testing.T) {
 
 func newContext() oidc.Context {
 	return oidc.Context{
-		Configuration: &oidc.Configuration{},
+		Configuration: &oidc.Configuration{
+			DCRHandleClientFunc: func(context.Context, string, *goidc.ClientMeta) error {
+				return nil
+			},
+			DCRRegistrationTokenFunc: func(context.Context) string {
+				return strutil.Random(50)
+			},
+			ClientCertFunc: func(context.Context) (*x509.Certificate, error) {
+				return nil, errors.New("the client certificate function was not defined")
+			},
+			TokenIntrospectionIsClientAllowedFunc: func(context.Context, *goidc.Client, goidc.TokenInfo) bool {
+				return false
+			},
+			TokenRevocationIsClientAllowedFunc: func(context.Context, *goidc.Client) bool {
+				return false
+			},
+			HandleErrorFunc: func(context.Context, error) {},
+			RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
+				return nil
+			},
+			OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+				return nil
+			},
+			OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {
+				return nil
+			},
+			RefreshTokenShouldIssueFunc: func(context.Context, *goidc.Client, *goidc.Grant) bool {
+				return true
+			},
+			HandleGrantFunc: func(context.Context, *goidc.Grant) error {
+				return nil
+			},
+			HandleTokenFunc: func(context.Context, *goidc.Token, *goidc.Grant) error {
+				return nil
+			},
+			IDTokenClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+				return nil
+			},
+			UserInfoClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+				return nil
+			},
+			TokenClaimsFunc: func(context.Context, *goidc.Token, *goidc.Grant) map[string]any {
+				return nil
+			},
+			PairwiseSubjectFunc: func(_ context.Context, sub string, _ *goidc.Client) string {
+				return sub
+			},
+			PARHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+				return nil
+			},
+			CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+				return errors.New("ciba init back auth function is not set")
+			},
+			VCIssuerStateFunc: func(context.Context) string {
+				return uuid.NewString()
+			},
+		},
 		Request:       httptest.NewRequest(http.MethodGet, "https://example.com", nil),
 		Response:      httptest.NewRecorder(),
 	}

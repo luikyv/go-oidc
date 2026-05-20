@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/x509"
 	"crypto/subtle"
 	"crypto/tls"
 	"encoding/json"
@@ -19,6 +20,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -119,6 +121,76 @@ func NewContext(t testing.TB) oidc.Context {
 				return errors.New("invalid client secret")
 			}
 			return nil
+		},
+		DCRHandleClientFunc: func(context.Context, string, *goidc.ClientMeta) error {
+			return nil
+		},
+		DCRRegistrationTokenFunc: func(context.Context) string {
+			return strutil.Random(50)
+		},
+		CheckJTIFunc: func(context.Context, string) error {
+			return nil
+		},
+		ClientCertFunc: func(context.Context) (*x509.Certificate, error) {
+			return nil, errors.New("the client certificate function was not defined")
+		},
+		TokenIntrospectionIsClientAllowedFunc: func(context.Context, *goidc.Client, goidc.TokenInfo) bool {
+			return false
+		},
+		TokenRevocationIsClientAllowedFunc: func(context.Context, *goidc.Client) bool {
+			return false
+		},
+		HandleErrorFunc: func(context.Context, error) {},
+		RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
+			return nil
+		},
+		OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+			return nil
+		},
+		OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {
+			return nil
+		},
+		RefreshTokenShouldIssueFunc: func(context.Context, *goidc.Client, *goidc.Grant) bool {
+			return true
+		},
+		HandleGrantFunc: func(context.Context, *goidc.Grant) error {
+			return nil
+		},
+		HandleTokenFunc: func(context.Context, *goidc.Token, *goidc.Grant) error {
+			return nil
+		},
+		IDTokenClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+			return nil
+		},
+		UserInfoClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+			return nil
+		},
+		TokenClaimsFunc: func(context.Context, *goidc.Token, *goidc.Grant) map[string]any {
+			return nil
+		},
+		PairwiseSubjectFunc: func(_ context.Context, sub string, _ *goidc.Client) string {
+			return sub
+		},
+		PARHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+			return nil
+		},
+		CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+			return errors.New("ciba init back auth function is not set")
+		},
+		SSFScheduleVerificationEventFunc: func(context.Context, string, goidc.SSFStreamVerificationOptions) error {
+			return errors.New("schedule verification event function is not set")
+		},
+		SSFHandleExpiredEventStreamFunc: func(context.Context, *goidc.SSFEventStream) error {
+			return nil
+		},
+		VCHandlePreAuthCodeFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+			return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
+		},
+		VCOfferIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		VCIssuerStateFunc: func(context.Context) string {
+			return uuid.NewString()
 		},
 		AuthTimeoutSecs: 60,
 		TokenAuthnMethods: []goidc.AuthnMethod{

@@ -35,6 +35,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
+* [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
 
 ## Certification
 
@@ -105,6 +106,7 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Resource Indicators](#resource-indicators)
 - [OpenID Federation](#openid-federation)
 - [Shared Signals Framework](#shared-signals-framework-ssf)
+- [Form Post Response Mode](#form-post-response-mode)
 
 ## Running the Provider
 
@@ -971,7 +973,8 @@ To customize content encryption algorithms, use `provider.WithJARContentEncrypti
 
 ## [JWT-Secured Authorization Response Mode (JARM)](https://openid.net/specs/oauth-v2-jarm.html)
 
-JARM returns authorization responses as signed (and optionally encrypted) JWTs, adding the response modes `jwt`, `query.jwt`, `fragment.jwt` and `form_post.jwt`:
+JARM returns authorization responses as signed (and optionally encrypted)
+JWTs, adding the response modes `jwt`, `query.jwt`, and `fragment.jwt`.
 ```go
 op, _ := provider.New(
   ...,
@@ -979,6 +982,9 @@ op, _ := provider.New(
   ...,
 )
 ```
+
+If `provider.WithFormPostResponseMode()` is also enabled, JARM adds
+`form_post.jwt` as well.
 
 To enable encryption:
 ```go
@@ -1153,3 +1159,27 @@ provider.WithSSFEventStreamVerification(func(ctx context.Context, streamID strin
 For production, replace the in-memory SSF storage with persistent implementations using `provider.WithSSFEventStreamManager` and `provider.WithSSFEventPollManager`.
 
 For a complete example, see [`examples/ssf`](examples/ssf).
+
+## [Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
+
+The `form_post` response mode is enabled with
+`provider.WithFormPostResponseMode()`.
+
+When enabled, authorization responses can be returned to the client redirect
+URI through an auto-submitted HTML form using the HTTP `POST` method with
+`application/x-www-form-urlencoded` parameters.
+
+```go
+manager := storage.NewManager(1000)
+
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithAuthCodeGrant(manager, goidc.ResponseTypeCode),
+  provider.WithFormPostResponseMode(),
+)
+```
+
+Clients can then request `response_mode=form_post` at the authorization
+endpoint.

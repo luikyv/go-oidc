@@ -106,6 +106,7 @@ type Configuration struct {
 	DCRTokenRotationIsEnabled     bool
 	DCRHandleClientFunc           goidc.DCRHandleClientFunc
 	DCRValidateInitialTokenFunc   goidc.DCRValidateInitialTokenFunc
+	DCRRegistrationTokenFunc      goidc.RandomFunc
 	LocalhostRedirectURIIsEnabled bool
 	DCRClientIDFunc               goidc.ClientIDFunc
 

@@ -544,6 +544,27 @@ func TestWithClientIDFunc(t *testing.T) {
 	}
 }
 
+func TestWithDCRRegistrationTokenFunc(t *testing.T) {
+	// Given.
+	op := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithDCRRegistrationTokenFunc(func(context.Context) string {
+		return "registration_token"
+	})(op)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if op.config.DCRRegistrationTokenFunc == nil {
+		t.Error("DCRRegistrationTokenFunc cannot be nil")
+	}
+}
+
 func TestWithAuthCodeGrant(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -1329,6 +1350,30 @@ func TestWithIssuerResponseParameter(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			IssuerRespParamIsEnabled: true,
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithFormPostResponseMode(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithFormPostResponseMode()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			ResponseModes: []goidc.ResponseMode{goidc.ResponseModeFormPost},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

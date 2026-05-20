@@ -452,6 +452,48 @@ func TestGenerateCIBAToken(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid request when pending session requires mtls binding and no client cert is presented",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, c, grant := setup(t)
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingIsRequired = true
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
+				session := &goidc.AuthnSession{
+					ID:            "random_ciba_session_id",
+					AuthReqID:     grant.AuthReqID,
+					ClientID:      c.ID,
+					Status:        goidc.StatusPending,
+					GrantedScopes: grant.Scopes,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						Nonce: "random_nonce",
+					},
+					CreatedAt: timeutil.TimestampNow(),
+					ExpiresAt: timeutil.TimestampNow() + 60,
+				}
+				if err := ctx.CIBASaveSession(session); err != nil {
+					t.Fatalf("CIBASaveSession() error = %v", err)
+				}
+				req := request{
+					grantType: goidc.GrantCIBA,
+					authReqID: grant.AuthReqID,
+				}
+				return ctx, req, c, grant
+			},
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantDescription: "invalid request",
+			wantWrappedErr:  "the client certificate function was not defined",
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
 			name: "expired token when pending session is expired",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)

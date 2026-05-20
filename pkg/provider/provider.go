@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/subtle"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"math/big"
@@ -88,10 +89,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 }
 
 func (op *Provider) validate() error {
-	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && op.config.PairwiseSubjectFunc == nil {
-		return fmt.Errorf("pairwise subject identifier type is enabled but the pairwise func is not set, see %s", funcName(WithPairwiseSubjectFunc))
-	}
-
 	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
@@ -274,11 +271,21 @@ func (op *Provider) setDefaults() {
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
 	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
+	op.config.CheckJTIFunc = nonZeroOrDefault(op.config.CheckJTIFunc, goidc.CheckJTIFunc(defaultCheckJTIFunc))
+	op.config.HandleErrorFunc = nonZeroOrDefault(op.config.HandleErrorFunc, goidc.HandleErrorFunc(defaultHandleErrorFunc))
+	op.config.HandleGrantFunc = nonZeroOrDefault(op.config.HandleGrantFunc, goidc.HandleGrantFunc(defaultHandleGrantFunc))
+	op.config.HandleTokenFunc = nonZeroOrDefault(op.config.HandleTokenFunc, goidc.HandleTokenFunc(defaultHandleTokenFunc))
+	op.config.IDTokenClaimsFunc = nonZeroOrDefault(op.config.IDTokenClaimsFunc, goidc.IDTokenClaimsFunc(defaultIDTokenClaimsFunc))
+	op.config.UserInfoClaimsFunc = nonZeroOrDefault(op.config.UserInfoClaimsFunc, goidc.UserInfoClaimsFunc(defaultUserInfoClaimsFunc))
+	op.config.TokenClaimsFunc = nonZeroOrDefault(op.config.TokenClaimsFunc, goidc.TokenClaimsFunc(defaultTokenClaimsFunc))
 
-	op.config.ResponseModes = []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment, goidc.ResponseModeFormPost}
+	op.config.ResponseModes = appendIfNotIn(op.config.ResponseModes, goidc.ResponseModeQuery, goidc.ResponseModeFragment)
 
 	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
 	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
+	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
+		op.config.PairwiseSubjectFunc = nonZeroOrDefault(op.config.PairwiseSubjectFunc, goidc.PairwiseSubjectFunc(defaultPairwiseSubjectFunc))
+	}
 
 	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
 
@@ -325,11 +332,14 @@ func (op *Provider) setDefaults() {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(manager))
 		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
 		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
+		op.config.DCRHandleClientFunc = nonZeroOrDefault(op.config.DCRHandleClientFunc, goidc.DCRHandleClientFunc(defaultDCRHandleClientFunc))
 		op.config.DCRValidateInitialTokenFunc = nonZeroOrDefault(op.config.DCRValidateInitialTokenFunc, defaultDCRValidateInitialTokenFunc)
+		op.config.DCRRegistrationTokenFunc = nonZeroOrDefault(op.config.DCRRegistrationTokenFunc, goidc.RandomFunc(defaultDCRRegistrationTokenFunc))
 	}
 
 	if op.config.PARIsEnabled {
 		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(manager))
+		op.config.PARHandleSessionFunc = nonZeroOrDefault(op.config.PARHandleSessionFunc, goidc.HandleSessionFunc(defaultPARHandleSessionFunc))
 		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
 		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
@@ -341,8 +351,10 @@ func (op *Provider) setDefaults() {
 
 	if op.config.JARMIsEnabled {
 		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
-		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT,
-			goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT, goidc.ResponseModeFormPostJWT)
+		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
+		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
+			op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeFormPostJWT)
+		}
 	}
 
 	if op.config.JARMEncIsEnabled {
@@ -353,10 +365,12 @@ func (op *Provider) setDefaults() {
 
 	if op.config.TokenIntrospectionIsEnabled {
 		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
+		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenInstrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
 	}
 
 	if op.config.TokenRevocationIsEnabled {
 		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
+		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
 	}
 
 	if op.config.IDTokenEncIsEnabled {
@@ -374,6 +388,7 @@ func (op *Provider) setDefaults() {
 		op.config.CIBAManager = nonZeroOrDefault(op.config.CIBAManager, goidc.CIBAManager(manager))
 		op.config.CIBATokenDeliveryModes = nonZeroOrDefault(op.config.CIBATokenDeliveryModes, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
 		op.config.CIBAIDFunc = nonZeroOrDefault(op.config.CIBAIDFunc, defaultCIBAIDFunc)
+		op.config.CIBAHandleSessionFunc = nonZeroOrDefault(op.config.CIBAHandleSessionFunc, goidc.HandleSessionFunc(defaultCIBAHandleSessionFunc))
 		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
 		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
 		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)
@@ -383,6 +398,7 @@ func (op *Provider) setDefaults() {
 		op.config.RefreshTokenManager = nonZeroOrDefault(op.config.RefreshTokenManager, goidc.RefreshTokenManager(manager))
 		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
 		op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
+		op.config.RefreshTokenShouldIssueFunc = nonZeroOrDefault(op.config.RefreshTokenShouldIssueFunc, goidc.RefreshTokenShouldIssueFunc(defaultRefreshTokenShouldIssueFunc))
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantDeviceCode) {
@@ -403,6 +419,8 @@ func (op *Provider) setDefaults() {
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
+		op.config.OpenIDFedRequiredTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
+		op.config.OpenIDFedHandleClientFunc = nonZeroOrDefault(op.config.OpenIDFedHandleClientFunc, goidc.HandleClientFunc(defaultOpenIDFedHandleClientFunc))
 		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
 			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
@@ -424,6 +442,9 @@ func (op *Provider) setDefaults() {
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
 		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
+		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
+		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
 		if op.config.SSFIsStatusManagementEnabled {
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
 			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
@@ -443,7 +464,18 @@ func (op *Provider) setDefaults() {
 	}
 
 	if op.config.RARIsEnabled {
+		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
 		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
+	}
+
+	if op.config.MTLSIsEnabled {
+		op.config.ClientCertFunc = nonZeroOrDefault(op.config.ClientCertFunc, goidc.ClientCertFunc(defaultClientCertFunc))
+	}
+
+	if op.config.VCIsEnabled {
+		op.config.VCOfferIDFunc = nonZeroOrDefault(op.config.VCOfferIDFunc, defaultSessionIDFunc)
+		op.config.VCIssuerStateFunc = nonZeroOrDefault(op.config.VCIssuerStateFunc, defaultSessionIDFunc)
+		op.config.VCHandlePreAuthCodeFunc = nonZeroOrDefault(op.config.VCHandlePreAuthCodeFunc, goidc.VCHandlePreAuthCodeFunc(defaultVCHandlePreAuthCodeFunc))
 	}
 
 }
@@ -652,6 +684,92 @@ func defaultGenerateUserCodeFunc() goidc.RandomFunc {
 
 func defaultDCRValidateInitialTokenFunc(context.Context, string) error {
 	return nil
+}
+
+func defaultDCRRegistrationTokenFunc(context.Context) string {
+	return strutil.Random(50)
+}
+
+func defaultDCRHandleClientFunc(context.Context, string, *goidc.ClientMeta) error {
+	return nil
+}
+
+func defaultCheckJTIFunc(context.Context, string) error {
+	return nil
+}
+
+func defaultClientCertFunc(context.Context) (*x509.Certificate, error) {
+	return nil, errors.New("the client certificate function was not defined")
+}
+
+func defaultTokenIntrospectionIsClientAllowedFunc(context.Context, *goidc.Client, goidc.TokenInfo) bool {
+	return false
+}
+
+func defaultTokenRevocationIsClientAllowedFunc(context.Context, *goidc.Client) bool {
+	return false
+}
+
+func defaultHandleErrorFunc(context.Context, error) {}
+
+func defaultRARValidateDetailFunc(context.Context, goidc.AuthDetail) error {
+	return nil
+}
+
+func defaultRefreshTokenShouldIssueFunc(context.Context, *goidc.Client, *goidc.Grant) bool {
+	return true
+}
+
+func defaultHandleGrantFunc(context.Context, *goidc.Grant) error {
+	return nil
+}
+
+func defaultHandleTokenFunc(context.Context, *goidc.Token, *goidc.Grant) error {
+	return nil
+}
+
+func defaultIDTokenClaimsFunc(context.Context, *goidc.Grant) map[string]any {
+	return nil
+}
+
+func defaultUserInfoClaimsFunc(context.Context, *goidc.Grant) map[string]any {
+	return nil
+}
+
+func defaultTokenClaimsFunc(context.Context, *goidc.Token, *goidc.Grant) map[string]any {
+	return nil
+}
+
+func defaultSSFAuthenticatedReceiverFunc(context.Context) (goidc.SSFReceiver, error) {
+	return goidc.SSFReceiver{}, errors.New("authenticated receiver function is not defined")
+}
+
+func defaultSSFHandleExpiredEventStreamFunc(context.Context, *goidc.SSFEventStream) error {
+	return nil
+}
+
+func defaultPairwiseSubjectFunc(_ context.Context, sub string, _ *goidc.Client) string {
+	return sub
+}
+
+func defaultPARHandleSessionFunc(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+	return nil
+}
+
+func defaultOpenIDFedRequiredTrustMarksFunc(context.Context, *goidc.Client) []goidc.TrustMark {
+	return nil
+}
+
+func defaultOpenIDFedHandleClientFunc(context.Context, *goidc.Client) error {
+	return nil
+}
+
+func defaultVCHandlePreAuthCodeFunc(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+	return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
+}
+
+func defaultCIBAHandleSessionFunc(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+	return errors.New("ciba init back auth function is not set")
 }
 
 func defaultClientIDFunc(ctx context.Context) string {

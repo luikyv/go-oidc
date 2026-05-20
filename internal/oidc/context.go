@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -83,26 +82,14 @@ func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 }
 
 func (ctx Context) TokenIntrospectionIsClientAllowed(c *goidc.Client, info goidc.TokenInfo) bool {
-	if ctx.TokenIntrospectionIsClientAllowedFunc == nil {
-		return false
-	}
-
 	return ctx.TokenIntrospectionIsClientAllowedFunc(ctx, c, info)
 }
 
 func (ctx Context) TokenRevocationIsClientAllowed(c *goidc.Client) bool {
-	if ctx.TokenRevocationIsClientAllowedFunc == nil {
-		return false
-	}
-
 	return ctx.TokenRevocationIsClientAllowedFunc(ctx, c)
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
-	if ctx.ClientCertFunc == nil {
-		return nil, errors.New("the client certificate function was not defined")
-	}
-
 	return ctx.ClientCertFunc(ctx)
 }
 
@@ -123,10 +110,6 @@ func (ctx Context) ValidateInitalAccessToken(token string) error {
 }
 
 func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
-	if ctx.DCRHandleClientFunc == nil {
-		return nil
-	}
-
 	return ctx.DCRHandleClientFunc(ctx, id, c)
 }
 
@@ -135,10 +118,6 @@ func (ctx Context) ClientID() string {
 }
 
 func (ctx Context) CheckJTI(jti string) error {
-	if ctx.CheckJTIFunc == nil {
-		return nil
-	}
-
 	return ctx.CheckJTIFunc(ctx, jti)
 }
 
@@ -154,9 +133,6 @@ func (ctx Context) RenderError(err error) error {
 }
 
 func (ctx Context) HandleError(err error) {
-	if ctx.HandleErrorFunc == nil {
-		return
-	}
 	ctx.HandleErrorFunc(ctx, err)
 }
 
@@ -231,9 +207,6 @@ func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.
 }
 
 func (ctx Context) RARValidateDetail(detail goidc.AuthDetail) error {
-	if ctx.RARValidateDetailFunc == nil {
-		return nil
-	}
 	return ctx.RARValidateDetailFunc(ctx, detail)
 }
 
@@ -258,9 +231,6 @@ func (ctx Context) GrantByAuthReqID(id string) (*goidc.Grant, error) {
 }
 
 func (ctx Context) CIBAHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
-	if ctx.CIBAHandleSessionFunc == nil {
-		return errors.New("ciba init back auth function is not set")
-	}
 	return ctx.CIBAHandleSessionFunc(ctx, as, c)
 }
 
@@ -273,9 +243,6 @@ func (ctx Context) OpenIDFedClient(id string) (*goidc.Client, error) {
 }
 
 func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
-	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
-		return nil
-	}
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
 }
 
@@ -284,9 +251,6 @@ func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
 }
 
 func (ctx Context) OpenIDFedHandleClient(client *goidc.Client) error {
-	if ctx.OpenIDFedHandleClientFunc == nil {
-		return nil
-	}
 	return ctx.OpenIDFedHandleClientFunc(ctx, client)
 }
 
@@ -388,8 +352,6 @@ func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
 func (ctx Context) LogoutSession(id string) (*goidc.LogoutSession, error) {
 	return ctx.LogoutManager.LogoutSession(ctx, id)
 }
-
-//---------------------------------------- HTTP Utils ----------------------------------------//
 
 func (ctx Context) BaseURL() string {
 	return ctx.Issuer() + ctx.EndpointPrefix
@@ -517,6 +479,8 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	}
 
 	ctx.Response.Header().Set("Content-Type", "text/html")
+	ctx.Response.Header().Set("Cache-Control", "no-cache, no-store")
+	ctx.Response.Header().Set("Pragma", "no-cache")
 	ctx.Response.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
 	return tmpl.Execute(ctx.Response, params)
@@ -532,9 +496,6 @@ func (ctx Context) RefreshGrantByRefreshToken(tkn string) (*goidc.Grant, error) 
 }
 
 func (ctx Context) RefreshTokenShouldIssue(c *goidc.Client, grant *goidc.Grant) bool {
-	if ctx.RefreshTokenShouldIssueFunc == nil {
-		return true
-	}
 	return ctx.RefreshTokenShouldIssueFunc(ctx, c, grant)
 }
 
@@ -547,18 +508,10 @@ func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.Token
 }
 
 func (ctx Context) HandleGrant(grant *goidc.Grant) error {
-	if ctx.HandleGrantFunc == nil {
-		return nil
-	}
-
 	return ctx.HandleGrantFunc(ctx, grant)
 }
 
 func (ctx Context) HandleToken(tkn *goidc.Token, grant *goidc.Grant) error {
-	if ctx.HandleTokenFunc == nil {
-		return nil
-	}
-
 	return ctx.HandleTokenFunc(ctx, tkn, grant)
 }
 
@@ -567,23 +520,14 @@ func (ctx Context) Grant(id string) (*goidc.Grant, error) {
 }
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
-	if ctx.IDTokenClaimsFunc == nil {
-		return nil
-	}
 	return ctx.IDTokenClaimsFunc(ctx, grant)
 }
 
 func (ctx Context) UserInfoClaims(grant *goidc.Grant) map[string]any {
-	if ctx.UserInfoClaimsFunc == nil {
-		return nil
-	}
 	return ctx.UserInfoClaimsFunc(ctx, grant)
 }
 
 func (ctx Context) TokenClaims(tkn *goidc.Token, grant *goidc.Grant) map[string]any {
-	if ctx.TokenClaimsFunc == nil {
-		return nil
-	}
 	return ctx.TokenClaimsFunc(ctx, tkn, grant)
 }
 
@@ -596,16 +540,10 @@ func (ctx Context) HTTPClient() *http.Client {
 }
 
 func (ctx Context) PairwiseSubject(sub string, c *goidc.Client) string {
-	if ctx.PairwiseSubjectFunc == nil {
-		return sub
-	}
 	return ctx.PairwiseSubjectFunc(ctx, sub, c)
 }
 
 func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
-	if ctx.PARHandleSessionFunc == nil {
-		return nil
-	}
 	return ctx.PARHandleSessionFunc(ctx, as, c)
 }
 
@@ -623,7 +561,7 @@ func (ctx Context) ClientSecret() string {
 }
 
 func (ctx Context) RegistrationAccessToken() string {
-	return strutil.Random(50)
+	return ctx.DCRRegistrationTokenFunc(ctx)
 }
 
 //---------------------------------------- context.Context ----------------------------------------//
@@ -700,18 +638,10 @@ func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
 }
 
 func (ctx Context) SSFEventStreamID() string {
-	if ctx.SSFEventStreamIDFunc == nil {
-		return uuid.NewString()
-	}
-
 	return ctx.SSFEventStreamIDFunc(ctx)
 }
 
 func (ctx Context) SSFAuthenticatedReceiver() (goidc.SSFReceiver, error) {
-	if ctx.SSFAuthenticatedReceiverFunc == nil {
-		return goidc.SSFReceiver{}, errors.New("authenticated receiver function is not defined")
-	}
-
 	return ctx.SSFAuthenticatedReceiverFunc(ctx)
 }
 
@@ -774,9 +704,6 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs map[string]goidc.S
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	if ctx.SSFScheduleVerificationEventFunc == nil {
-		return errors.New("schedule verification event function is not set")
-	}
 	return ctx.SSFScheduleVerificationEventFunc(ctx, streamID, opts)
 }
 
@@ -789,17 +716,10 @@ func (ctx Context) SSFHTTPClient() *http.Client {
 }
 
 func (ctx Context) SSFHandleExpiredEventStream(stream *goidc.SSFEventStream) error {
-	if ctx.SSFHandleExpiredEventStreamFunc == nil {
-		return nil
-	}
-
 	return ctx.SSFHandleExpiredEventStreamFunc(ctx, stream)
 }
 
 func (ctx Context) VCHandlePreAuthCode(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
-	if ctx.VCHandlePreAuthCodeFunc == nil {
-		return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
-	}
 	return ctx.VCHandlePreAuthCodeFunc(ctx, preAuthCode, opts)
 }
 
@@ -812,9 +732,6 @@ func (ctx Context) VCOffer(id string) (*goidc.VCOffer, error) {
 }
 
 func (ctx Context) VCOfferID() string {
-	if ctx.VCOfferIDFunc == nil {
-		return uuid.NewString()
-	}
 	return ctx.VCOfferIDFunc(ctx)
 }
 
@@ -836,9 +753,6 @@ func (ctx Context) VCIssuerIDs() []string {
 }
 
 func (ctx Context) VCIssuerState() string {
-	if ctx.VCIssuerStateFunc == nil {
-		return uuid.NewString()
-	}
 	return ctx.VCIssuerStateFunc(ctx)
 }
 
