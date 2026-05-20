@@ -19,13 +19,13 @@ import (
 const testRefreshToken = "random_refresh_token"
 
 func TestGenerateRefreshToken(t *testing.T) {
-	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
-		t.Helper()
+	setup := func(tb testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+		tb.Helper()
 
-		c, secret := oidctest.NewClient(t)
+		c, secret := oidctest.NewClient(tb)
 
-		ctx := oidctest.NewContext(t)
-		ctx.RefreshTokenManager = oidctest.Manager(t, ctx)
+		ctx := oidctest.NewContext(tb)
+		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
 		ctx.RefreshTokenFunc = func(ctx context.Context) string { return strutil.Random(30) }
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
@@ -44,7 +44,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			Store:                 make(map[string]any),
 		}
 		if err := ctx.SaveGrant(grant); err != nil {
-			t.Fatalf("error while creating the grant: %v", err)
+			tb.Fatalf("error while creating the grant: %v", err)
 		}
 
 		req := request{

@@ -13,17 +13,17 @@ import (
 )
 
 func TestRevoke(t *testing.T) {
-	setup := func(t testing.TB) (oidc.Context, queryRequest, *goidc.Client) {
-		t.Helper()
+	setup := func(tb testing.TB) (oidc.Context, *goidc.Client) {
+		tb.Helper()
 
-		ctx := oidctest.NewContext(t)
+		ctx := oidctest.NewContext(tb)
 		ctx.TokenRevocationIsEnabled = true
-		ctx.RefreshTokenManager = oidctest.Manager(t, ctx)
+		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
 		ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
 			return true
 		}
 
-		c, secret := oidctest.NewClient(t)
+		c, secret := oidctest.NewClient(tb)
 		c.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretPost
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
@@ -31,11 +31,11 @@ func TestRevoke(t *testing.T) {
 			"client_secret": {secret},
 		}
 
-		return ctx, queryRequest{}, c
+		return ctx, c
 	}
 
-	saveAccessToken := func(t testing.TB, ctx oidc.Context, id, grantID, clientID string, expiresAt int) {
-		t.Helper()
+	saveAccessToken := func(tb testing.TB, ctx oidc.Context, id, grantID, clientID string, expiresAt int) {
+		tb.Helper()
 
 		if err := ctx.SaveToken(&goidc.Token{
 			ID:        id,
@@ -43,7 +43,7 @@ func TestRevoke(t *testing.T) {
 			ClientID:  clientID,
 			ExpiresAt: expiresAt,
 		}); err != nil {
-			t.Fatalf("SaveToken() error = %v", err)
+			tb.Fatalf("SaveToken() error = %v", err)
 		}
 	}
 
@@ -57,7 +57,7 @@ func TestRevoke(t *testing.T) {
 			name: "access token revocation only deletes the access token by default",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
@@ -72,8 +72,7 @@ func TestRevoke(t *testing.T) {
 				saveAccessToken(t, ctx, "revoked_access_token", grant.ID, c.ID, now+60)
 				saveAccessToken(t, ctx, "sibling_access_token", grant.ID, c.ID, now+60)
 
-				req.token = "revoked_access_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "revoked_access_token"}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -102,7 +101,7 @@ func TestRevoke(t *testing.T) {
 			name: "access token revocation can delete the whole grant when configured",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 				ctx.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
 
 				now := timeutil.TimestampNow()
@@ -118,8 +117,7 @@ func TestRevoke(t *testing.T) {
 				saveAccessToken(t, ctx, "revoked_access_token", grant.ID, c.ID, now+60)
 				saveAccessToken(t, ctx, "sibling_access_token", grant.ID, c.ID, now+60)
 
-				req.token = "revoked_access_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "revoked_access_token"}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -140,7 +138,7 @@ func TestRevoke(t *testing.T) {
 			name: "refresh token revocation deletes the grant and related access tokens",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -156,8 +154,7 @@ func TestRevoke(t *testing.T) {
 				}
 
 				saveAccessToken(t, ctx, "associated_access_token", grant.ID, c.ID, now+60)
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -178,7 +175,7 @@ func TestRevoke(t *testing.T) {
 			name: "invalid token returns success and does not mutate state",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				if err := ctx.SaveGrant(&goidc.Grant{
@@ -189,8 +186,7 @@ func TestRevoke(t *testing.T) {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
 
-				req.token = "invalid_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "invalid_token"}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -207,7 +203,7 @@ func TestRevoke(t *testing.T) {
 			name: "expired access token returns success and does not mutate state",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
@@ -220,8 +216,7 @@ func TestRevoke(t *testing.T) {
 				}
 
 				saveAccessToken(t, ctx, "expired_access_token", grant.ID, c.ID, now-10)
-				req.token = "expired_access_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "expired_access_token"}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -238,7 +233,7 @@ func TestRevoke(t *testing.T) {
 			name: "expired refresh token returns success and does not mutate state",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -253,8 +248,7 @@ func TestRevoke(t *testing.T) {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
 
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			validate: func(t *testing.T, ctx oidc.Context) {
 				grants := oidctest.Grants(t, ctx)
@@ -271,7 +265,7 @@ func TestRevoke(t *testing.T) {
 			name: "access token issued to another client is rejected",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
@@ -284,8 +278,7 @@ func TestRevoke(t *testing.T) {
 				}
 
 				saveAccessToken(t, ctx, "opaque_token", grant.ID, "another_client_id", now+60)
-				req.token = "opaque_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "opaque_token"}, c
 			},
 			wantErr: goidc.ErrorCodeAccessDenied,
 			validate: func(t *testing.T, ctx oidc.Context) {
@@ -303,7 +296,7 @@ func TestRevoke(t *testing.T) {
 			name: "refresh token issued to another client is rejected",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -317,8 +310,7 @@ func TestRevoke(t *testing.T) {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
 
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			wantErr: goidc.ErrorCodeAccessDenied,
 			validate: func(t *testing.T, ctx oidc.Context) {
@@ -332,7 +324,7 @@ func TestRevoke(t *testing.T) {
 			name: "client not allowed is rejected before revocation",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 				ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
 					return false
 				}
@@ -348,8 +340,7 @@ func TestRevoke(t *testing.T) {
 				}
 
 				saveAccessToken(t, ctx, "opaque_token", grant.ID, c.ID, now+60)
-				req.token = "opaque_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "opaque_token"}, c
 			},
 			wantErr: goidc.ErrorCodeAccessDenied,
 			validate: func(t *testing.T, ctx oidc.Context) {
@@ -367,7 +358,7 @@ func TestRevoke(t *testing.T) {
 			name: "missing token is rejected",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				if err := ctx.SaveGrant(&goidc.Grant{
@@ -378,8 +369,7 @@ func TestRevoke(t *testing.T) {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
 
-				req.token = ""
-				return ctx, req, c
+				return ctx, queryRequest{token: ""}, c
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
 			validate: func(t *testing.T, ctx oidc.Context) {

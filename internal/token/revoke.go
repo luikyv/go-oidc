@@ -16,7 +16,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 	err := func() error {
 		id, err := ExtractID(ctx, tkn)
 		if err != nil {
-			return nil
+			return nil //nolint:nilerr
 		}
 
 		token, err := ctx.Token(id)

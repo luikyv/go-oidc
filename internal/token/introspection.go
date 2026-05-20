@@ -15,7 +15,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 	info, err := func() (goidc.TokenInfo, error) {
 		id, err := ExtractID(ctx, tkn)
 		if err != nil {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil //nolint:nilerr
 		}
 
 		token, err := ctx.Token(id)

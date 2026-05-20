@@ -17,6 +17,7 @@ linters:
     - loggercheck
     - misspell
     - musttag
+    - nilerr
     - asciicheck       # Avoid non-ASCII characters
     - gocritic         # General diagnostics and best practices
     - godot            # Ensure comments end in periods
@@ -28,10 +29,9 @@ linters:
     - prealloc         # Detect slice preallocation opportunities
     - staticcheck      # Deep static analysis
     - unconvert        # Remove redundant type conversions
+    - unparam
     - unused           # Find unused vars, funcs, etc.
   settings:
-    cyclop:
-      max-complexity: 20
     gosec:
       excludes:
         - G117
@@ -41,7 +41,6 @@ linters:
     rules:
       - path: _test\.go
         linters:
-          - cyclop
           - errcheck
           - dupl
           - gosec

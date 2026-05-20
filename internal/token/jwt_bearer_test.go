@@ -16,16 +16,16 @@ import (
 )
 
 func TestGenerateJWTBearerToken(t *testing.T) {
-	setup := func(t testing.TB, sub string) (oidc.Context, request, *goidc.Client) {
-		t.Helper()
+	setup := func(tb testing.TB, sub string) (oidc.Context, request, *goidc.Client) {
+		tb.Helper()
 
-		ctx := oidctest.NewContext(t)
+		ctx := oidctest.NewContext(tb)
 		ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantJWTBearer)
 		ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (string, error) {
 			return sub, nil
 		}
 
-		c, secret := oidctest.NewClient(t)
+		c, secret := oidctest.NewClient(tb)
 		c.GrantTypes = append(c.GrantTypes, goidc.GrantJWTBearer)
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{

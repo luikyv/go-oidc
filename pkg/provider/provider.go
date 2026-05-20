@@ -10,7 +10,6 @@ import (
 	"math/big"
 	"net/http"
 	"reflect"
-	"runtime"
 	"slices"
 	"strings"
 	"time"
@@ -569,11 +568,6 @@ func nonZeroOrDefault[T any](s1 T, s2 T) T {
 
 func isNil(i any) bool {
 	return i == nil
-}
-
-func funcName(f any) string {
-	parts := strings.Split(runtime.FuncForPC(reflect.ValueOf(f).Pointer()).Name(), "/")
-	return parts[len(parts)-1]
 }
 
 const (

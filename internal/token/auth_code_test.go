@@ -15,12 +15,12 @@ import (
 )
 
 func TestGenerateAuthCodeToken(t *testing.T) {
-	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
-		t.Helper()
+	setup := func(tb testing.TB) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+		tb.Helper()
 
-		c, secret := oidctest.NewClient(t)
-		ctx := oidctest.NewContext(t)
-		ctx.AuthManager = oidctest.Manager(t, ctx)
+		c, secret := oidctest.NewClient(tb)
+		ctx := oidctest.NewContext(tb)
+		ctx.AuthManager = oidctest.Manager(tb, ctx)
 		ctx.AuthCodeLifetimeSecs = 60
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
@@ -43,7 +43,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			Store:             make(map[string]any),
 		}
 		if err := ctx.SaveGrant(grant); err != nil {
-			t.Errorf("error while creating the session: %v", err)
+			tb.Errorf("error while creating the session: %v", err)
 		}
 
 		req := request{

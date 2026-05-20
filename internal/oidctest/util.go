@@ -31,8 +31,8 @@ var (
 
 func PointerOf[T any](v T) *T { return &v }
 
-func NewClient(t testing.TB) (client *goidc.Client, secret string) {
-	t.Helper()
+func NewClient(tb testing.TB) (client *goidc.Client, secret string) {
+	tb.Helper()
 
 	secret = "test_secret"
 	client = &goidc.Client{
@@ -63,11 +63,11 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	return client, secret
 }
 
-func NewContext(t testing.TB) oidc.Context {
-	t.Helper()
+func NewContext(tb testing.TB) oidc.Context {
+	tb.Helper()
 
 	keyID := "test_server_key"
-	jwk := PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
+	jwk := PrivatePS256JWK(tb, keyID, goidc.KeyUsageSignature)
 	manager := storage.NewManager(100)
 
 	config := &oidc.Configuration{
@@ -253,26 +253,26 @@ func NewContext(t testing.TB) oidc.Context {
 	return ctx
 }
 
-func PrivateJWKS(t testing.TB, ctx oidc.Context) goidc.JSONWebKeySet {
-	t.Helper()
+func PrivateJWKS(tb testing.TB, ctx oidc.Context) goidc.JSONWebKeySet {
+	tb.Helper()
 
 	jwks, err := ctx.JWKS()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return jwks
 }
 
-func Manager(t testing.TB, ctx oidc.Context) *storage.Manager {
-	t.Helper()
+func Manager(tb testing.TB, ctx oidc.Context) *storage.Manager {
+	tb.Helper()
 	m, _ := ctx.GrantManager.(*storage.Manager)
 	return m
 }
 
-func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
-	t.Helper()
+func AuthnSessions(tb testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
+	tb.Helper()
 
-	m := Manager(t, ctx)
+	m := Manager(tb, ctx)
 	sessions := make([]*goidc.AuthnSession, 0, len(m.Sessions))
 	for _, s := range m.Sessions {
 		sessions = append(sessions, s)
@@ -343,23 +343,26 @@ func PrivateRSAOAEPJWK(t *testing.T, keyID string) goidc.JSONWebKey {
 }
 
 func PrivateRSAOAEP256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	t.Helper()
 	return privateRSAJWK(t, keyID, string(goidc.RSA_OAEP_256), goidc.KeyUsageEncryption)
 }
 
 func PrivateRS256JWK(t *testing.T, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	t.Helper()
 	return privateRSAJWK(t, keyID, string(goidc.RS256), usage)
 }
 
-func PrivatePS256JWK(t testing.TB, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
-	return privateRSAJWK(t, keyID, string(goidc.PS256), usage)
+func PrivatePS256JWK(tb testing.TB, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	tb.Helper()
+	return privateRSAJWK(tb, keyID, string(goidc.PS256), usage)
 }
 
-func privateRSAJWK(t testing.TB, keyID string, alg string, usage goidc.KeyUsage) goidc.JSONWebKey {
-	t.Helper()
+func privateRSAJWK(tb testing.TB, keyID string, alg string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	tb.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		t.Fatalf("could not generated PS256 JWK: %v", err)
+		tb.Fatalf("could not generated PS256 JWK: %v", err)
 	}
 	return goidc.JSONWebKey{
 		Key:       privateKey,
@@ -399,13 +402,13 @@ func UnsafeClaims(jws string, algs ...goidc.SignatureAlgorithm) (map[string]any,
 	return claims, nil
 }
 
-func Sign(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
-	t.Helper()
-	return SignWithOptions(t, claims, jwk, nil)
+func Sign(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
+	tb.Helper()
+	return SignWithOptions(tb, claims, jwk, nil)
 }
 
-func SignWithOptions(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {
-	t.Helper()
+func SignWithOptions(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {
+	tb.Helper()
 	jws, _ := joseutil.Sign(claims, jose.SigningKey{Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm), Key: jwk}, opts)
 	return jws
 }

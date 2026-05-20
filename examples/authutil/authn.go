@@ -127,8 +127,7 @@ func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *
 	return goidc.StatusFailure, errors.New("access denied")
 }
 
-func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
-
+func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) { //nolint:unparam
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
 		as.Subject = as.IDTokenHintClaims[goidc.ClaimSubject].(string)
@@ -137,7 +136,7 @@ func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.
 
 	cookie, err := r.Cookie(cookieUserSessionID)
 	if err != nil {
-		return goidc.StatusSuccess, nil
+		return goidc.StatusSuccess, nil //nolint:nilerr
 	}
 
 	session, ok := userSessionStore[cookie.Value]
@@ -196,7 +195,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) {
+func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) { //nolint:unparam
 	sessionID := uuid.NewString()
 	if id, ok := as.Store[paramUserSessionID]; ok && id != nil {
 		sessionID = id.(string)

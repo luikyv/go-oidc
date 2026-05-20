@@ -517,8 +517,8 @@ func setup(t *testing.T) (oidc.Context, *goidc.Client) {
 	return ctx, c
 }
 
-func logoutSessions(t testing.TB, ctx oidc.Context) []*goidc.LogoutSession {
-	t.Helper()
+func logoutSessions(tb testing.TB, ctx oidc.Context) []*goidc.LogoutSession {
+	tb.Helper()
 
 	sessionManager, _ := ctx.LogoutManager.(*storage.Manager)
 	sessions := make([]*goidc.LogoutSession, 0, len(sessionManager.LogoutSessions))

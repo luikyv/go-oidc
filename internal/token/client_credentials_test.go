@@ -14,12 +14,12 @@ import (
 )
 
 func TestGenerateClientCredentialsToken(t *testing.T) {
-	setup := func(t testing.TB) (oidc.Context, request, *goidc.Client) {
-		t.Helper()
+	setup := func(tb testing.TB) (oidc.Context, request, *goidc.Client) {
+		tb.Helper()
 
-		ctx := oidctest.NewContext(t)
+		ctx := oidctest.NewContext(tb)
 
-		c, secret := oidctest.NewClient(t)
+		c, secret := oidctest.NewClient(tb)
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
 			"client_id":     {c.ID},

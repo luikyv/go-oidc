@@ -15,17 +15,17 @@ import (
 )
 
 func TestIntrospect(t *testing.T) {
-	setup := func(t testing.TB) (oidc.Context, queryRequest, *goidc.Client) {
-		t.Helper()
+	setup := func(tb testing.TB) (oidc.Context, *goidc.Client) {
+		tb.Helper()
 
-		ctx := oidctest.NewContext(t)
+		ctx := oidctest.NewContext(tb)
 		ctx.TokenIntrospectionIsEnabled = true
-		ctx.RefreshTokenManager = oidctest.Manager(t, ctx)
+		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
 		ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 			return true
 		}
 
-		c, secret := oidctest.NewClient(t)
+		c, secret := oidctest.NewClient(tb)
 		c.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretPost
 		ctx.StaticClients = append(ctx.StaticClients, c)
 		ctx.Request.PostForm = map[string][]string{
@@ -33,7 +33,7 @@ func TestIntrospect(t *testing.T) {
 			"client_secret": {secret},
 		}
 
-		return ctx, queryRequest{}, c
+		return ctx, c
 	}
 
 	tests := []struct {
@@ -45,7 +45,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "opaque token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				accessToken := "opaque_token"
 				now := timeutil.TimestampNow()
@@ -65,8 +65,7 @@ func TestIntrospect(t *testing.T) {
 				})
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, ctx oidc.Context, c *goidc.Client) {
 				if !info.IsActive {
@@ -95,7 +94,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "opaque token includes username",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				accessToken := "opaque_token"
 				now := timeutil.TimestampNow()
@@ -116,8 +115,7 @@ func TestIntrospect(t *testing.T) {
 				})
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.Username != "alice" {
@@ -128,7 +126,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "refresh token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -142,8 +140,7 @@ func TestIntrospect(t *testing.T) {
 				}
 				_ = ctx.SaveGrant(grant)
 
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, ctx oidc.Context, c *goidc.Client) {
 				if !info.IsActive {
@@ -169,7 +166,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "expired opaque token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				accessToken := "opaque_token"
 				now := timeutil.TimestampNow()
@@ -182,8 +179,7 @@ func TestIntrospect(t *testing.T) {
 				}
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.IsActive {
@@ -194,7 +190,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "token with confirmation",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				accessToken := "opaque_token"
 				now := timeutil.TimestampNow()
@@ -215,8 +211,7 @@ func TestIntrospect(t *testing.T) {
 				})
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if !info.IsActive || info.Confirmation == nil {
@@ -233,7 +228,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "client not allowed",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 				ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 					return false
 				}
@@ -255,15 +250,14 @@ func TestIntrospect(t *testing.T) {
 				})
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			wantErr: goidc.ErrorCodeAccessDenied,
 		},
 		{
 			name: "refresh token expired",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -277,8 +271,7 @@ func TestIntrospect(t *testing.T) {
 				}
 				_ = ctx.SaveGrant(grant)
 
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.IsActive {
@@ -289,16 +282,15 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "missing token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
-				req.token = ""
-				return ctx, req, c
+				ctx, c := setup(t)
+				return ctx, queryRequest{token: ""}, c
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "refresh token with confirmation",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				now := timeutil.TimestampNow()
 				refreshToken := strutil.Random(100)
@@ -314,8 +306,7 @@ func TestIntrospect(t *testing.T) {
 				}
 				_ = ctx.SaveGrant(grant)
 
-				req.token = refreshToken
-				return ctx, req, c
+				return ctx, queryRequest{token: refreshToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if !info.IsActive || info.Confirmation == nil {
@@ -332,9 +323,8 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "token not found",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
-				req.token = "nonexistent_token"
-				return ctx, req, c
+				ctx, c := setup(t)
+				return ctx, queryRequest{token: "nonexistent_token"}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.IsActive {
@@ -345,7 +335,7 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "dpop token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 
 				accessToken := "dpop_token"
 				now := timeutil.TimestampNow()
@@ -365,8 +355,7 @@ func TestIntrospect(t *testing.T) {
 				})
 				_ = ctx.SaveToken(token)
 
-				req.token = accessToken
-				return ctx, req, c
+				return ctx, queryRequest{token: accessToken}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.Type != goidc.TokenTypeDPoP {
@@ -377,12 +366,11 @@ func TestIntrospect(t *testing.T) {
 		{
 			name: "client not allowed unknown token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
-				ctx, req, c := setup(t)
+				ctx, c := setup(t)
 				ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 					return false
 				}
-				req.token = "nonexistent_token"
-				return ctx, req, c
+				return ctx, queryRequest{token: "nonexistent_token"}, c
 			},
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.IsActive {

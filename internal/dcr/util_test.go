@@ -425,12 +425,12 @@ func setUp(t *testing.T) (oidc.Context, *goidc.Client, string) {
 	return ctx, c, regToken
 }
 
-func newDCRContext(t testing.TB) oidc.Context {
-	t.Helper()
+func newDCRContext(tb testing.TB) oidc.Context {
+	tb.Helper()
 
-	ctx := oidctest.NewContext(t)
+	ctx := oidctest.NewContext(tb)
 	ctx.DCRIsEnabled = true
-	ctx.DCRManager = oidctest.Manager(t, ctx)
+	ctx.DCRManager = oidctest.Manager(tb, ctx)
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"
 	}

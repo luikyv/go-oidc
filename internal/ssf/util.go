@@ -383,7 +383,7 @@ var subjectAllowedFields = map[goidc.SSFSubjectFormat]struct {
 	goidc.SSFSubjectFormatComplex:           {user: true, tenant: true, device: true, session: true, orgUnit: true, application: true, group: true, additionalProperties: true},
 }
 
-func validateSubject(ctx oidc.Context, sub goidc.SSFSubject) error {
+func validateSubject(ctx oidc.Context, sub goidc.SSFSubject) error { //nolint:unparam
 	allowed, ok := subjectAllowedFields[sub.Format]
 	if !ok {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("subject format %q is not supported", sub.Format))

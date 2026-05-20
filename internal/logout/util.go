@@ -24,7 +24,7 @@ func initLogout(ctx oidc.Context, req request) error {
 		if req.IDTokenHint != "" {
 			idToken, err := jwt.ParseSigned(req.IDTokenHint, ctx.IDTokenSigAlgs)
 			if err != nil {
-				return &goidc.Client{}, nil
+				return &goidc.Client{}, nil //nolint:nilerr
 			}
 
 			var claims struct {
