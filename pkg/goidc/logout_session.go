@@ -9,6 +9,8 @@ import (
 // LogoutManager contains all the logic needed to manage logout sessions.
 type LogoutManager interface {
 	SaveLogoutSession(context.Context, *LogoutSession) error
+	// LogoutSession returns the logout session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
 	LogoutSession(context.Context, string) (*LogoutSession, error)
 }
 

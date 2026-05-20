@@ -516,6 +516,9 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 		{
 			name: "validate initial access token",
 			run: func(t *testing.T, ctx oidc.Context) {
+				ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+					return nil
+				}
 				if err := ctx.ValidateInitalAccessToken("token"); err != nil {
 					t.Fatalf("ValidateInitalAccessToken() error = %v", err)
 				}

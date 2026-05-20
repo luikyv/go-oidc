@@ -249,6 +249,9 @@ func TestRegisterHandlers(t *testing.T) {
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"
 	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
+	}
 	mux := http.NewServeMux()
 
 	// When.
@@ -296,6 +299,9 @@ func newHTTPContext(t *testing.T, w http.ResponseWriter, r *http.Request) oidc.C
 	ctx.DCRManager = oidctest.Manager(t, ctx)
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"
+	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
 	}
 	return oidc.NewHTTPContext(w, r, ctx.Configuration)
 }

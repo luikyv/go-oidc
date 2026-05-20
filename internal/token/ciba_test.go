@@ -499,6 +499,59 @@ func TestGenerateCIBAToken(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid grant when pending session belongs to a different client",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, c, grant := setup(t)
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
+
+				otherClient, otherSecret := oidctest.NewClient(t)
+				otherClient.ID = "other_ciba_client"
+				otherClient.Secret = "other_ciba_secret"
+				otherSecret = otherClient.Secret
+				otherClient.GrantTypes = append(otherClient.GrantTypes, goidc.GrantCIBA)
+				otherClient.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
+				ctx.StaticClients = append(ctx.StaticClients, otherClient)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {otherClient.ID},
+					"client_secret": {otherSecret},
+				}
+
+				session := &goidc.AuthnSession{
+					ID:            "random_ciba_session_id",
+					AuthReqID:     grant.AuthReqID,
+					ClientID:      c.ID,
+					Status:        goidc.StatusPending,
+					GrantedScopes: grant.Scopes,
+					AuthorizationParameters: goidc.AuthorizationParameters{
+						Nonce: "random_nonce",
+					},
+					CreatedAt: timeutil.TimestampNow(),
+					ExpiresAt: timeutil.TimestampNow() + 60,
+				}
+				if err := ctx.CIBASaveSession(session); err != nil {
+					t.Fatalf("CIBASaveSession() error = %v", err)
+				}
+				req := request{
+					grantType: goidc.GrantCIBA,
+					authReqID: grant.AuthReqID,
+				}
+				return ctx, req, c, grant
+			},
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			wantWrappedErr:  "authn session was not issued for this client",
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
 			name: "invalid grant when grant and session are missing",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)

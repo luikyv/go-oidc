@@ -26,6 +26,9 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 
 	grant, err := ctx.GrantByAuthCode(req.code)
 	if err != nil {
+		if !errors.Is(err, goidc.ErrNotFound) {
+			return response{}, fmt.Errorf("could not load the grant by auth code: %w", err)
+		}
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", err)
 	}
 

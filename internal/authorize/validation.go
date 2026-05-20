@@ -410,13 +410,13 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		return nil
 	}
 
-	for _, s := range strings.Fields(params.Scopes) {
+	for s := range strings.FieldsSeq(params.Scopes) {
 		scope, ok := ctx.Scope(s)
 		if !ok {
 			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params, fmt.Errorf("scope %s does not match any available scope", s))
 		}
 
-		if !strings.Contains(c.ScopeIDs, scope.ID) {
+		if !slices.Contains(strings.Fields(c.ScopeIDs), scope.ID) {
 			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", params, fmt.Errorf("scope %s is not allowed for the client", s))
 		}
 	}

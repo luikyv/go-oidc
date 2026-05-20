@@ -171,6 +171,7 @@ func TestNew(t *testing.T) {
 				"PARIDFunc",
 				"DCRManager",
 				"DCRClientIDFunc",
+				"DCRValidateInitialTokenFunc",
 				"PARManager",
 				"CIBAIDFunc",
 				"CIBAManager",

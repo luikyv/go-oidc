@@ -287,6 +287,13 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 
 // WithDCR allows clients to be registered dynamically.
 // If manager is nil, the default in-memory storage is used.
+//
+// By default, enabling DCR does not require an initial access token, so any
+// caller that can reach the endpoint can create clients. Production
+// deployments should typically combine this option with
+// [WithDCRValidateInitialTokenFunc] and/or [WithDCRHandleClientFunc] to enforce
+// their registration policy.
+//
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
 func WithDCR(manager goidc.DCRManager) Option {
 	return func(p *Provider) error {
@@ -308,6 +315,10 @@ func WithRPMetadataChoices() Option {
 	}
 }
 
+// WithDCRHandleClientFunc installs custom logic for DCR and DCM requests.
+//
+// Use it to enforce registration rules, validate metadata, reject unwanted
+// clients, or apply default values during create and update requests.
 func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRHandleClientFunc = f
@@ -315,6 +326,11 @@ func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	}
 }
 
+// WithDCRValidateInitialTokenFunc validates the initial access token used when
+// creating clients through DCR.
+//
+// Without this option, client creation is open to any caller that can reach the
+// registration endpoint.
 func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRValidateInitialTokenFunc = f

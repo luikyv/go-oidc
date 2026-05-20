@@ -10,50 +10,91 @@ import (
 	"strings"
 )
 
+// GrantManager stores grants and access tokens.
 type GrantManager interface {
 	SaveGrant(context.Context, *Grant) error
+	// Grant returns the grant identified by id.
+	// It must return [ErrNotFound] when the grant does not exist.
 	Grant(context.Context, string) (*Grant, error)
 	SaveToken(context.Context, *Token) error
+	// Token returns the token identified by id.
+	// It must return [ErrNotFound] when the token does not exist.
 	Token(context.Context, string) (*Token, error)
 }
 
+// AuthManager stores authorization sessions and resolves grants by
+// authorization code.
 type AuthManager interface {
 	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the authorization session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
 	Session(context.Context, string) (*AuthnSession, error)
+	// GrantByAuthCode returns the grant associated with the authorization code.
+	// It must return [ErrNotFound] when the grant does not exist.
 	GrantByAuthCode(context.Context, string) (*Grant, error)
 }
 
+// PARManager resolves pushed authorization request sessions.
 type PARManager interface {
+	// SessionByPushedAuthReqID returns the session associated with the pushed
+	// authorization request identifier.
+	// It must return [ErrNotFound] when the session does not exist.
 	SessionByPushedAuthReqID(context.Context, string) (*AuthnSession, error)
 }
 
+// DCRManager stores dynamically registered clients.
 type DCRManager interface {
 	SaveClient(context.Context, *Client) error
+	// Client returns the client identified by id.
+	// It must return [ErrNotFound] when the client does not exist.
 	Client(context.Context, string) (*Client, error)
 	DeleteClient(context.Context, string) error
 }
 
+// OpenIDFedManager stores OpenID Federation clients.
 type OpenIDFedManager interface {
 	SaveClient(context.Context, *Client) error
+	// Client returns the federation client identified by id.
+	// It must return [ErrNotFound] when the client does not exist.
 	Client(context.Context, string) (*Client, error)
 }
 
+// RefreshTokenManager resolves grants by refresh token.
 type RefreshTokenManager interface {
+	// GrantByRefreshToken returns the grant associated with the refresh token.
+	// It must return [ErrNotFound] when the grant does not exist.
 	GrantByRefreshToken(context.Context, string) (*Grant, error)
 }
 
+// CIBAManager stores CIBA sessions and resolves grants by auth_req_id.
 type CIBAManager interface {
 	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the CIBA session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
 	Session(context.Context, string) (*AuthnSession, error)
+	// SessionByAuthReqID returns the session associated with the auth_req_id.
+	// It must return [ErrNotFound] when the session does not exist.
 	SessionByAuthReqID(context.Context, string) (*AuthnSession, error)
+	// GrantByAuthReqID returns the grant associated with the auth_req_id.
+	// It must return [ErrNotFound] when the grant does not exist.
 	GrantByAuthReqID(context.Context, string) (*Grant, error)
 }
 
+// DeviceAuthManager stores device authorization sessions and resolves grants by
+// device code.
 type DeviceAuthManager interface {
 	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the device authorization session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
 	Session(context.Context, string) (*AuthnSession, error)
+	// SessionByUserCode returns the session associated with the user code.
+	// It must return [ErrNotFound] when the session does not exist.
 	SessionByUserCode(context.Context, string) (*AuthnSession, error)
+	// SessionByDeviceCode returns the session associated with the device code.
+	// It must return [ErrNotFound] when the session does not exist.
 	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
+	// GrantByDeviceCode returns the grant associated with the device code.
+	// It must return [ErrNotFound] when the grant does not exist.
 	GrantByDeviceCode(context.Context, string) (*Grant, error)
 }
 

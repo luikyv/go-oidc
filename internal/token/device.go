@@ -31,18 +31,25 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 
 		as, sessionErr := ctx.DeviceSessionByDeviceCode(req.deviceCode)
 		if sessionErr != nil {
-			if errors.Is(sessionErr, goidc.ErrNotFound) {
-				return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("no grant or pending device session was found for the device code"))
+			if !errors.Is(sessionErr, goidc.ErrNotFound) {
+				return response{}, fmt.Errorf("could not load authn session: %w", sessionErr)
 			}
-			return response{}, sessionErr
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("no grant or pending device session was found for the device code"))
 		}
+
+		if as.ClientID != c.ID {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("authn session was not issued for this client"))
+		}
+
 		if timeutil.TimestampNow() >= as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "device code expired", errors.New("grant was not found and the pending device session has expired"))
 		}
-		if as.Status == goidc.StatusPending {
-			return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending device session is still awaiting approval"))
+
+		if as.Status == goidc.StatusFailure {
+			return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied"))
 		}
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied"))
+
+		return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending device session is still awaiting approval"))
 	}
 
 	if grant.RevokedAt != 0 {

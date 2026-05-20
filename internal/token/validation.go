@@ -161,7 +161,7 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s does not match any available scope", s))
 		}
 
-		if !strings.Contains(c.ScopeIDs, scope.ID) {
+		if !slices.Contains(strings.Fields(c.ScopeIDs), scope.ID) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not allowed for the client", s))
 		}
 

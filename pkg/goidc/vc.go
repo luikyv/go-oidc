@@ -14,9 +14,15 @@ type VCPreAuthCodeResult struct {
 	ConfigurationIDs map[VCConfigurationID][]VCCredentialID
 }
 
+// VCManager stores credential offers.
 type VCManager interface {
 	SaveOffer(context.Context, *VCOffer) error
+	// Offer returns the credential offer identified by id.
+	// It must return [ErrNotFound] when the offer does not exist.
 	Offer(context.Context, string) (*VCOffer, error)
+	// OfferByPreAuthCode returns the credential offer associated with the
+	// pre-authorized code.
+	// It must return [ErrNotFound] when the offer does not exist.
 	OfferByPreAuthCode(context.Context, string) (*VCOffer, error)
 }
 

@@ -210,18 +210,25 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 
 		as, sessionErr := ctx.CIBASessionByAuthReqID(req.authReqID)
 		if sessionErr != nil {
-			if errors.Is(sessionErr, goidc.ErrNotFound) {
-				return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", errors.New("no grant or pending CIBA session was found for the auth_req_id"))
+			if !errors.Is(sessionErr, goidc.ErrNotFound) {
+				return response{}, fmt.Errorf("could not load authn session: %w", sessionErr)
 			}
-			return response{}, sessionErr
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", errors.New("no grant or pending CIBA session was found for the auth_req_id"))
 		}
+
+		if as.ClientID != c.ID {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("authn session was not issued for this client"))
+		}
+
 		if timeutil.TimestampNow() >= as.ExpiresAt {
 			return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "auth_req_id expired", errors.New("grant was not found and the pending CIBA session has expired"))
 		}
-		if as.Status == goidc.StatusPending {
-			return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending CIBA session is still awaiting approval"))
+
+		if as.Status == goidc.StatusFailure {
+			return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied")).WithStatusCode(http.StatusBadRequest)
 		}
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the authentication session was denied"))
+
+		return response{}, goidc.WrapError(goidc.ErrorCodeAuthPending, "authentication pending", errors.New("grant was not found and the pending CIBA session is still awaiting approval"))
 	}
 
 	if grant.RevokedAt != 0 {

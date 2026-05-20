@@ -833,14 +833,22 @@ DCR allows clients to register and update themselves dynamically:
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithDCR(),
+  provider.WithDCR(manager),
   ...,
 )
 ```
 
-Use `provider.WithDCRHandleClientFunc` to run custom logic during registration and update requests, such as validation or setting default metadata values.
+Important: enabling `provider.WithDCR(manager)` by itself means client creation is open
+to any caller that can reach the registration endpoint.
 
-Use `provider.WithDCRValidateInitialTokenFunc` (`goidc.DCRValidateInitialTokenFunc`) to validate the initial access token during registration. Omit this option to skip validation.
+Production deployments should usually add
+`provider.WithDCRValidateInitialTokenFunc`
+(`goidc.DCRValidateInitialTokenFunc`) to require and validate an initial access
+token during registration.
+
+Use `provider.WithDCRHandleClientFunc` to implement your registration policy
+during create and update requests, such as metadata validation, allow/deny
+rules, or applying default values.
 
 By default, the DCR endpoint is `/register` and the management endpoint is `/register/{client_id}`.
 
@@ -853,7 +861,7 @@ The RP Metadata Choices extension allows clients to advertise priority-ordered l
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithDCR(),
+  provider.WithDCR(manager),
   provider.WithRPMetadataChoices(),
   ...,
 )

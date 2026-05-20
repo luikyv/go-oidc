@@ -119,10 +119,6 @@ func (ctx Context) DCRDeleteClient(id string) error {
 }
 
 func (ctx Context) ValidateInitalAccessToken(token string) error {
-	if ctx.DCRValidateInitialTokenFunc == nil {
-		return nil
-	}
-
 	return ctx.DCRValidateInitialTokenFunc(ctx, token)
 }
 

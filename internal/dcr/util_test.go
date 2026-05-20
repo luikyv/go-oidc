@@ -434,5 +434,8 @@ func newDCRContext(t testing.TB) oidc.Context {
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"
 	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
+	}
 	return ctx
 }

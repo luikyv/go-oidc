@@ -218,6 +218,48 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 		},
 		{
+			name: "invalid grant when pending session belongs to a different client",
+			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
+
+				otherClient, otherSecret := oidctest.NewClient(t)
+				otherClient.ID = "other_device_client"
+				otherClient.Secret = "other_device_secret"
+				otherSecret = otherClient.Secret
+				otherClient.GrantTypes = append(otherClient.GrantTypes, goidc.GrantDeviceCode)
+				ctx.StaticClients = append(ctx.StaticClients, otherClient)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {otherClient.ID},
+					"client_secret": {otherSecret},
+				}
+
+				session := &goidc.AuthnSession{
+					ID:         "random_device_session_id",
+					DeviceCode: grant.DeviceCode,
+					ClientID:   c.ID,
+					Status:     goidc.StatusPending,
+					CreatedAt:  timeutil.TimestampNow(),
+					ExpiresAt:  timeutil.TimestampNow() + 60,
+				}
+				if err := ctx.DeviceSaveSession(session); err != nil {
+					t.Fatalf("DeviceSaveSession() error = %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+			validate: func(t *testing.T, ctx oidc.Context, _ response) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 0 {
+					t.Fatalf("len(grants) = %d, want 0", len(grants))
+				}
+			},
+		},
+		{
 			name: "invalid grant when grant and session are missing",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)

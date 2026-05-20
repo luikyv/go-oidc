@@ -325,6 +325,7 @@ func (op *Provider) setDefaults() {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(manager))
 		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
 		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
+		op.config.DCRValidateInitialTokenFunc = nonZeroOrDefault(op.config.DCRValidateInitialTokenFunc, defaultDCRValidateInitialTokenFunc)
 	}
 
 	if op.config.PARIsEnabled {
@@ -647,6 +648,10 @@ func defaultGenerateUserCodeFunc() goidc.RandomFunc {
 		}
 		return result.String()
 	}
+}
+
+func defaultDCRValidateInitialTokenFunc(context.Context, string) error {
+	return nil
 }
 
 func defaultClientIDFunc(ctx context.Context) string {
