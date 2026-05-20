@@ -10,7 +10,7 @@ import (
 )
 
 type request struct {
-	*client.Client
+	*client.Meta
 }
 
 func (r *request) UnmarshalJSON(data []byte) error {
@@ -20,7 +20,7 @@ func (r *request) UnmarshalJSON(data []byte) error {
 		return err
 	}
 
-	var c client.Client
+	var c client.Meta
 	if err := json.Unmarshal(data, &c); err != nil {
 		return err
 	}
@@ -32,7 +32,7 @@ func (r *request) UnmarshalJSON(data []byte) error {
 		}
 	}
 
-	r.Client = &c
+	r.Meta = &c
 
 	return nil
 }

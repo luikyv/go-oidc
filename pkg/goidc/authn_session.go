@@ -1,31 +1,5 @@
 package goidc
 
-import (
-	"context"
-
-	"github.com/luikyv/go-oidc/internal/timeutil"
-)
-
-// AuthnSessionManager contains all the logic needed to manage authentication
-// sessions.
-type AuthnSessionManager interface {
-	Save(ctx context.Context, session *AuthnSession) error
-	SessionByCallbackID(ctx context.Context, callbackID string) (*AuthnSession, error)
-	// SessionByAuthCode fetches an authn session by the code created during the
-	// authorization code flow.
-	// If authorization code is not enabled, this function can be left empty.
-	SessionByAuthCode(ctx context.Context, authorizationCode string) (*AuthnSession, error)
-	// SessionByPushedAuthReqID fetches an authn session by the request URI created
-	// during PAR.
-	// If PAR is not enabled, this function can be left empty.
-	SessionByPushedAuthReqID(ctx context.Context, id string) (*AuthnSession, error)
-	// SessionByCIBAAuthID fetches an authn session by the auth request ID created
-	// during CIBA.
-	// If CIBA is not enabled, this function can be left empty.
-	SessionByCIBAAuthID(ctx context.Context, id string) (*AuthnSession, error)
-	Delete(ctx context.Context, id string) error
-}
-
 // AuthnSession is a short lived session that holds information about
 // authorization requests.
 // It can be interacted with so to implement more sophisticated user
@@ -42,16 +16,19 @@ type AuthnSession struct {
 	// grant and returned in the introspection response.
 	Username string `json:"username,omitempty"`
 	ClientID string `json:"client_id"`
-	// PushedAuthReqID is the id generated during /par used to fetch the session
-	// during calls to /authorize.
-	//
-	// This value will be returned as the request_uri of the /par response.
+	// PushedAuthReqID is populated when the session is created from a pushed
+	// authorization request (PAR). It is the handle returned as request_uri.
 	PushedAuthReqID string `json:"pushed_auth_req_id,omitempty"`
-	// CallbackID is the id used to fetch the authentication session after user
-	// interaction during calls to the callback endpoint.
-	CallbackID string `json:"callback_id,omitempty"`
-	CIBAAuthID string `json:"ciba_auth_req_id,omitempty"`
-	AuthCode   string `json:"auth_code,omitempty"`
+	// AuthReqID is populated when the session is created for a CIBA request.
+	// It is the handle returned to the client for later token polling or
+	// notification correlation.
+	AuthReqID string `json:"auth_req_id,omitempty"`
+	// DeviceCode is populated when the session is created by the device
+	// authorization endpoint. It is later redeemed at the token endpoint.
+	DeviceCode string `json:"device_code,omitempty"`
+	// UserCode is populated for device authorization flows when a user-facing
+	// verification code is issued for manual entry at the verification endpoint.
+	UserCode string `json:"user_code,omitempty"`
 	// PolicyID is the id of the autentication policy used to authenticate
 	// the user.
 	PolicyID string `json:"policy_id,omitempty"`
@@ -70,17 +47,13 @@ type AuthnSession struct {
 	ClientCertThumbprint string `json:"client_cert_thumbprint,omitempty"`
 
 	// Store allows storing additional information between interactions.
-	Store              map[string]any `json:"store,omitempty"`
-	ExpiresAtTimestamp int            `json:"expires_at"`
-	CreatedAtTimestamp int            `json:"created_at"`
-	IDTokenHintClaims  map[string]any `json:"id_token_hint_claims,omitempty"`
-	VCInfo             *struct {
+	Store             map[string]any `json:"store,omitempty"`
+	ExpiresAt         int            `json:"expires_at"`
+	CreatedAt         int            `json:"created_at"`
+	IDTokenHintClaims map[string]any `json:"id_token_hint_claims,omitempty"`
+	VCInfo            *struct {
 		Issuer           string              `json:"issuer"`
 		ConfigurationIDs []VCConfigurationID `json:"configuration_ids"`
 	} `json:"vc_info,omitempty"`
 	AuthorizationParameters
-}
-
-func (s *AuthnSession) IsExpired() bool {
-	return timeutil.TimestampNow() >= s.ExpiresAtTimestamp
 }

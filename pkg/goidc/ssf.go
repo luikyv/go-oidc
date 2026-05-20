@@ -8,7 +8,10 @@ import (
 type SSFEventStreamManager interface {
 	Create(context.Context, *SSFEventStream) error
 	Update(context.Context, *SSFEventStream) error
+	// EventStream returns the event stream identified by id.
+	// It must return [ErrNotFound] when the stream does not exist.
 	EventStream(context.Context, string) (*SSFEventStream, error)
+	// EventStreams returns the event streams associated with the receiver.
 	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
 	Delete(context.Context, string) error
 	AddSubject(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error

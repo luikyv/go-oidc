@@ -2,6 +2,8 @@ package client
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
@@ -12,7 +14,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Resolve(ctx oidc.Context, c *Client) (err error) {
+func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	if ctx.RPMetadataChoicesIsEnabled {
 		c.SubIdentifierType, err = resolveChoice(c.SubIdentifierTypes, c.SubIdentifierType, ctx.SubIdentifierTypes, "subject_types_supported")
 		if err != nil {
@@ -134,14 +136,16 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		}
 	}
 
-	for _, scopeID := range strutil.SplitWithSpaces(c.ScopeIDs) {
+	for _, scopeID := range strings.Fields(c.ScopeIDs) {
 		if !slices.ContainsFunc(ctx.Scopes, func(s goidc.Scope) bool { return s.ID == scopeID }) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "scope %s is not allowed", scopeID)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("scope %s is not allowed", scopeID))
 		}
 	}
 
 	if ctx.OpenIDIsRequired && c.ScopeIDs != "" && !strutil.ContainsOpenID(c.ScopeIDs) {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "scope openid is required")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			errors.New("scope openid is required"))
 	}
 
 	// [OIDC DCR 1.0 §2] grant_types defaults to ["authorization_code"] if omitted.
@@ -157,25 +161,30 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		c.TokenAuthnMethod = ctx.TokenAuthnMethodDefault
 	}
 	if !slices.Contains(ctx.TokenAuthnMethods, c.TokenAuthnMethod) {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "token_endpoint_auth_method %s is not allowed", c.TokenAuthnMethod)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("token_endpoint_auth_method %s is not allowed", c.TokenAuthnMethod))
 	}
 
 	switch c.TokenAuthnMethod {
 	case goidc.AuthnMethodPrivateKeyJWT:
 		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenAuthnSigAlg) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg))
 		}
 
 		if c.JWKS == nil && c.JWKSURI == "" && (!ctx.OpenIDFedIsEnabled || c.SignedJWKSURI == "") {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "the jwks is required for private_key_jwt")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("jwks or jwks_uri is required for private_key_jwt"))
 		}
 	case goidc.AuthnMethodSecretJWT:
 		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenAuthnSigAlg) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg))
 		}
 	case goidc.AuthnMethodSelfSignedTLS:
 		if c.JWKSURI == "" && c.JWKS == nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "jwks is required for self_signed_tls_client_auth")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("jwks or jwks_uri is required for self_signed_tls_client_auth"))
 		}
 		c.TokenAuthnSigAlg = ""
 	case goidc.AuthnMethodTLS:
@@ -190,7 +199,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 			numberOfIdentifiers++
 		}
 		if numberOfIdentifiers != 1 {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "only one of: tls_client_auth_subject_dn, tls_client_auth_san_dns, tls_client_auth_san_ip must be informed for tls_client_auth")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("exactly one TLS client authentication identifier must be configured"))
 		}
 	}
 
@@ -207,17 +217,20 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	if ctx.TokenIntrospectionIsEnabled {
 		if c.TokenIntrospectionAuthnMethod != "" {
 			if c.TokenIntrospectionAuthnMethod != c.TokenAuthnMethod {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "introspection_endpoint_auth_method must match token_endpoint_auth_method")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("introspection_endpoint_auth_method must match token_endpoint_auth_method"))
 			}
 
 			switch c.TokenIntrospectionAuthnMethod {
 			case goidc.AuthnMethodPrivateKeyJWT:
 				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg))
 				}
 			case goidc.AuthnMethodSecretJWT:
 				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg))
 				}
 			}
 
@@ -233,17 +246,20 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	if ctx.TokenRevocationIsEnabled {
 		if c.TokenRevocationAuthnMethod != "" {
 			if c.TokenRevocationAuthnMethod != c.TokenAuthnMethod {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "revocation_endpoint_auth_method must match token_endpoint_auth_method")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("revocation_endpoint_auth_method must match token_endpoint_auth_method"))
 			}
 
 			switch c.TokenRevocationAuthnMethod {
 			case goidc.AuthnMethodPrivateKeyJWT:
 				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg))
 				}
 			case goidc.AuthnMethodSecretJWT:
 				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg))
 				}
 			}
 
@@ -258,12 +274,14 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 	for _, gt := range c.GrantTypes {
 		if !slices.Contains(ctx.GrantTypes, gt) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "grant_type %s is not allowed", gt)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("grant_type %s is not allowed", gt))
 		}
 	}
 
 	if slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) && c.TokenAuthnMethod == goidc.AuthnMethodNone {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "client_credentials grant is not allowed for public clients")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			errors.New("client_credentials is not allowed for public clients"))
 	}
 
 	// [OIDC DCR 1.0 §2] application_type defaults to web.
@@ -276,24 +294,28 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	}
 
 	if c.DefaultMaxAgeSecs != nil && *c.DefaultMaxAgeSecs < 0 {
-		return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "default_max_age must not be negative")
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			errors.New("default_max_age must not be negative"))
 	}
 
 	if c.IDTokenSigAlg == "" {
 		c.IDTokenSigAlg = ctx.IDTokenDefaultSigAlg
 	}
 	if !slices.Contains(ctx.IDTokenSigAlgs, c.IDTokenSigAlg) {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "id_token_signed_response_alg %s is not allowed", c.IDTokenSigAlg)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("id_token_signed_response_alg %s is not allowed", c.IDTokenSigAlg))
 	}
 
 	if ctx.IDTokenEncIsEnabled {
 		if c.IDTokenContentEncAlg != "" && c.IDTokenKeyEncAlg == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "id_token_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("id_token_encrypted_response_alg is required when id_token_encrypted_response_enc is set"))
 		}
 
 		if c.IDTokenKeyEncAlg != "" {
 			if !slices.Contains(ctx.IDTokenKeyEncAlgs, c.IDTokenKeyEncAlg) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "id_token_encrypted_response_alg %s is not allowed", c.IDTokenKeyEncAlg)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("id_token_encrypted_response_alg %s is not allowed", c.IDTokenKeyEncAlg))
 			}
 
 			if c.IDTokenContentEncAlg == "" {
@@ -301,7 +323,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 			}
 
 			if !slices.Contains(ctx.IDTokenContentEncAlgs, c.IDTokenContentEncAlg) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "id_token_encrypted_response_enc %s is not allowed", c.IDTokenContentEncAlg)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("id_token_encrypted_response_enc %s is not allowed", c.IDTokenContentEncAlg))
 			}
 		}
 	} else {
@@ -310,17 +333,20 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	}
 
 	if c.UserInfoSigAlg != "" && !slices.Contains(ctx.UserInfoSigAlgs, c.UserInfoSigAlg) {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "userinfo_signed_response_alg %s is not allowed", c.UserInfoSigAlg)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("userinfo_signed_response_alg %s is not allowed", c.UserInfoSigAlg))
 	}
 
 	if ctx.UserInfoEncIsEnabled {
 		if c.UserInfoContentEncAlg != "" && c.UserInfoKeyEncAlg == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "userinfo_encrypted_response_alg is required if id_token_encrypted_response_enc is informed")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("userinfo_encrypted_response_alg is required when userinfo_encrypted_response_enc is set"))
 		}
 
 		if c.UserInfoKeyEncAlg != "" {
 			if !slices.Contains(ctx.UserInfoKeyEncAlgs, c.UserInfoKeyEncAlg) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "userinfo_encrypted_response_alg %s is not allowed", c.UserInfoKeyEncAlg)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("userinfo_encrypted_response_alg %s is not allowed", c.UserInfoKeyEncAlg))
 			}
 
 			if c.UserInfoContentEncAlg == "" {
@@ -328,7 +354,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 			}
 
 			if !slices.Contains(ctx.UserInfoContentEncAlgs, c.UserInfoContentEncAlg) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "userinfo_encrypted_response_enc %s is not allowed", c.UserInfoContentEncAlg)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("userinfo_encrypted_response_enc %s is not allowed", c.UserInfoContentEncAlg))
 			}
 		}
 	} else {
@@ -338,21 +365,25 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 	if ctx.JARIsEnabled {
 		if c.JARSigAlg != "" && !slices.Contains(ctx.JARSigAlgs, c.JARSigAlg) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "request_object_signing_alg %s is not allowed", c.JARSigAlg)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("request_object_signing_alg %s is not allowed", c.JARSigAlg))
 		}
 
 		if ctx.JAREncIsEnabled {
 			if c.JARContentEncAlg != "" && c.JARKeyEncAlg == "" {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "request_object_encryption_alg is required if request_object_encryption_enc is informed")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("request_object_encryption_alg is required when request_object_encryption_enc is set"))
 			}
 
 			if c.JARKeyEncAlg != "" {
 				if !slices.Contains(ctx.JARKeyEncAlgs, c.JARKeyEncAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "request_object_encryption_alg %s is not allowed", c.JARKeyEncAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("request_object_encryption_alg %s is not allowed", c.JARKeyEncAlg))
 				}
 
 				if c.JARContentEncAlg != "" && !slices.Contains(ctx.JARContentEncAlgs, c.JARContentEncAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "request_object_encryption_enc %s is not allowed", c.JARContentEncAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("request_object_encryption_enc %s is not allowed", c.JARContentEncAlg))
 				}
 			}
 		} else {
@@ -368,17 +399,20 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 	if ctx.JARMIsEnabled {
 		if c.JARMSigAlg != "" && !slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "authorization_signed_response_alg %s is not allowed", c.JARMSigAlg)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("authorization_signed_response_alg %s is not allowed", c.JARMSigAlg))
 		}
 
 		if ctx.JARMEncIsEnabled {
 			if c.JARMContentEncAlg != "" && c.JARMKeyEncAlg == "" {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "authorization_encrypted_response_alg is required if authorization_encrypted_response_enc is informed")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("authorization_encrypted_response_alg is required when authorization_encrypted_response_enc is set"))
 			}
 
 			if c.JARMKeyEncAlg != "" {
 				if !slices.Contains(ctx.JARMKeyEncAlgs, c.JARMKeyEncAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "authorization_encrypted_response_alg %s is not allowed", c.JARMKeyEncAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("authorization_encrypted_response_alg %s is not allowed", c.JARMKeyEncAlg))
 				}
 
 				if c.JARMContentEncAlg == "" {
@@ -386,7 +420,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 				}
 
 				if !slices.Contains(ctx.JARMContentEncAlgs, c.JARMContentEncAlg) {
-					return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "authorization_encrypted_response_enc %s is not allowed", c.JARMContentEncAlg)
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						fmt.Errorf("authorization_encrypted_response_enc %s is not allowed", c.JARMContentEncAlg))
 				}
 			}
 		} else {
@@ -402,11 +437,13 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	for _, uri := range c.RedirectURIs {
 		parsedURI, err := url.Parse(uri)
 		if err != nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid redirect uri")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("a redirect_uri is invalid"))
 		}
 
 		if parsedURI.Fragment != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "redirect uri cannot contain a fragment")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("redirect_uris must not contain fragments"))
 		}
 
 		switch c.ApplicationType {
@@ -417,20 +454,24 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 				if ctx.LocalhostRedirectURIIsEnabled && parsedURI.Hostname() == "localhost" {
 					continue
 				} else if !strings.HasPrefix(parsedURI.Host, "127.") && parsedURI.Hostname() != "::1" {
-					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "http redirect uris for native apps must use loopback addresses")
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						errors.New("http redirect_uris for native applications must use loopback addresses"))
 				}
 			case "https": // Claimed HTTPS URI Redirection.
 				if strings.HasPrefix(parsedURI.Host, "127.") || parsedURI.Hostname() == "::1" {
-					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "https redirect uris for native apps must not use loopback addresses")
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						errors.New("https redirect_uris for native applications must not use loopback addresses"))
 				}
 			default: // Private-use URI Scheme Redirection.
 				if !strings.Contains(parsedURI.Scheme, ".") {
-					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "custom uri schemes must use reverse domain name based scheme")
+					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+						errors.New("custom redirect URI schemes must use reverse-domain notation"))
 				}
 			}
 		default: // Default as web application type.
 			if parsedURI.Scheme != "https" {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "invalid redirect uri scheme")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("redirect_uris for web applications must use https"))
 			}
 		}
 	}
@@ -447,32 +488,38 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 	for _, rt := range c.ResponseTypes {
 		if !slices.Contains(ctx.ResponseTypes, rt) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "response_type %s is not allowed", rt)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("response_type %s is not allowed", rt))
 		}
 
 		if !slices.Contains(c.GrantTypes, goidc.GrantImplicit) && rt.IsImplicit() {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "implicit grant type is required for implicit response types")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("implicit response types require the implicit grant type"))
 		}
 
 		if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) && rt.Contains(goidc.ResponseTypeCode) {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "authorization_code grant type is required for code response types")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("code response types require the authorization_code grant type"))
 		}
 	}
 
 	if c.JWKS != nil {
 		if c.JWKSURI != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "jwks and jwks_uri must not both be present")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("jwks and jwks_uri must not both be present"))
 		}
 		for _, jwk := range c.JWKS.Keys {
 			if !jwk.IsPublic() || !jwk.Valid() {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "the jwk with id: %s is invalid", jwk.KeyID)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("the jwk with id %s is invalid", jwk.KeyID))
 			}
 		}
 	}
 
 	if c.JWKSURI != "" {
 		if c.JWKS != nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "jwks and jwks_uri must not both be present")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("jwks and jwks_uri must not both be present"))
 		}
 		if err := validateURL("jwks_uri", c.JWKSURI); err != nil {
 			return err
@@ -488,7 +535,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 	if ctx.RARIsEnabled {
 		for _, dt := range c.AuthDetailTypes {
 			if !slices.Contains(ctx.RARDetailTypes, dt) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "authorization_detail type %s is not allowed", dt)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("authorization_detail type %s is not allowed", dt))
 			}
 		}
 	} else {
@@ -542,7 +590,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		c.SubIdentifierType = ctx.SubIdentifierTypeDefault
 	}
 	if !slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "subject_type %s is not allowed", c.SubIdentifierType)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("subject_type %s is not allowed", c.SubIdentifierType))
 	}
 
 	if c.SubIdentifierType == goidc.SubIdentifierPairwise {
@@ -564,27 +613,32 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 				}
 			}
 			if len(hosts) != 1 {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "all redirect_uris must share the same host when using pairwise subject identifier type without specifying a sector_identifier_uri")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("all redirect_uris must share the same host when using pairwise subject identifiers without sector_identifier_uri"))
 			}
 		}
 	}
 
 	if slices.Contains(c.GrantTypes, goidc.GrantCIBA) {
 		if c.TokenAuthnMethod == goidc.AuthnMethodNone {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "token_endpoint_auth_method none is not allowed for ciba")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("token_endpoint_auth_method none is not allowed for ciba"))
 		}
 
 		if c.CIBATokenDeliveryMode == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "backchannel_token_delivery_mode is required")
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				errors.New("backchannel_token_delivery_mode is required"))
 		}
 
-		if !slices.Contains(ctx.CIBATokenDeliveryModels, c.CIBATokenDeliveryMode) {
-			return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "backchannel_token_delivery_mode %s is not allowed", c.CIBATokenDeliveryMode)
+		if !slices.Contains(ctx.CIBATokenDeliveryModes, c.CIBATokenDeliveryMode) {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("backchannel_token_delivery_mode %s is not allowed", c.CIBATokenDeliveryMode))
 		}
 
 		if c.CIBATokenDeliveryMode.IsNotificationMode() {
 			if c.CIBANotificationEndpoint == "" {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "backchannel_client_notification_endpoint is required for ping and push delivery modes")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("backchannel_client_notification_endpoint is required for ping and push delivery modes"))
 			}
 
 			if err := validateURL("backchannel_client_notification_endpoint", c.CIBANotificationEndpoint); err != nil {
@@ -600,7 +654,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 		if ctx.CIBAJARIsEnabled {
 			if c.CIBAJARSigAlg != "" && !slices.Contains(ctx.CIBAJARSigAlgs, c.CIBAJARSigAlg) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "backchannel_authentication_request_signing_alg %s is not allowed", c.CIBAJARSigAlg)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("backchannel_authentication_request_signing_alg %s is not allowed", c.CIBAJARSigAlg))
 			}
 		} else {
 			c.CIBAJARSigAlg = ""
@@ -614,7 +669,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		//    - Usage of signed request objects.
 		if c.SubIdentifierType == goidc.SubIdentifierPairwise && c.CIBATokenDeliveryMode != goidc.CIBADeliveryModePush {
 			if c.JWKSURI == "" {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "the jwks_uri is required for ciba with non-push delivery modes when using pairwise sub type")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("jwks_uri is required for ciba with non-push delivery modes when using pairwise subject identifiers"))
 			}
 
 			jwksURIOwnershipIsGuaranteed := func() bool {
@@ -633,7 +689,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 				return false
 			}()
 			if !jwksURIOwnershipIsGuaranteed {
-				return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "the client needs to demonstrate that the jwks_uri belongs to it when using pairwise sub type")
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					errors.New("the client must demonstrate control of jwks_uri when using pairwise subject identifiers"))
 			}
 		}
 	} else {
@@ -652,13 +709,17 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 		httpClient := ctx.HTTPClient()
 		resp, err := httpClient.Get(c.SectorIdentifierURI)
 		if err != nil || resp.StatusCode != http.StatusOK {
-			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the sector_identifier_uri", err)
+			if err != nil {
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
+			}
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("fetching sector_identifier_uri returned status %d", resp.StatusCode))
 		}
 		defer func() { _ = resp.Body.Close() }()
 
 		var uris []string
 		if err := json.NewDecoder(resp.Body).Decode(&uris); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not decode the result of sector_identifier_uri", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 		}
 
 		var wantedURIs []string
@@ -678,7 +739,8 @@ func Resolve(ctx oidc.Context, c *Client) (err error) {
 
 		for _, uri := range wantedURIs {
 			if !slices.Contains(uris, uri) {
-				return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "the uri %s is not among the ones fetched from sector_identifier_uri", uri)
+				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+					fmt.Errorf("the uri %s is not listed in sector_identifier_uri", uri))
 			}
 		}
 	}
@@ -698,7 +760,8 @@ func resolveChoice[T comparable](choices []T, current T, supported []T, fieldNam
 
 	if current != zero {
 		if !slices.Contains(choices, current) {
-			return zero, goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fieldName+" value is not in the client's declared list")
+			return zero, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+				fmt.Errorf("%s is not in the client's declared list", fieldName))
 		}
 		if slices.Contains(supported, current) {
 			return current, nil
@@ -711,17 +774,20 @@ func resolveChoice[T comparable](choices []T, current T, supported []T, fieldNam
 		}
 	}
 
-	return zero, goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "no allowed value found in "+fieldName)
+	return zero, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+		fmt.Errorf("no allowed value found in %s", fieldName))
 }
 
 func validateURL(field, s string) error {
 	parsedRU, err := url.Parse(s)
 	if err != nil {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "could not parse %s", field)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("could not parse %s", field))
 	}
 
 	if parsedRU.Scheme != "https" || parsedRU.Host == "" {
-		return goidc.Errorf(goidc.ErrorCodeInvalidClientMetadata, "%s with value %s is invalid", field, s)
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("%s with value %s is invalid", field, s))
 	}
 
 	return nil

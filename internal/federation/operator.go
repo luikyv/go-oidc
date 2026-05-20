@@ -193,7 +193,7 @@ func (ops metadataOperators[T]) Apply(value T) (T, error) {
 	return value, nil
 }
 
-func (ops metadataOperators[T]) applyValue(value T) (T, error) {
+func (ops metadataOperators[T]) applyValue(value T) (T, error) { //nolint:unparam
 	if !ops.isValueSet() {
 		return value, nil
 	}
@@ -201,7 +201,7 @@ func (ops metadataOperators[T]) applyValue(value T) (T, error) {
 	return ops.Value.Value, nil
 }
 
-func (ops metadataOperators[T]) applyAdd(value T) (T, error) {
+func (ops metadataOperators[T]) applyAdd(value T) (T, error) { //nolint:unparam
 	if !ops.isAddSet() {
 		return value, nil
 	}
@@ -209,7 +209,7 @@ func (ops metadataOperators[T]) applyAdd(value T) (T, error) {
 	return mergeSlices(value, ops.Add), nil
 }
 
-func (ops metadataOperators[T]) applyDefault(value T) (T, error) {
+func (ops metadataOperators[T]) applyDefault(value T) (T, error) { //nolint:unparam
 	if !ops.isDefaultSet() {
 		return value, nil
 	}
@@ -332,7 +332,7 @@ func (highOps metadataOperators[T]) mergeValue(lowOps metadataOperators[T]) (nul
 	return highOps.Value, nil
 }
 
-func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, error) {
+func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, error) { //nolint:unparam
 	if !highOps.isAddSet() {
 		return lowOps.Add, nil
 	}
@@ -396,7 +396,7 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 	return subsetOf, nil
 }
 
-func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T]) (T, error) {
+func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T]) (T, error) { //nolint:unparam
 	if !highOps.isSupersetOfSet() {
 		return lowOps.SupersetOf, nil
 	}

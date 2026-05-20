@@ -42,6 +42,7 @@ func TestValidateTLSPoP_NoThumbprint(t *testing.T) {
 func TestValidateTLSPoP_NoCert(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.MTLSTokenBindingIsEnabled = true
 	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return nil, errors.New("no cert")
 	}
@@ -70,6 +71,7 @@ func TestValidateTLSPoP_NoCert(t *testing.T) {
 func TestValidateTLSPoP_ThumbprintMismatch(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.MTLSTokenBindingIsEnabled = true
 	certRaw := []byte("test_cert_raw_data")
 	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{Raw: certRaw}, nil
@@ -99,6 +101,7 @@ func TestValidateTLSPoP_ThumbprintMismatch(t *testing.T) {
 func TestValidateTLSPoP_ValidCert(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
+	ctx.MTLSTokenBindingIsEnabled = true
 	certRaw := []byte("test_cert_raw_data")
 	ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 		return &x509.Certificate{Raw: certRaw}, nil

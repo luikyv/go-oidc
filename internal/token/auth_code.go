@@ -8,148 +8,140 @@ import (
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
+	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/vc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
-	if req.code == "" {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid authorization code")
-	}
-
+func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
 	}
 
-	as, err := ctx.AuthnSessionByAuthCode(req.code)
+	if req.code == "" {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("code is required"))
+	}
+
+	grant, err := ctx.GrantByAuthCode(req.code)
 	if err != nil {
-		if errors.Is(err, goidc.ErrNotFound) {
-			// Invalidate any grant associated with the authorization code.
-			// This ensures that even if the code is compromised, the access token
-			// that it generated cannot be misused by a malicious client.
-			_ = ctx.DeleteGrantByAuthorizationCode(req.code)
+		if !errors.Is(err, goidc.ErrNotFound) {
+			return response{}, fmt.Errorf("could not load the grant by auth code: %w", err)
 		}
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid authorization code", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", err)
 	}
 
-	// Delete the session to prevent reuse of the code.
-	if err := ctx.DeleteAuthnSession(as.ID); err != nil {
-		return response{}, err
+	if grant.RevokedAt != 0 {
+		return response{}, goidc.WrapError(goidc.ErrorCodeExpiredToken, "invalid grant", errors.New("grant was revoked"))
 	}
 
-	if err := validateAuthCodeGrantRequest(ctx, req, c, as); err != nil {
-		return response{}, err
-	}
+	resp, err := func() (response, error) {
+		if grant.AuthCodeConsumedAt != 0 {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has already been redeemed"))
+		}
 
-	grant, err := NewGrant(ctx, c, GrantOptions{
-		AuthCode:             as.AuthCode,
-		Type:                 goidc.GrantAuthorizationCode,
-		Subject:              as.Subject,
-		Username:             as.Username,
-		ClientID:             as.ClientID,
-		Scopes:               as.GrantedScopes,
-		AuthDetails:          as.GrantedAuthDetails,
-		Resources:            as.GrantedResources,
-		Nonce:                as.Nonce,
-		Store:                as.Store,
-		JWKThumbprint:        dpopThumbprint(ctx),
-		ClientCertThumbprint: tlsThumbprint(ctx),
-	})
-	if err != nil {
-		return response{}, err
-	}
+		if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
+			return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the authorization_code grant type"))
+		}
 
-	tkn, tokenValue, err := Issue(ctx, grant, c, &IssuanceOptions{
-		Scopes:      req.scopes,
-		AuthDetails: req.authDetails,
-		Resources:   req.resources,
-	})
-	if err != nil {
-		return response{}, err
-	}
+		if c.ID != grant.ClientID {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code belongs to a different client"))
+		}
 
-	tokenResp := response{
-		AccessToken:          tokenValue,
-		ExpiresIn:            tkn.LifetimeSecs(),
-		TokenType:            tkn.Type,
-		RefreshToken:         grant.RefreshToken,
-		Scopes:               tkn.Scopes,
-		AuthorizationDetails: tkn.AuthDetails,
-		Resources:            tkn.Resources,
-	}
-	if strutil.ContainsOpenID(tkn.Scopes) {
-		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
-			Subject: grant.Subject,
-			Nonce:   grant.Nonce,
-			Claims:  ctx.IDTokenClaims(grant),
+		if timeutil.TimestampNow() >= grant.AuthCodeExpiresAt {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the authorization code has expired"))
+		}
+
+		if err := ValidateBinding(ctx, c, &bindindValidationOptions{
+			tlsIsRequired:     grant.CertThumbprint != "",
+			tlsCertThumbprint: grant.CertThumbprint,
+			dpopIsRequired:    grant.JWKThumbprint != "",
+			dpopJWKThumbprint: grant.JWKThumbprint,
+		}); err != nil {
+			return response{}, err
+		}
+
+		if req.redirectURI != grant.AuthParams.RedirectURI {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the redirect_uri does not match the authorization code"))
+		}
+
+		if err := validatePKCE(ctx, req, grant); err != nil {
+			return response{}, err
+		}
+
+		if err := validateResources(ctx, req, grant.Resources); err != nil {
+			return response{}, err
+		}
+
+		if err := validateAuthDetails(ctx, req, c, grant.AuthDetails); err != nil {
+			return response{}, err
+		}
+
+		if err := validateVerifiableCredentials(ctx, grant); err != nil {
+			return response{}, err
+		}
+
+		if err := validateScopes(ctx, req, c, grant.Scopes); err != nil {
+			return response{}, err
+		}
+
+		grant.JWKThumbprint = dpopThumbprint(ctx)
+		grant.CertThumbprint = tlsThumbprint(ctx)
+		grant.AuthCodeConsumedAt = timeutil.TimestampNow()
+		if err := ctx.SaveGrant(grant); err != nil {
+			return response{}, err
+		}
+
+		tkn, tokenValue, err := Issue(ctx, grant, c, &IssuanceOptions{
+			Scopes:      req.scopes,
+			AuthDetails: req.authDetails,
+			Resources:   req.resources,
 		})
 		if err != nil {
-			return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
+			return response{}, err
 		}
-	}
 
-	return tokenResp, nil
+		resp := response{
+			AccessToken:          tokenValue,
+			ExpiresIn:            tkn.LifetimeSecs(),
+			TokenType:            tkn.Type,
+			RefreshToken:         grant.RefreshToken,
+			Scopes:               tkn.Scopes,
+			AuthorizationDetails: tkn.AuthDetails,
+			Resources:            tkn.Resources,
+		}
+		if strutil.ContainsOpenID(tkn.Scopes) {
+			resp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
+				Subject: grant.Subject,
+				Nonce:   grant.AuthParams.Nonce,
+				Claims:  ctx.IDTokenClaims(grant),
+			})
+			if err != nil {
+				return response{}, fmt.Errorf("could not generate id token for the authorization code grant: %w", err)
+			}
+		}
+		return resp, nil
+	}()
+	if err != nil {
+		grant.RevokedAt = timeutil.TimestampNow()
+		if err := ctx.SaveGrant(grant); err != nil {
+			return response{}, fmt.Errorf("could not revoke grant: %w", err)
+		}
+		return response{}, err
+	}
+	return resp, nil
 }
 
-func validateAuthCodeGrantRequest(ctx oidc.Context, req request, c *goidc.Client, as *goidc.AuthnSession) error {
-	if !slices.Contains(c.GrantTypes, goidc.GrantAuthorizationCode) {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
-	}
-
-	if c.ID != as.ClientID {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization code was not issued to the client")
-	}
-
-	if as.IsExpired() {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "the authorization code is expired")
-	}
-
-	if err := ValidateBinding(ctx, c, &bindindValidationOptions{
-		tlsIsRequired:     as.ClientCertThumbprint != "",
-		tlsCertThumbprint: as.ClientCertThumbprint,
-		dpopIsRequired:    as.JWKThumbprint != "",
-		dpopJWKThumbprint: as.JWKThumbprint,
-	}); err != nil {
-		return err
-	}
-
-	if req.redirectURI != as.RedirectURI {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid redirect_uri")
-	}
-
-	if err := validatePKCE(ctx, req, c, as); err != nil {
-		return err
-	}
-
-	if err := validateResources(ctx, req, as.GrantedResources); err != nil {
-		return err
-	}
-
-	if err := validateAuthDetails(ctx, req, c, as.GrantedAuthDetails); err != nil {
-		return err
-	}
-
-	if err := validateVerifiableCredentials(ctx, as); err != nil {
-		return err
-	}
-
-	if err := validateScopes(ctx, req, c, as.GrantedScopes); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func validateVerifiableCredentials(ctx oidc.Context, as *goidc.AuthnSession) error {
+func validateVerifiableCredentials(ctx oidc.Context, grant *goidc.Grant) error {
 	if !ctx.VCIsEnabled {
 		return nil
 	}
 
 	if _, _, err := vc.Resolve(ctx, vc.Request{
-		Scopes:    as.GrantedScopes,
-		Details:   as.GrantedAuthDetails,
-		Resources: as.GrantedResources,
+		Scopes:    grant.Scopes,
+		Details:   grant.AuthDetails,
+		Resources: grant.Resources,
 	}); err != nil {
 		return err
 	}

@@ -11,9 +11,6 @@ import (
 )
 
 type GrantOptions struct {
-	AuthCode             string
-	PreAuthCode          string
-	Type                 goidc.GrantType
 	Subject              string
 	Username             string
 	ClientID             string
@@ -21,26 +18,40 @@ type GrantOptions struct {
 	AuthDetails          []goidc.AuthDetail
 	Resources            goidc.Resources
 	Nonce                string
+	AuthCode             string
+	AuthCodeExpiresAt    int
+	PreAuthCode          string
+	DeviceCode           string
+	DeviceCodeExpiresAt  int
+	AuthReqID            string
+	AuthReqIDExpiresAt   int
+	AuthReqIDConsumedAt  int
 	JWKThumbprint        string
 	ClientCertThumbprint string
+	AuthParams           goidc.AuthorizationParameters
 	Store                map[string]any
 }
 
 func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Grant, error) {
 	grant := &goidc.Grant{
-		ID:                 ctx.GrantID(),
-		AuthCode:           opts.AuthCode,
-		PreAuthCode:        opts.PreAuthCode,
-		Type:               opts.Type,
-		Subject:            opts.Subject,
-		Username:           opts.Username,
-		ClientID:           opts.ClientID,
-		Scopes:             opts.Scopes,
-		Nonce:              opts.Nonce,
-		Store:              opts.Store,
-		JWKThumbprint:      opts.JWKThumbprint,
-		CertThumbprint:     opts.ClientCertThumbprint,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
+		ID:                  ctx.GrantID(),
+		AuthCode:            opts.AuthCode,
+		AuthCodeExpiresAt:   opts.AuthCodeExpiresAt,
+		PreAuthCode:         opts.PreAuthCode,
+		DeviceCode:          opts.DeviceCode,
+		DeviceCodeExpiresAt: opts.DeviceCodeExpiresAt,
+		AuthReqID:           opts.AuthReqID,
+		AuthReqIDExpiresAt:  opts.AuthReqIDExpiresAt,
+		AuthReqIDConsumedAt: opts.AuthReqIDConsumedAt,
+		Subject:             opts.Subject,
+		Username:            opts.Username,
+		ClientID:            opts.ClientID,
+		Scopes:              opts.Scopes,
+		Store:               opts.Store,
+		JWKThumbprint:       opts.JWKThumbprint,
+		CertThumbprint:      opts.ClientCertThumbprint,
+		AuthParams:          opts.AuthParams,
+		CreatedAt:           timeutil.TimestampNow(),
 	}
 	if ctx.RARIsEnabled {
 		grant.AuthDetails = opts.AuthDetails
@@ -53,9 +64,13 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 	}
 
 	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) && slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
-		ctx.RefreshTokenShouldIssue(c, grant) && grant.Type != goidc.GrantClientCredentials && grant.Type != goidc.GrantImplicit {
+		ctx.RefreshTokenShouldIssue(c, grant) && opts.Subject != c.ID {
 		grant.RefreshToken = ctx.RefreshToken()
-		grant.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		grant.RefreshTokenExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+	}
+
+	if err := ctx.SaveGrant(grant); err != nil {
+		return nil, err
 	}
 
 	return grant, nil
@@ -87,6 +102,7 @@ type request struct {
 	authReqID    string
 	preAuthCode  string
 	txCode       string
+	deviceCode   string
 }
 
 func newRequest(r *http.Request) request {
@@ -102,6 +118,7 @@ func newRequest(r *http.Request) request {
 		authReqID:    r.PostFormValue("auth_req_id"),
 		preAuthCode:  r.PostFormValue("pre-authorized_code"),
 		txCode:       r.PostFormValue("tx_code"),
+		deviceCode:   r.PostFormValue("device_code"),
 	}
 
 	if authDetails := r.PostFormValue("authorization_details"); authDetails != "" {

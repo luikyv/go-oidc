@@ -267,14 +267,13 @@ type cibaResponse struct {
 	Interval  int    `json:"interval"`
 }
 
-// TODO: Should ask the expiry?
 func newAuthnSession(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) *goidc.AuthnSession {
 	return &goidc.AuthnSession{
 		ID:                      ctx.AuthnSessionID(),
+		Status:                  goidc.StatusPending,
 		ClientID:                c.ID,
-		Status:                  goidc.StatusInProgress,
 		AuthorizationParameters: params,
-		CreatedAtTimestamp:      timeutil.TimestampNow(),
+		CreatedAt:               timeutil.TimestampNow(),
 		Store:                   make(map[string]any),
 	}
 }

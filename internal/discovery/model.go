@@ -49,6 +49,7 @@ type OpenIDConfiguration struct {
 	TokenRevocationEndpoint             string                             `json:"revocation_endpoint,omitempty"`
 	TokenRevocationAuthnMethods         []goidc.AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
 	TokenRevocationAuthnSigAlgs         []goidc.SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
+	DeviceAuthorizationEndpoint         string                             `json:"device_authorization_endpoint,omitempty"`
 
 	CIBATokenDeliveryModes []goidc.CIBATokenDeliveryMode `json:"backchannel_token_delivery_modes_supported,omitempty"`
 	CIBAEndpoint           string                        `json:"backchannel_authentication_endpoint,omitempty"`
@@ -62,7 +63,7 @@ type OpenIDConfiguration struct {
 	DisplayValues                  []goidc.DisplayValue           `json:"display_values_supported,omitempty"`
 	CodeChallengeMethods           []goidc.CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
 	EndSessionEndpoint             string                         `json:"end_session_endpoint,omitempty"`
-	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported"`
+	ClientRegistrationTypes        []goidc.ClientRegistrationType `json:"client_registration_types_supported,omitempty"`
 	OrganizationName               string                         `json:"organization_name,omitempty"`
 	FederationRegistrationEndpoint string                         `json:"federation_registration_endpoint,omitempty"`
 	SignedJWKSEndpoint             string                         `json:"signed_jwks_uri,omitempty"`

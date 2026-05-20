@@ -26,8 +26,10 @@ func main() {
 	scope := goidc.NewScope("ssf.events")
 	client := authutil.ClientSecretPost("client_one", "ssf_secret", scope)
 
-	op, _ := provider.New(goidc.ProfileOpenID, authutil.Issuer, authutil.PrivateJWKSFunc())
-	_ = op.WithOptions(
+	op, _ := provider.New(
+		authutil.Issuer,
+		nil,
+		authutil.PrivateJWKSFunc(),
 		provider.WithScopes(scope),
 		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClients(client),
@@ -52,7 +54,7 @@ func main() {
 			stream.StatusReason = "stream has expired"
 			return nil
 		}),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithSSFHTTPClientFunc(authutil.HTTPClient),
 	)
 

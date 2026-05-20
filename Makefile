@@ -1,4 +1,5 @@
 CS_VERSION = v5.1.39
+GOLANGCI_LINT_VERSION = v2.12.2
 
 setup-dev:
 	@make setup-cs
@@ -24,7 +25,7 @@ test-coverage:
 	@echo "Total Coverage: `go tool cover -func=coverage.out | grep total | grep -Eo '[0-9]+\.[0-9]+'` %"
 
 install-lint:
-	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@latest
+	@go install github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_VERSION)
 
 lint:
 	@golangci-lint run ./pkg/... ./internal/... ./examples/...

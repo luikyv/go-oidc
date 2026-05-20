@@ -2,6 +2,7 @@ package authorize
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 
 	"github.com/luikyv/go-oidc/internal/client"
@@ -15,7 +16,7 @@ import (
 )
 
 func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
-	var shouldRegisterClient bool
+	var shouldRegisterFedClient bool
 	c, err := func() (*goidc.Client, error) {
 		if !ctx.OpenIDFedIsEnabled {
 			return client.Authenticated(ctx, client.AuthnContextToken)
@@ -39,12 +40,12 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 			if !errors.Is(err, goidc.ErrNotFound) {
 				return nil, err
 			}
-			shouldRegisterClient = true
+			shouldRegisterFedClient = true
 			return federationClientForPAR(ctx, id, req)
 		}
 
-		if c.ExpiresAtTimestamp != 0 && timeutil.TimestampNow() > c.ExpiresAtTimestamp {
-			shouldRegisterClient = true
+		if c.ExpiresAt != 0 && timeutil.TimestampNow() >= c.ExpiresAt {
+			shouldRegisterFedClient = true
 			return federationClientForPAR(ctx, id, req)
 		}
 
@@ -58,7 +59,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 		jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "")
 		if jar {
 			if req.RequestObject == "" {
-				return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "request object is required")
+				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request object is required"))
 			}
 
 			jar, err := jarFromRequestObject(ctx, req.RequestObject, c)
@@ -72,12 +73,12 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 			return &goidc.AuthnSession{
 				ID:                      ctx.AuthnSessionID(),
-				Status:                  goidc.StatusInProgress,
-				PushedAuthReqID:         parRequestURIPrefix + ctx.PARID(),
+				Status:                  goidc.StatusPending,
+				PushedAuthReqID:         ctx.PARID(),
 				ClientID:                c.ID,
 				AuthorizationParameters: jar.AuthorizationParameters,
-				CreatedAtTimestamp:      timeutil.TimestampNow(),
-				ExpiresAtTimestamp:      timeutil.TimestampNow() + ctx.PARLifetimeSecs,
+				CreatedAt:               timeutil.TimestampNow(),
+				ExpiresAt:               timeutil.TimestampNow() + ctx.PARLifetimeSecs,
 				JWKThumbprint:           dpopThumbprintForPAR(ctx, req),
 				ClientCertThumbprint:    tlsThumbprint(ctx),
 				Store:                   make(map[string]any),
@@ -90,12 +91,12 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 
 		return &goidc.AuthnSession{
 			ID:                      ctx.AuthnSessionID(),
-			Status:                  goidc.StatusInProgress,
-			PushedAuthReqID:         parRequestURIPrefix + ctx.PARID(),
+			Status:                  goidc.StatusPending,
+			PushedAuthReqID:         ctx.PARID(),
 			ClientID:                c.ID,
 			AuthorizationParameters: req.AuthorizationParameters,
-			CreatedAtTimestamp:      timeutil.TimestampNow(),
-			ExpiresAtTimestamp:      timeutil.TimestampNow() + ctx.PARLifetimeSecs,
+			CreatedAt:               timeutil.TimestampNow(),
+			ExpiresAt:               timeutil.TimestampNow() + ctx.PARLifetimeSecs,
 			JWKThumbprint:           dpopThumbprintForPAR(ctx, req),
 			ClientCertThumbprint:    tlsThumbprint(ctx),
 			Store:                   make(map[string]any),
@@ -106,21 +107,25 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	}
 
 	if err := ctx.PARHandleSession(as, c); err != nil {
-		return parResponse{}, err
+		var oidcErr goidc.Error
+		if errors.As(err, &oidcErr) {
+			return parResponse{}, oidcErr
+		}
+		return parResponse{}, fmt.Errorf("could not handle the pushed authorization request session: %w", err)
 	}
 
-	if shouldRegisterClient {
-		if err := ctx.SaveClient(c); err != nil {
-			return parResponse{}, err
+	if shouldRegisterFedClient {
+		if err := ctx.OpenIDFedSaveClient(c); err != nil {
+			return parResponse{}, fmt.Errorf("could not save the federated client for the pushed authorization request: %w", err)
 		}
 	}
 
-	if err := ctx.SaveAuthnSession(as); err != nil {
-		return parResponse{}, err
+	if err := ctx.AuthSaveSession(as); err != nil {
+		return parResponse{}, fmt.Errorf("could not save the pushed authorization request session: %w", err)
 	}
 
 	return parResponse{
-		RequestURI: as.PushedAuthReqID,
+		RequestURI: parRequestURIPrefix + as.PushedAuthReqID,
 		ExpiresIn:  ctx.PARLifetimeSecs,
 	}, nil
 }
@@ -136,10 +141,14 @@ func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
 }
 
 func tlsThumbprint(ctx oidc.Context) string {
-	if clientCert, err := ctx.ClientCert(); ctx.MTLSTokenBindingIsEnabled && err == nil {
-		return hashutil.Thumbprint(string(clientCert.Raw))
+	if !ctx.MTLSTokenBindingIsEnabled {
+		return ""
 	}
-	return ""
+	clientCert, err := ctx.ClientCert()
+	if err != nil {
+		return ""
+	}
+	return hashutil.Thumbprint(string(clientCert.Raw))
 }
 
 func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {
@@ -159,12 +168,13 @@ func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Cl
 	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT
 	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodSelfSignedTLS
 	if !jwksIsUsed {
-		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied,
-			"asymmetric cryptography must be used to authenticate requests when using automatic registration")
+		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied",
+			errors.New("automatic federation registration during PAR requires asymmetric client authentication or a signed request object"))
 	}
 
 	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeAutomatic) {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "the client is not registered for automatic registration")
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("the client is not registered for automatic federation registration"))
 	}
 
 	if err := client.Authenticate(ctx, c, client.AuthnContextToken); err != nil {

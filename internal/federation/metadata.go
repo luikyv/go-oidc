@@ -8,7 +8,7 @@ import (
 type metadata struct {
 	FederationAuthority *federationAuthority           `json:"federation_entity,omitempty"`
 	OpenIDProvider      *discovery.OpenIDConfiguration `json:"openid_provider,omitempty"`
-	OpenIDClient        *client.Client                 `json:"openid_relying_party,omitempty"`
+	OpenIDClient        *client.Meta                   `json:"openid_relying_party,omitempty"`
 }
 
 // Merge merges metadata from a subordinate statement (high) with metadata from

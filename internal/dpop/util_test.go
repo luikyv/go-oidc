@@ -1,6 +1,7 @@
 package dpop_test
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -29,6 +30,7 @@ func TestValidateJWT(t *testing.T) {
 					Host:            "https://server.example.com",
 					DPoPIsEnabled:   true,
 					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
+					CheckJTIFunc:    func(_ context.Context, _ string) error { return nil },
 					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodPost, "/token", nil),
@@ -46,6 +48,7 @@ func TestValidateJWT(t *testing.T) {
 					Host:            "https://resource.example.org",
 					DPoPIsEnabled:   true,
 					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
+					CheckJTIFunc:    func(_ context.Context, _ string) error { return nil },
 					JWTLifetimeSecs: 99999999999,
 				},
 				Request: httptest.NewRequest(http.MethodGet, "/protectedresource", nil),

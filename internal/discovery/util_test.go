@@ -20,6 +20,7 @@ func TestOIDCConfig(t *testing.T) {
 		JWKSEndpoint:               "/jwks",
 		TokenEndpoint:              "/token",
 		AuthorizationEndpoint:      "/authorize",
+		DeviceAuthEndpoint:         "/device_authorization",
 		PAREndpoint:                "/par",
 		DCREndpoint:                "/register",
 		UserInfoEndpoint:           "/userinfo",
@@ -33,7 +34,7 @@ func TestOIDCConfig(t *testing.T) {
 				Keys: []goidc.JSONWebKey{tokenKey, userKey},
 			}, nil
 		},
-		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
+		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantDeviceCode},
 		ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 		ResponseModes: []goidc.ResponseMode{goidc.ResponseModeQuery},
 		Claims:        []string{"random_claim"},
@@ -67,14 +68,15 @@ func TestOIDCConfig(t *testing.T) {
 
 	// Then.
 	want := OpenIDConfiguration{
-		Issuer:                     ctx.Issuer(),
-		ClientRegistrationEndpoint: ctx.Issuer() + ctx.DCREndpoint,
-		AuthorizationEndpoint:      ctx.Issuer() + ctx.AuthorizationEndpoint,
-		TokenEndpoint:              ctx.Issuer() + ctx.TokenEndpoint,
-		UserInfoEndpoint:           ctx.Issuer() + ctx.UserInfoEndpoint,
-		JWKSEndpoint:               ctx.Issuer() + ctx.JWKSEndpoint,
-		Scopes:                     []string{"openid", "email"},
-		TokenAuthnMethods:          ctx.TokenAuthnMethods,
+		Issuer:                      ctx.Issuer(),
+		ClientRegistrationEndpoint:  ctx.Issuer() + ctx.DCREndpoint,
+		AuthorizationEndpoint:       ctx.Issuer() + ctx.AuthorizationEndpoint,
+		DeviceAuthorizationEndpoint: ctx.Issuer() + ctx.DeviceAuthEndpoint,
+		TokenEndpoint:               ctx.Issuer() + ctx.TokenEndpoint,
+		UserInfoEndpoint:            ctx.Issuer() + ctx.UserInfoEndpoint,
+		JWKSEndpoint:                ctx.Issuer() + ctx.JWKSEndpoint,
+		Scopes:                      []string{"openid", "email"},
+		TokenAuthnMethods:           ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},
@@ -118,6 +120,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		JWKSEndpoint:               "/jwks",
 		TokenEndpoint:              "/token",
 		AuthorizationEndpoint:      "/authorize",
+		DeviceAuthEndpoint:         "/device_authorization",
 		PAREndpoint:                "/par",
 		DCREndpoint:                "/register",
 		UserInfoEndpoint:           "/userinfo",
@@ -131,7 +134,7 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 				Keys: []goidc.JSONWebKey{tokenKey, userInfoKey, jarmKey},
 			}, nil
 		},
-		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode},
+		GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantDeviceCode},
 		ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 		ResponseModes: []goidc.ResponseMode{goidc.ResponseModeQuery},
 		Claims:        []string{"random_claim"},
@@ -176,17 +179,18 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 
 	// Then.
 	want := OpenIDConfiguration{
-		Issuer:                     ctx.Issuer(),
-		ClientRegistrationEndpoint: ctx.Issuer() + ctx.DCREndpoint,
-		AuthorizationEndpoint:      ctx.Issuer() + ctx.AuthorizationEndpoint,
-		TokenEndpoint:              ctx.Issuer() + ctx.TokenEndpoint,
-		UserInfoEndpoint:           ctx.Issuer() + ctx.UserInfoEndpoint,
-		JWKSEndpoint:               ctx.Issuer() + ctx.JWKSEndpoint,
-		PAREndpoint:                ctx.Issuer() + ctx.PAREndpoint,
-		TokenIntrospectionEndpoint: ctx.Issuer() + ctx.TokenIntrospectionEndpoint,
-		TokenRevocationEndpoint:    ctx.Issuer() + ctx.TokenRevocationEndpoint,
-		Scopes:                     []string{"openid", "email"},
-		TokenAuthnMethods:          ctx.TokenAuthnMethods,
+		Issuer:                      ctx.Issuer(),
+		ClientRegistrationEndpoint:  ctx.Issuer() + ctx.DCREndpoint,
+		AuthorizationEndpoint:       ctx.Issuer() + ctx.AuthorizationEndpoint,
+		DeviceAuthorizationEndpoint: ctx.Issuer() + ctx.DeviceAuthEndpoint,
+		TokenEndpoint:               ctx.Issuer() + ctx.TokenEndpoint,
+		UserInfoEndpoint:            ctx.Issuer() + ctx.UserInfoEndpoint,
+		JWKSEndpoint:                ctx.Issuer() + ctx.JWKSEndpoint,
+		PAREndpoint:                 ctx.Issuer() + ctx.PAREndpoint,
+		TokenIntrospectionEndpoint:  ctx.Issuer() + ctx.TokenIntrospectionEndpoint,
+		TokenRevocationEndpoint:     ctx.Issuer() + ctx.TokenRevocationEndpoint,
+		Scopes:                      []string{"openid", "email"},
+		TokenAuthnMethods:           ctx.TokenAuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},
@@ -228,5 +232,55 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 	}
 	if diff := cmp.Diff(got, want); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestOIDCConfig_JARByReferenceMetadata(t *testing.T) {
+	tests := []struct {
+		name                               string
+		byReferenceEnabled                 bool
+		unregisteredURIsEnabled            bool
+		wantByReferenceEnabled             bool
+		wantRegistrationRequiredAdvertised bool
+	}{
+		{
+			name:                               "disabled",
+			byReferenceEnabled:                 false,
+			unregisteredURIsEnabled:            false,
+			wantByReferenceEnabled:             false,
+			wantRegistrationRequiredAdvertised: false,
+		},
+		{
+			name:                               "enabled with registration required",
+			byReferenceEnabled:                 true,
+			unregisteredURIsEnabled:            false,
+			wantByReferenceEnabled:             true,
+			wantRegistrationRequiredAdvertised: true,
+		},
+		{
+			name:                               "enabled with unregistered uris allowed",
+			byReferenceEnabled:                 true,
+			unregisteredURIsEnabled:            true,
+			wantByReferenceEnabled:             true,
+			wantRegistrationRequiredAdvertised: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.JARIsEnabled = true
+			ctx.JARByReferenceIsEnabled = test.byReferenceEnabled
+			ctx.JARByReferenceUnregisteredURIIsEnabled = test.unregisteredURIsEnabled
+
+			got := NewOpenIDConfiguration(ctx)
+
+			if got.JARByReferenceIsEnabled != test.wantByReferenceEnabled {
+				t.Fatalf("JARByReferenceIsEnabled = %v, want %v", got.JARByReferenceIsEnabled, test.wantByReferenceEnabled)
+			}
+			if got.JARRequestURIRegistrationIsRequired != test.wantRegistrationRequiredAdvertised {
+				t.Fatalf("JARRequestURIRegistrationIsRequired = %v, want %v", got.JARRequestURIRegistrationIsRequired, test.wantRegistrationRequiredAdvertised)
+			}
+		})
 	}
 }

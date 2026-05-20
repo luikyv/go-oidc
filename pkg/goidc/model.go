@@ -10,6 +10,94 @@ import (
 	"strings"
 )
 
+// GrantManager stores grants and access tokens.
+type GrantManager interface {
+	SaveGrant(context.Context, *Grant) error
+	// Grant returns the grant identified by id.
+	// It must return [ErrNotFound] when the grant does not exist.
+	Grant(context.Context, string) (*Grant, error)
+	SaveToken(context.Context, *Token) error
+	// Token returns the token identified by id.
+	// It must return [ErrNotFound] when the token does not exist.
+	Token(context.Context, string) (*Token, error)
+}
+
+// AuthManager stores authorization sessions and resolves grants by
+// authorization code.
+type AuthManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the authorization session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
+	Session(context.Context, string) (*AuthnSession, error)
+	// GrantByAuthCode returns the grant associated with the authorization code.
+	// It must return [ErrNotFound] when the grant does not exist.
+	GrantByAuthCode(context.Context, string) (*Grant, error)
+}
+
+// PARManager resolves pushed authorization request sessions.
+type PARManager interface {
+	// SessionByPushedAuthReqID returns the session associated with the pushed
+	// authorization request identifier.
+	// It must return [ErrNotFound] when the session does not exist.
+	SessionByPushedAuthReqID(context.Context, string) (*AuthnSession, error)
+}
+
+// DCRManager stores dynamically registered clients.
+type DCRManager interface {
+	SaveClient(context.Context, *Client) error
+	// Client returns the client identified by id.
+	// It must return [ErrNotFound] when the client does not exist.
+	Client(context.Context, string) (*Client, error)
+	DeleteClient(context.Context, string) error
+}
+
+// OpenIDFedManager stores OpenID Federation clients.
+type OpenIDFedManager interface {
+	SaveClient(context.Context, *Client) error
+	// Client returns the federation client identified by id.
+	// It must return [ErrNotFound] when the client does not exist.
+	Client(context.Context, string) (*Client, error)
+}
+
+// RefreshTokenManager resolves grants by refresh token.
+type RefreshTokenManager interface {
+	// GrantByRefreshToken returns the grant associated with the refresh token.
+	// It must return [ErrNotFound] when the grant does not exist.
+	GrantByRefreshToken(context.Context, string) (*Grant, error)
+}
+
+// CIBAManager stores CIBA sessions and resolves grants by auth_req_id.
+type CIBAManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the CIBA session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
+	Session(context.Context, string) (*AuthnSession, error)
+	// SessionByAuthReqID returns the session associated with the auth_req_id.
+	// It must return [ErrNotFound] when the session does not exist.
+	SessionByAuthReqID(context.Context, string) (*AuthnSession, error)
+	// GrantByAuthReqID returns the grant associated with the auth_req_id.
+	// It must return [ErrNotFound] when the grant does not exist.
+	GrantByAuthReqID(context.Context, string) (*Grant, error)
+}
+
+// DeviceAuthManager stores device authorization sessions and resolves grants by
+// device code.
+type DeviceAuthManager interface {
+	SaveSession(context.Context, *AuthnSession) error
+	// Session returns the device authorization session identified by id.
+	// It must return [ErrNotFound] when the session does not exist.
+	Session(context.Context, string) (*AuthnSession, error)
+	// SessionByUserCode returns the session associated with the user code.
+	// It must return [ErrNotFound] when the session does not exist.
+	SessionByUserCode(context.Context, string) (*AuthnSession, error)
+	// SessionByDeviceCode returns the session associated with the device code.
+	// It must return [ErrNotFound] when the session does not exist.
+	SessionByDeviceCode(context.Context, string) (*AuthnSession, error)
+	// GrantByDeviceCode returns the grant associated with the device code.
+	// It must return [ErrNotFound] when the grant does not exist.
+	GrantByDeviceCode(context.Context, string) (*Grant, error)
+}
+
 type JWKSFunc func(context.Context) (JSONWebKeySet, error)
 
 type Profile string
@@ -34,6 +122,7 @@ const (
 	GrantJWTBearer         GrantType = "urn:ietf:params:oauth:grant-type:jwt-bearer" //nolint:gosec
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
 	GrantPreAuthorizedCode GrantType = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
+	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
 )
 
 type ResponseType string
@@ -197,9 +286,9 @@ const (
 type Status string
 
 const (
-	StatusSuccess    Status = "success"
-	StatusInProgress Status = "in_progress"
-	StatusFailure    Status = "failure"
+	StatusSuccess Status = "success"
+	StatusPending Status = "pending"
+	StatusFailure Status = "failure"
 )
 
 type TokenFormat string
@@ -295,7 +384,7 @@ type ClientIDFunc func(context.Context) string
 // during the authorization request cannot be handled.
 type RenderErrorFunc func(http.ResponseWriter, *http.Request, error) error
 
-type NotifyErrorFunc func(context.Context, error)
+type HandleErrorFunc func(context.Context, error)
 
 type VerifyClientSecretFunc func(ctx context.Context, stored, presented string) error
 
@@ -364,6 +453,9 @@ type RefreshTokenShouldIssueFunc func(context.Context, *Client, *Grant) bool
 // executed when issuing access tokens.
 type TokenOptionsFunc func(context.Context, *Grant, *Client) TokenOptions
 
+// OpaqueTokenFunc defines how opaque access token identifiers are generated.
+type OpaqueTokenFunc func(context.Context, *Grant) string
+
 // IDTokenClaimsFunc defines a function that returns additional claims to include
 // in the ID token. It is called at ID token issuance time.
 type IDTokenClaimsFunc func(context.Context, *Grant) map[string]any
@@ -406,16 +498,16 @@ func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 // If it returns [StatusFailure] or an error the flow will end with failure and
 // the client will be denied access.
 //
-// If it return [StatusInProgress], the flow will be suspended so an interaction
+// If it return [StatusPending], the flow will be suspended so an interaction
 // with the user via the user agent can happen, e.g. an HTML page is rendered to
 // to gather user credentials.
 // The flow can be resumed at the callback endpoint with the session callback ID.
-type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession) (Status, error)
+type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession, *Client) (Status, error)
 
 // SetUpAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to execute and false for when the
 // policy should be skipped.
-type SetUpAuthnFunc func(*http.Request, *Client, *AuthnSession) bool
+type SetUpAuthnFunc func(*http.Request, *AuthnSession, *Client) bool
 
 // AuthnPolicy holds information on how to set up an authentication session and
 // authenticate users.
@@ -441,7 +533,7 @@ type TokenConfirmation struct {
 }
 
 type TokenInfo struct {
-	// GrantID is the ID of the grant session associated to token.
+	// GrantID is the ID of the grant associated to token.
 	GrantID           string       `json:"-"`
 	IsActive          bool         `json:"active"`
 	Type              TokenType    `json:"token_type,omitempty"`
@@ -451,14 +543,13 @@ type TokenInfo struct {
 	ClientID          string       `json:"client_id,omitempty"`
 	Subject           string       `json:"sub,omitempty"`
 	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
-	// Populate via AdditionalTokenClaims if the authorization server can resolve it.
-	Username           string             `json:"username,omitempty"`
-	Issuer             string             `json:"iss,omitempty"`
-	IssuedAtTimestamp  int                `json:"iat,omitempty"`
-	NotBeforeTimestamp int                `json:"nbf,omitempty"`
-	ExpiresAtTimestamp int                `json:"exp,omitempty"`
-	Confirmation       *TokenConfirmation `json:"cnf,omitempty"`
-	AdditionalClaims   map[string]any     `json:"-"`
+	Username         string             `json:"username,omitempty"`
+	Issuer           string             `json:"iss,omitempty"`
+	IssuedAt         int                `json:"iat,omitempty"`
+	NotBefore        int                `json:"nbf,omitempty"`
+	ExpiresAt        int                `json:"exp,omitempty"`
+	Confirmation     *TokenConfirmation `json:"cnf,omitempty"`
+	AdditionalClaims map[string]any     `json:"-"`
 }
 
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
@@ -696,3 +787,5 @@ func NewLogoutPolicy(id string, setUpFunc SetUpLogoutFunc, logoutFunc LogoutFunc
 type RandomFunc func(context.Context) string
 
 type HandleClientFunc func(context.Context, *Client) error
+
+type RenderFunc func(http.ResponseWriter, *http.Request) error

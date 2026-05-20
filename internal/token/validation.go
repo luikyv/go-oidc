@@ -9,7 +9,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -43,7 +42,7 @@ func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidati
 		// 	* The client requires DPoP.
 		// 	* DPoP is required as a validation option.
 		if ctx.DPoPIsRequired || c.DPoPTokenBindingIsRequired || opts.dpopIsRequired {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid dpop header")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("a DPoP proof is required for this token request"))
 		}
 		return nil
 	}
@@ -66,13 +65,13 @@ func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidatio
 		// 	* The client requires TLS binding.
 		// 	* TLS binding is required as a validation option.
 		if ctx.MTLSTokenBindingIsRequired || c.TLSTokenBindingIsRequired || opts.tlsIsRequired {
-			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "client certificate is required", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 		}
 		return nil
 	}
 
 	if opts.tlsCertThumbprint != "" && opts.tlsCertThumbprint != hashutil.Thumbprint(string(cert.Raw)) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid client certificate")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the presented client certificate does not match the token binding thumbprint"))
 	}
 
 	return nil
@@ -90,13 +89,14 @@ func validateBindingRequirement(ctx oidc.Context) error {
 		tokenWillBeBound = true
 	}
 
-	_, err := ctx.ClientCert()
-	if ctx.MTLSTokenBindingIsEnabled && err == nil {
-		tokenWillBeBound = true
+	if ctx.MTLSTokenBindingIsEnabled {
+		if _, err := ctx.ClientCert(); err == nil {
+			tokenWillBeBound = true
+		}
 	}
 
 	if !tokenWillBeBound {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "token binding is required either with dpop or tls")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("token binding is required with either dpop or mutual TLS"))
 	}
 
 	return nil
@@ -109,11 +109,11 @@ func validateResources(ctx oidc.Context, req request, granted goidc.Resources) e
 
 	for _, r := range req.resources {
 		if !slices.Contains(ctx.Resources, r) {
-			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+r+" is invalid")
+			return goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target", fmt.Errorf("resource %q is not configured by the server", r))
 		}
 
 		if granted != nil && !slices.Contains(granted, r) {
-			return goidc.NewError(goidc.ErrorCodeInvalidTarget, "the resource "+r+" is invalid")
+			return goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target", fmt.Errorf("resource %q was not granted for this authorization", r))
 		}
 	}
 
@@ -130,15 +130,15 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 
 	for _, detail := range req.authDetails {
 		if !slices.Contains(ctx.RARDetailTypes, detail.Type()) {
-			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
+			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", fmt.Errorf("authorization detail type %q is not supported", detail.Type()))
 		}
 
 		if c.AuthDetailTypes != nil && !slices.Contains(c.AuthDetailTypes, detail.Type()) {
-			return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization detail not allowed")
+			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", fmt.Errorf("authorization detail type %q is not allowed for the client", detail.Type()))
 		}
 
 		if err := ctx.RARValidateDetail(detail); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization detail", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
 		}
 	}
 
@@ -156,17 +156,17 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 		return nil
 	}
 
-	for _, s := range strutil.SplitWithSpaces(req.scopes) {
+	for s := range strings.FieldsSeq(req.scopes) {
 		scope, ok := ctx.Scope(s)
 		if !ok {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s does not match any available scope", s))
 		}
 
-		if !strings.Contains(c.ScopeIDs, scope.ID) {
+		if !slices.Contains(strings.Fields(c.ScopeIDs), scope.ID) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not allowed for the client", s))
 		}
 
-		if granted != "" && !slices.Contains(strutil.SplitWithSpaces(granted), s) {
+		if granted != "" && !slices.Contains(strings.Fields(granted), s) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not granted", s))
 		}
 	}
@@ -174,12 +174,12 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 	return nil
 }
 
-func validatePKCE(ctx oidc.Context, req request, _ *goidc.Client, as *goidc.AuthnSession) error {
+func validatePKCE(ctx oidc.Context, req request, grant *goidc.Grant) error {
 	if !ctx.PKCEIsEnabled {
 		return nil
 	}
 
-	if as.CodeChallenge == "" {
+	if grant.AuthParams.CodeChallenge == "" {
 		// [RFC 9700] a token request containing a code_verifier parameter is
 		// accepted only if a code_challenge parameter was present in the authorization request.
 		if req.codeVerifier != "" {
@@ -191,22 +191,22 @@ func validatePKCE(ctx oidc.Context, req request, _ *goidc.Client, as *goidc.Auth
 
 	// [RFC 7636] with a minimum length of 43 characters and a maximum length of 128 characters.
 	if verifierLengh := len(req.codeVerifier); verifierLengh < 43 || verifierLengh > 128 {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
+		return goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier", fmt.Errorf("code_verifier length %d is outside the allowed range", verifierLengh))
 	}
 
 	method := ctx.PKCEDefaultChallengeMethod
-	if as.CodeChallengeMethod != "" && slices.Contains(ctx.PKCEChallengeMethods, as.CodeChallengeMethod) {
-		method = as.CodeChallengeMethod
+	if grant.AuthParams.CodeChallengeMethod != "" && slices.Contains(ctx.PKCEChallengeMethods, grant.AuthParams.CodeChallengeMethod) {
+		method = grant.AuthParams.CodeChallengeMethod
 	}
 
-	switch verifier, challenge := req.codeVerifier, as.CodeChallenge; method {
+	switch verifier, challenge := req.codeVerifier, grant.AuthParams.CodeChallenge; method {
 	case goidc.CodeChallengeMethodPlain:
 		if verifier != challenge {
-			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
+			return goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier", errors.New("the code_verifier does not match the plain code_challenge"))
 		}
 	case goidc.CodeChallengeMethodSHA256:
 		if hashutil.Thumbprint(verifier) != challenge {
-			return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier")
+			return goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier", errors.New("the code_verifier does not match the SHA-256 code_challenge"))
 		}
 	default:
 		return goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid code_verifier", fmt.Errorf("pkce method %s is not supported", method))

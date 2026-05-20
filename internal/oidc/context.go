@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -56,6 +55,18 @@ func (ctx Context) Scope(s string) (goidc.Scope, bool) {
 	return goidc.Scope{}, false
 }
 
+func (ctx Context) AuthSaveSession(as *goidc.AuthnSession) error {
+	return ctx.AuthManager.SaveSession(ctx, as)
+}
+
+func (ctx Context) AuthSession(id string) (*goidc.AuthnSession, error) {
+	return ctx.AuthManager.Session(ctx, id)
+}
+
+func (ctx Context) GrantByAuthCode(code string) (*goidc.Grant, error) {
+	return ctx.AuthManager.GrantByAuthCode(ctx, code)
+}
+
 func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
@@ -71,59 +82,42 @@ func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 }
 
 func (ctx Context) TokenIntrospectionIsClientAllowed(c *goidc.Client, info goidc.TokenInfo) bool {
-	if ctx.TokenIntrospectionIsClientAllowedFunc == nil {
-		return false
-	}
-
 	return ctx.TokenIntrospectionIsClientAllowedFunc(ctx, c, info)
 }
 
 func (ctx Context) TokenRevocationIsClientAllowed(c *goidc.Client) bool {
-	if ctx.TokenRevocationIsClientAllowedFunc == nil {
-		return false
-	}
-
 	return ctx.TokenRevocationIsClientAllowedFunc(ctx, c)
 }
 
 func (ctx Context) ClientCert() (*x509.Certificate, error) {
-
-	if ctx.ClientCertFunc == nil {
-		return nil, errors.New("the client certificate function was not defined")
-	}
-
 	return ctx.ClientCertFunc(ctx)
 }
 
-func (ctx Context) ValidateInitalAccessToken(token string) error {
-	if ctx.DCRValidateInitialTokenFunc == nil {
-		return nil
-	}
+func (ctx Context) DCRSaveClient(client *goidc.Client) error {
+	return ctx.DCRManager.SaveClient(ctx, client)
+}
 
+func (ctx Context) DCRClient(id string) (*goidc.Client, error) {
+	return ctx.DCRManager.Client(ctx, id)
+}
+
+func (ctx Context) DCRDeleteClient(id string) error {
+	return ctx.DCRManager.DeleteClient(ctx, id)
+}
+
+func (ctx Context) ValidateInitalAccessToken(token string) error {
 	return ctx.DCRValidateInitialTokenFunc(ctx, token)
 }
 
 func (ctx Context) HandleDynamicClient(id string, c *goidc.ClientMeta) error {
-	if ctx.DCRHandleClientFunc == nil {
-		return nil
-	}
-
 	return ctx.DCRHandleClientFunc(ctx, id, c)
 }
 
 func (ctx Context) ClientID() string {
-	if ctx.ClientIDFunc == nil {
-		return "dc-" + strutil.Random(30)
-	}
-
-	return ctx.ClientIDFunc(ctx)
+	return ctx.DCRClientIDFunc(ctx)
 }
 
 func (ctx Context) CheckJTI(jti string) error {
-	if ctx.CheckJTIFunc == nil {
-		return nil
-	}
-
 	return ctx.CheckJTIFunc(ctx, jti)
 }
 
@@ -134,22 +128,15 @@ func (ctx Context) RenderError(err error) error {
 		return err
 	}
 
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 	return ctx.RenderErrorFunc(ctx.Response, ctx.Request, err)
 }
 
-func (ctx Context) NotifyError(err error) {
-	if ctx.NotifyErrorFunc == nil {
-		return
-	}
-
-	ctx.NotifyErrorFunc(ctx, err)
+func (ctx Context) HandleError(err error) {
+	ctx.HandleErrorFunc(ctx, err)
 }
 
 func (ctx Context) VerifyClientSecret(stored, presented string) error {
-	if ctx.VerifyClientSecretFunc == nil {
-		return errors.New("client secret verifier function must be set")
-	}
 	return ctx.VerifyClientSecretFunc(ctx, stored, presented)
 }
 
@@ -179,7 +166,11 @@ func (ctx Context) Policy(id string) goidc.AuthnPolicy {
 			return policy
 		}
 	}
-	return goidc.AuthnPolicy{}
+	return goidc.AuthnPolicy{
+		Authenticate: func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, c *goidc.Client) (goidc.Status, error) {
+			return goidc.StatusFailure, goidc.ErrNotFound
+		},
+	}
 }
 
 func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
@@ -188,12 +179,16 @@ func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
 			return policy
 		}
 	}
-	return goidc.LogoutPolicy{}
+	return goidc.LogoutPolicy{
+		Logout: func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
+			return goidc.StatusFailure, goidc.ErrNotFound
+		},
+	}
 }
 
-func (ctx Context) AvailablePolicy(c *goidc.Client, as *goidc.AuthnSession) (policy goidc.AuthnPolicy, ok bool) {
+func (ctx Context) AvailablePolicy(as *goidc.AuthnSession, c *goidc.Client) (policy goidc.AuthnPolicy, ok bool) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx.Request, c, as); ok {
+		if ok = policy.SetUp(ctx.Request, as, c); ok {
 			return policy, true
 		}
 	}
@@ -212,31 +207,42 @@ func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.
 }
 
 func (ctx Context) RARValidateDetail(detail goidc.AuthDetail) error {
-	if ctx.RARValidateDetailFunc == nil {
-		return nil
-	}
 	return ctx.RARValidateDetailFunc(ctx, detail)
 }
 
 func (ctx Context) RARCompareAuthDetails(requested, granted []goidc.AuthDetail) error {
-	if ctx.RARCompareDetailsFunc == nil {
-		return errors.New("auth details comparing function is not defined")
-	}
 	return ctx.RARCompareDetailsFunc(ctx, requested, granted)
 }
 
+func (ctx Context) CIBASaveSession(session *goidc.AuthnSession) error {
+	return ctx.CIBAManager.SaveSession(ctx, session)
+}
+
+func (ctx Context) CIBASession(id string) (*goidc.AuthnSession, error) {
+	return ctx.CIBAManager.Session(ctx, id)
+}
+
+func (ctx Context) CIBASessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
+	return ctx.CIBAManager.SessionByAuthReqID(ctx, id)
+}
+
+func (ctx Context) GrantByAuthReqID(id string) (*goidc.Grant, error) {
+	return ctx.CIBAManager.GrantByAuthReqID(ctx, id)
+}
+
 func (ctx Context) CIBAHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
-	if ctx.CIBAHandleSessionFunc == nil {
-		return errors.New("ciba init back auth function is not set")
-	}
 	return ctx.CIBAHandleSessionFunc(ctx, as, c)
 }
 
-func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
-	if ctx.OpenIDFedRequiredTrustMarksFunc == nil {
-		return nil
-	}
+func (ctx Context) OpenIDFedSaveClient(client *goidc.Client) error {
+	return ctx.OpenIDFedManager.SaveClient(ctx, client)
+}
 
+func (ctx Context) OpenIDFedClient(id string) (*goidc.Client, error) {
+	return ctx.OpenIDFedManager.Client(ctx, id)
+}
+
+func (ctx Context) OpenIDFedRequiredTrustMarks(client *goidc.Client) []goidc.TrustMark {
 	return ctx.OpenIDFedRequiredTrustMarksFunc(ctx, client)
 }
 
@@ -245,10 +251,6 @@ func (ctx Context) OpenIDFedEntityJWKS(id string) (goidc.JSONWebKeySet, error) {
 }
 
 func (ctx Context) OpenIDFedHandleClient(client *goidc.Client) error {
-	if ctx.OpenIDFedHandleClientFunc == nil {
-		return nil
-	}
-
 	return ctx.OpenIDFedHandleClientFunc(ctx, client)
 }
 
@@ -256,187 +258,100 @@ func (ctx Context) OpenIDFedHTTPClient() *http.Client {
 	if ctx.OpenIDFedHTTPClientFunc == nil {
 		return ctx.HTTPClient()
 	}
-
 	return ctx.OpenIDFedHTTPClientFunc(ctx)
 }
 
 func (ctx Context) HandleDefaultPostLogout(session *goidc.LogoutSession) error {
-	if ctx.HandleDefaultPostLogoutFunc == nil {
-		return errors.New("default post logout handler function is not defined")
-	}
-
 	return ctx.HandleDefaultPostLogoutFunc(ctx.Response, ctx.Request, session)
 }
 
 func (ctx Context) LogoutSessionID() string {
-	if ctx.LogoutSessionIDFunc == nil {
-		return uuid.NewString()
-	}
-
 	return ctx.LogoutSessionIDFunc(ctx)
 }
 
 func (ctx Context) AuthnSessionID() string {
-	if ctx.AuthnSessionGenerateIDFunc == nil {
-		return uuid.NewString()
-	}
+	return ctx.AuthSessionIDFunc(ctx)
+}
 
-	return ctx.AuthnSessionGenerateIDFunc(ctx)
+func (ctx Context) PARID() string {
+	return ctx.PARIDFunc(ctx)
+}
+
+func (ctx Context) CIBAID() string {
+	return ctx.CIBAIDFunc(ctx)
 }
 
 func (ctx Context) GrantID() string {
-	if ctx.GrantIDFunc == nil {
-		return uuid.NewString()
-	}
-
 	return ctx.GrantIDFunc(ctx)
 }
 
 func (ctx Context) JWTID() string {
-	if ctx.JWTIDFunc == nil {
-		return uuid.NewString()
-	}
-
 	return ctx.JWTIDFunc(ctx)
 }
 
-func (ctx Context) AuthorizationCode() string {
-	if ctx.AuthorizationCodeFunc == nil {
-		return strutil.Random(30)
-	}
-
-	return ctx.AuthorizationCodeFunc(ctx)
+func (ctx Context) AuthCode() string {
+	return ctx.AuthCodeFunc(ctx)
 }
 
-func (ctx Context) CallbackID() string {
-	if ctx.CallbackIDFunc == nil {
-		return strutil.Random(30)
-	}
-
-	return ctx.CallbackIDFunc(ctx)
+func (ctx Context) DeviceSaveSession(as *goidc.AuthnSession) error {
+	return ctx.DeviceAuthManager.SaveSession(ctx, as)
 }
 
-func (ctx Context) CIBAAuthReqID() string {
-	if ctx.CIBAAuthReqIDFunc == nil {
-		return strutil.Random(50)
-	}
-
-	return ctx.CIBAAuthReqIDFunc(ctx)
+func (ctx Context) DeviceSession(id string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.Session(ctx, id)
 }
 
-func (ctx Context) PARID() string {
-	if ctx.PARIDFunc == nil {
-		return strutil.Random(30)
-	}
-
-	return ctx.PARIDFunc(ctx)
+func (ctx Context) DeviceSessionByUserCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.SessionByUserCode(ctx, code)
 }
 
-func (ctx Context) OpaqueToken() string {
-	return strutil.Random(50)
+func (ctx Context) DeviceSessionByDeviceCode(code string) (*goidc.AuthnSession, error) {
+	return ctx.DeviceAuthManager.SessionByDeviceCode(ctx, code)
 }
 
-func (ctx Context) SaveClient(client *goidc.Client) error {
-	return ctx.ClientManager.Save(ctx, client)
+func (ctx Context) GrantByDeviceCode(code string) (*goidc.Grant, error) {
+	return ctx.DeviceAuthManager.GrantByDeviceCode(ctx, code)
 }
 
-func (ctx Context) Client(id string) (*goidc.Client, error) {
-	for _, c := range ctx.StaticClients {
-		if c.ID == id {
-			return c, nil
-		}
-	}
-	return ctx.ClientManager.Client(ctx, id)
+func (ctx Context) DeviceCode() string {
+	return ctx.DeviceCodeFunc(ctx)
 }
 
-func (ctx Context) DeleteClient(id string) error {
-	return ctx.ClientManager.Delete(ctx, id)
+func (ctx Context) DeviceUserCode() string {
+	return ctx.DeviceAuthGenerateUserCodeFunc(ctx)
+}
+
+func (ctx Context) DeviceAuthPromptUserCode() error {
+	return ctx.DeviceAuthPromptUserCodeFunc(ctx.Response, ctx.Request)
+}
+
+func (ctx Context) DeviceAuthRenderConfirmation() error {
+	return ctx.DeviceAuthRenderConfirmationFunc(ctx.Response, ctx.Request)
+}
+
+func (ctx Context) OpaqueToken(grant *goidc.Grant) string {
+	return ctx.OpaqueTokenFunc(ctx, grant)
 }
 
 func (ctx Context) SaveGrant(grant *goidc.Grant) error {
-	return ctx.GrantManager.Save(ctx, grant)
+	return ctx.GrantManager.SaveGrant(ctx, grant)
 }
 
 func (ctx Context) SaveToken(token *goidc.Token) error {
-	return ctx.TokenManager.Save(ctx, token)
+	return ctx.GrantManager.SaveToken(ctx, token)
 }
 
-func (ctx Context) TokenByID(id string) (*goidc.Token, error) {
-	return ctx.TokenManager.Token(ctx, id)
-}
-
-func (ctx Context) DeleteToken(id string) error {
-	return ctx.TokenManager.Delete(ctx, id)
-}
-
-func (ctx Context) DeleteTokensByGrantID(grantID string) error {
-	return ctx.TokenManager.DeleteByGrantID(ctx, grantID)
-}
-
-func (ctx Context) GrantByRefreshToken(id string) (*goidc.Grant, error) {
-	return ctx.GrantManager.GrantByRefreshToken(ctx, id)
-}
-
-func (ctx Context) DeleteGrant(id string) error {
-	return ctx.GrantManager.Delete(ctx, id)
-}
-
-func (ctx Context) DeleteGrantByAuthorizationCode(code string) error {
-	return ctx.GrantManager.DeleteByAuthCode(ctx, code)
-}
-
-func (ctx Context) SaveAuthnSession(session *goidc.AuthnSession) error {
-	numberOfIndexes := 0
-	if session.CallbackID != "" || session.PushedAuthReqID != "" {
-		numberOfIndexes++
-	}
-	if session.AuthCode != "" {
-		numberOfIndexes++
-	}
-	if session.CIBAAuthID != "" {
-		numberOfIndexes++
-	}
-
-	if numberOfIndexes != 1 {
-		return errors.New("invalid authn session indexing")
-	}
-
-	return ctx.AuthnSessionManager.Save(ctx, session)
-}
-
-func (ctx Context) AuthnSessionByCallbackID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCallbackID(ctx, id)
-}
-
-func (ctx Context) AuthnSessionByAuthCode(code string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByAuthCode(ctx, code)
-}
-
-func (ctx Context) AuthnSessionByRequestURI(uri string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByPushedAuthReqID(ctx, uri)
-}
-
-func (ctx Context) AuthnSessionByAuthReqID(id string) (*goidc.AuthnSession, error) {
-	return ctx.AuthnSessionManager.SessionByCIBAAuthID(ctx, id)
-}
-
-func (ctx Context) DeleteAuthnSession(id string) error {
-	return ctx.AuthnSessionManager.Delete(ctx, id)
+func (ctx Context) Token(id string) (*goidc.Token, error) {
+	return ctx.GrantManager.Token(ctx, id)
 }
 
 func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {
-	return ctx.LogoutSessionManager.Save(ctx, session)
+	return ctx.LogoutManager.SaveLogoutSession(ctx, session)
 }
 
-func (ctx Context) LogoutSessionByCallbackID(id string) (*goidc.LogoutSession, error) {
-	return ctx.LogoutSessionManager.SessionByCallbackID(ctx, id)
+func (ctx Context) LogoutSession(id string) (*goidc.LogoutSession, error) {
+	return ctx.LogoutManager.LogoutSession(ctx, id)
 }
-
-func (ctx Context) DeleteLogoutSession(id string) error {
-	return ctx.LogoutSessionManager.Delete(ctx, id)
-}
-
-//---------------------------------------- HTTP Utils ----------------------------------------//
 
 func (ctx Context) BaseURL() string {
 	return ctx.Issuer() + ctx.EndpointPrefix
@@ -465,7 +380,7 @@ func (ctx Context) AuthorizationToken() (token string, tokenType goidc.TokenType
 		return "", "", false
 	}
 
-	tokenParts := strings.Split(tokenHeader, " ")
+	tokenParts := strings.Fields(tokenHeader)
 	if len(tokenParts) != 2 {
 		return "", "", false
 	}
@@ -538,8 +453,7 @@ func (ctx Context) WriteJWTWithType(token string, status int, contentType string
 }
 
 func (ctx Context) WriteError(err error) {
-
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 
 	var oidcErr goidc.Error
 	if !errors.As(err, &oidcErr) {
@@ -565,6 +479,8 @@ func (ctx Context) WriteHTML(html string, params any) error {
 	}
 
 	ctx.Response.Header().Set("Content-Type", "text/html")
+	ctx.Response.Header().Set("Cache-Control", "no-cache, no-store")
+	ctx.Response.Header().Set("Pragma", "no-cache")
 	ctx.Response.WriteHeader(http.StatusOK)
 	tmpl, _ := template.New("default").Parse(html)
 	return tmpl.Execute(ctx.Response, params)
@@ -575,15 +491,16 @@ func (ctx Context) MediaType() string {
 	return strings.ToLower(strings.TrimSpace(strings.Split(ct, ";")[0]))
 }
 
+func (ctx Context) RefreshGrantByRefreshToken(tkn string) (*goidc.Grant, error) {
+	return ctx.RefreshTokenManager.GrantByRefreshToken(ctx, tkn)
+}
+
 func (ctx Context) RefreshTokenShouldIssue(c *goidc.Client, grant *goidc.Grant) bool {
-	if ctx.RefreshTokenShouldIssueFunc == nil {
-		return true
-	}
 	return ctx.RefreshTokenShouldIssueFunc(ctx, c, grant)
 }
 
 func (ctx Context) RefreshToken() string {
-	return strutil.Random(100)
+	return ctx.RefreshTokenFunc(ctx)
 }
 
 func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.TokenOptions {
@@ -591,72 +508,47 @@ func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.Token
 }
 
 func (ctx Context) HandleGrant(grant *goidc.Grant) error {
-	if ctx.HandleGrantFunc == nil {
-		return nil
-	}
-
 	return ctx.HandleGrantFunc(ctx, grant)
 }
 
 func (ctx Context) HandleToken(tkn *goidc.Token, grant *goidc.Grant) error {
-	if ctx.HandleTokenFunc == nil {
-		return nil
-	}
-
 	return ctx.HandleTokenFunc(ctx, tkn, grant)
 }
 
-func (ctx Context) GrantByID(id string) (*goidc.Grant, error) {
+func (ctx Context) Grant(id string) (*goidc.Grant, error) {
 	return ctx.GrantManager.Grant(ctx, id)
 }
 
 func (ctx Context) IDTokenClaims(grant *goidc.Grant) map[string]any {
-	if ctx.IDTokenClaimsFunc == nil {
-		return nil
-	}
 	return ctx.IDTokenClaimsFunc(ctx, grant)
 }
 
 func (ctx Context) UserInfoClaims(grant *goidc.Grant) map[string]any {
-	if ctx.UserInfoClaimsFunc == nil {
-		return nil
-	}
 	return ctx.UserInfoClaimsFunc(ctx, grant)
 }
 
 func (ctx Context) TokenClaims(tkn *goidc.Token, grant *goidc.Grant) map[string]any {
-	if ctx.TokenClaimsFunc == nil {
-		return nil
-	}
 	return ctx.TokenClaimsFunc(ctx, tkn, grant)
 }
 
 func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {
-	if ctx.JWTBearerHandleAssertionFunc == nil {
-		return "", errors.New("jwt bearer handle assertion function was not provided")
-	}
 	return ctx.JWTBearerHandleAssertionFunc(ctx, assertion)
 }
 
 func (ctx Context) HTTPClient() *http.Client {
-	if ctx.HTTPClientFunc == nil {
-		return http.DefaultClient
-	}
 	return ctx.HTTPClientFunc(ctx)
 }
 
 func (ctx Context) PairwiseSubject(sub string, c *goidc.Client) string {
-	if ctx.PairwiseSubjectFunc == nil {
-		return sub
-	}
 	return ctx.PairwiseSubjectFunc(ctx, sub, c)
 }
 
 func (ctx Context) PARHandleSession(as *goidc.AuthnSession, c *goidc.Client) error {
-	if ctx.PARHandleSessionFunc == nil {
-		return nil
-	}
 	return ctx.PARHandleSessionFunc(ctx, as, c)
+}
+
+func (ctx Context) PARSessionByPushedAuthReqID(id string) (*goidc.AuthnSession, error) {
+	return ctx.PARManager.SessionByPushedAuthReqID(ctx, id)
 }
 
 func (ctx Context) ClientSecret() string {
@@ -669,7 +561,7 @@ func (ctx Context) ClientSecret() string {
 }
 
 func (ctx Context) RegistrationAccessToken() string {
-	return strutil.Random(50)
+	return ctx.DCRRegistrationTokenFunc(ctx)
 }
 
 //---------------------------------------- context.Context ----------------------------------------//
@@ -746,18 +638,10 @@ func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
 }
 
 func (ctx Context) SSFEventStreamID() string {
-	if ctx.SSFEventStreamIDFunc == nil {
-		return uuid.NewString()
-	}
-
 	return ctx.SSFEventStreamIDFunc(ctx)
 }
 
 func (ctx Context) SSFAuthenticatedReceiver() (goidc.SSFReceiver, error) {
-	if ctx.SSFAuthenticatedReceiverFunc == nil {
-		return goidc.SSFReceiver{}, errors.New("authenticated receiver function is not defined")
-	}
-
 	return ctx.SSFAuthenticatedReceiverFunc(ctx)
 }
 
@@ -820,9 +704,6 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs map[string]goidc.S
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	if ctx.SSFScheduleVerificationEventFunc == nil {
-		return errors.New("schedule verification event function is not set")
-	}
 	return ctx.SSFScheduleVerificationEventFunc(ctx, streamID, opts)
 }
 
@@ -835,17 +716,10 @@ func (ctx Context) SSFHTTPClient() *http.Client {
 }
 
 func (ctx Context) SSFHandleExpiredEventStream(stream *goidc.SSFEventStream) error {
-	if ctx.SSFHandleExpiredEventStreamFunc == nil {
-		return nil
-	}
-
 	return ctx.SSFHandleExpiredEventStreamFunc(ctx, stream)
 }
 
 func (ctx Context) VCHandlePreAuthCode(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
-	if ctx.VCHandlePreAuthCodeFunc == nil {
-		return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
-	}
 	return ctx.VCHandlePreAuthCodeFunc(ctx, preAuthCode, opts)
 }
 
@@ -858,9 +732,6 @@ func (ctx Context) VCOffer(id string) (*goidc.VCOffer, error) {
 }
 
 func (ctx Context) VCOfferID() string {
-	if ctx.VCOfferIDFunc == nil {
-		return uuid.NewString()
-	}
 	return ctx.VCOfferIDFunc(ctx)
 }
 
@@ -882,9 +753,6 @@ func (ctx Context) VCIssuerIDs() []string {
 }
 
 func (ctx Context) VCIssuerState() string {
-	if ctx.VCIssuerStateFunc == nil {
-		return uuid.NewString()
-	}
 	return ctx.VCIssuerStateFunc(ctx)
 }
 

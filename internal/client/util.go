@@ -9,8 +9,27 @@ import (
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
+	for _, c := range ctx.StaticClients {
+		if c.ID == id {
+			return c, nil
+		}
+	}
+
+	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
+		return ctx.OpenIDFedClient(id)
+	}
+
+	if ctx.DCRIsEnabled {
+		return ctx.DCRClient(id)
+	}
+
+	return nil, goidc.ErrNotFound
+}
 
 type Options struct {
 	TrustChain []string
@@ -83,17 +102,18 @@ func JWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) {
 	resp, err := ctx.HTTPClient().Get(c.JWKSURI)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client jwks resulted in %d", resp.StatusCode), err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("fetching the client jwks returned status %d", resp.StatusCode))
 	}
 
 	var jwks goidc.JSONWebKeySet
 	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not parse the client jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
 	return &jwks, nil
@@ -103,34 +123,35 @@ func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, e
 	// Fetch the client's entity configuration to get the verification keys.
 	entityJWKS, err := ctx.OpenIDFedEntityJWKS(c.ID)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client entity jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
 	// Fetch the signed JWKS.
 	resp, err := ctx.HTTPClient().Get(c.SignedJWKSURI)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not fetch the client signed jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, fmt.Sprintf("fetching the client signed jwks resulted in %d", resp.StatusCode))
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("fetching the client signed jwks returned status %d", resp.StatusCode))
 	}
 
 	signedJWKS, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not read the client signed jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
 	// Parse and verify the signed JWKS using the entity configuration's keys.
 	parsedJWT, err := jwt.ParseSigned(string(signedJWKS), ctx.OpenIDFedSigAlgs)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "could not parse the client signed jwks", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
 	var jwks goidc.JSONWebKeySet
 	if err := parsedJWT.Claims(entityJWKS.ToJOSE(), &jwks); err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid signed jwks signature", err)
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
 	return &jwks, nil

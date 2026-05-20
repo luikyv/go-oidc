@@ -9,8 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func create(ctx oidc.Context, initialToken string, req *client.Client) (response, error) {
-
+func create(ctx oidc.Context, initialToken string, req *client.Meta) (response, error) {
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
 	}
@@ -25,14 +24,14 @@ func create(ctx oidc.Context, initialToken string, req *client.Client) (response
 	}
 
 	c := &goidc.Client{
-		ID:                 id,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		ClientMeta:         req.ClientMeta,
+		ID:         id,
+		CreatedAt:  timeutil.TimestampNow(),
+		ClientMeta: req.ClientMeta,
 	}
 	return modifyAndSaveClient(ctx, c)
 }
 
-func update(ctx oidc.Context, id, regToken string, req *client.Client) (response, error) {
+func update(ctx oidc.Context, id, regToken string, req *client.Meta) (response, error) {
 	c, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
@@ -51,7 +50,6 @@ func update(ctx oidc.Context, id, regToken string, req *client.Client) (response
 }
 
 func fetch(ctx oidc.Context, id, regToken string) (response, error) {
-
 	client, err := protected(ctx, id, regToken)
 	if err != nil {
 		return response{}, err
@@ -70,16 +68,15 @@ func remove(ctx oidc.Context, id, regToken string) error {
 		return err
 	}
 
-	return ctx.DeleteClient(id)
+	return ctx.DCRDeleteClient(id)
 }
 
 func modifyAndSaveClient(ctx oidc.Context, client *goidc.Client) (response, error) {
-
 	id := setID(ctx, client)
 	regToken := setRegistrationToken(ctx, client)
 	secret := setSecret(ctx, client)
 
-	if err := ctx.SaveClient(client); err != nil {
+	if err := ctx.DCRSaveClient(client); err != nil {
 		return response{}, err
 	}
 
@@ -147,7 +144,7 @@ func registrationURI(ctx oidc.Context, id string) string {
 // protected returns a client corresponding to the id informed if the
 // the registration access token is valid.
 func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
-	c, err := ctx.Client(id)
+	c, err := ctx.DCRClient(id)
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not find the client", err)
 	}

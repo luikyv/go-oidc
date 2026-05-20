@@ -108,10 +108,11 @@ func main() {
 	c.ClientRegistrationTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 
 	op, err := provider.New(
-		goidc.ProfileOpenID,
 		OPFedID,
+		nil,
 		authutil.PrivateJWKSFunc(),
 		provider.WithOpenIDFederation(
+			nil,
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
@@ -129,19 +130,18 @@ func main() {
 			goidc.AuthnMethodPrivateKeyJWT,
 		),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.RS256),
-		provider.WithAuthorizationCodeGrant(),
-		provider.WithImplicitGrant(),
-		provider.WithRefreshTokenGrant(),
+		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),
+		provider.WithRefreshTokenGrant(nil),
 		provider.WithClientCredentialsGrant(),
 		provider.WithJAR(goidc.RS256, goidc.PS256),
-		provider.WithPAR(),
+		provider.WithPAR(nil),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(httpClientFunc()),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 	)
 	if err != nil {

@@ -17,7 +17,7 @@ jobs:
       - name: Lint
         uses: golangci/golangci-lint-action@v9
         with:
-          version: latest
+          version: v2.12.2
 
       - name: Vet
         run: |
@@ -30,7 +30,7 @@ jobs:
 
       - name: Quality Gate
         env:
-          TEST_COVERAGE_THRESHOLD: 60
+          TEST_COVERAGE_THRESHOLD: 70
         run: |
           echo "Quality Gate: checking test coverage is above threshold ..."
           echo "Threshold             : $TEST_COVERAGE_THRESHOLD %"

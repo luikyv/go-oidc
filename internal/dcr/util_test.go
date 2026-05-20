@@ -12,356 +12,430 @@ import (
 )
 
 func TestCreate(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) (oidc.Context, string, *client.Meta)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, oidc.Context, response)
+	}{
+		{
+			name: "happy path",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response) {
+				if resp.ID == "" {
+					t.Fatal("the client id in the response cannot be empty")
+				}
 
-	// When.
-	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
+				expectedRegURI := ctx.BaseURL() + ctx.DCREndpoint + "/" + resp.ID
+				if resp.RegistrationURI != expectedRegURI {
+					t.Fatalf("RegistrationURI = %s, want %s", resp.RegistrationURI, expectedRegURI)
+				}
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error creating the client: %v", err)
+				if _, err := ctx.DCRClient(resp.ID); err != nil {
+					t.Fatalf("fetching the new client resulted in error: %v", err)
+				}
+			},
+		},
+		{
+			name: "invalid initial token",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				ctx.DCRValidateInitialTokenFunc = func(_ context.Context, _ string) error {
+					return errors.New("invalid token")
+				}
+				return ctx, "bad_token", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+		},
+		{
+			name: "secret generated for secret basic",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, _ oidc.Context, resp response) {
+				if resp.Secret == "" {
+					t.Fatal("expected a non-empty secret for secret_basic authn method")
+				}
+			},
+		},
+		{
+			name: "no secret for public client",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				c.TokenAuthnMethod = goidc.AuthnMethodNone
+				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
+				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, _ oidc.Context, resp response) {
+				if resp.Secret != "" {
+					t.Fatalf("expected empty secret for public client, got %s", resp.Secret)
+				}
+			},
+		},
+		{
+			name: "secret generated for secret jwt",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				c.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, _ oidc.Context, resp response) {
+				if resp.Secret == "" {
+					t.Fatal("expected a non-empty secret for secret_jwt authn method")
+				}
+			},
+		},
+		{
+			name: "secret generated for secret post",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, _ oidc.Context, resp response) {
+				if resp.Secret == "" {
+					t.Fatal("expected a non-empty secret for secret_post authn method")
+				}
+			},
+		},
+		{
+			name: "handle dynamic client error",
+			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+				c, _ := oidctest.NewClient(t)
+				ctx := newDCRContext(t)
+				ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
+					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "handler error")
+				}
+				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			wantErr: goidc.ErrorCodeInvalidClientMetadata,
+		},
 	}
 
-	if resp.ID == "" {
-		t.Errorf("the client id in the response cannot be empty")
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, initialToken, meta := test.setup(t)
 
-	expectedRegURI := ctx.BaseURL() + ctx.DCREndpoint + "/" + resp.ID
-	if resp.RegistrationURI != expectedRegURI {
-		t.Errorf("RegistrationURI = %s, want %s", resp.RegistrationURI, expectedRegURI)
-	}
+			// When.
+			resp, err := create(ctx, initialToken, meta)
 
-	_, err = ctx.Client(resp.ID)
-	if err != nil {
-		t.Errorf("fetching the new client resulted in error: %v", err)
+			// Then.
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				if oidcErr.Code != test.wantErr {
+					t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				return
+			}
+
+			if err != nil {
+				t.Fatalf("unexpected error creating the client: %v", err)
+			}
+
+			if test.validate != nil {
+				test.validate(t, ctx, resp)
+			}
+		})
 	}
 }
 
 func TestUpdate(t *testing.T) {
-	// Given.
-	ctx, c, regToken := setUp(t)
-	ctx.DCRTokenRotationIsEnabled = false
-
-	// When.
-	resp, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error updating the client: %v", err)
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) (oidc.Context, string, string, *client.Meta)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, response, string)
+	}{
+		{
+			name: "happy path",
+			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+				ctx, c, regToken := setUp(t)
+				ctx.DCRTokenRotationIsEnabled = false
+				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, resp response, clientID string) {
+				if resp.ID != clientID {
+					t.Fatalf("ID = %s, want %s", resp.ID, clientID)
+				}
+				if resp.RegistrationToken != "" {
+					t.Fatal("token rotation is not enabled, the registration token shouldn't be present")
+				}
+			},
+		},
+		{
+			name: "token rotation",
+			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+				ctx, c, regToken := setUp(t)
+				ctx.DCRTokenRotationIsEnabled = true
+				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			validate: func(t *testing.T, resp response, clientID string) {
+				if resp.ID != clientID {
+					t.Fatalf("ID = %s, want %s", resp.ID, clientID)
+				}
+				if resp.RegistrationToken == "" {
+					t.Fatal("token rotation is enabled, the registration token should be present")
+				}
+			},
+		},
+		{
+			name: "invalid token",
+			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+				ctx, c, _ := setUp(t)
+				return ctx, c.ID, "wrong_token", &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+		},
+		{
+			name: "client not found",
+			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+				ctx, _, regToken := setUp(t)
+				return ctx, "nonexistent_client", regToken, &client.Meta{}
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "handle dynamic client error",
+			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+				ctx, c, regToken := setUp(t)
+				ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
+					return errors.New("handler error")
+				}
+				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+			},
+			wantErr: goidc.ErrorCodeInvalidClientMetadata,
+		},
 	}
 
-	if resp.ID != c.ID {
-		t.Errorf("ID = %s, want %s", resp.ID, c.ID)
-	}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, clientID, regToken, meta := test.setup(t)
 
-	if resp.RegistrationToken != "" {
-		t.Error("token rotation is not enabled, the registration token shouldn't be present")
-	}
-}
+			// When.
+			resp, err := update(ctx, clientID, regToken, meta)
 
-func TestUpdate_TokenRotation(t *testing.T) {
-	// Given.
-	ctx, c, regToken := setUp(t)
-	ctx.DCRTokenRotationIsEnabled = true
+			// Then.
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
 
-	// When.
-	resp, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				if oidcErr.Code != test.wantErr {
+					t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				return
+			}
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error updating the client: %v", err)
-	}
+			if err != nil {
+				t.Fatalf("unexpected error updating the client: %v", err)
+			}
 
-	if resp.ID != c.ID {
-		t.Errorf("ID = %s, want %s", resp.ID, c.ID)
-	}
-
-	if resp.RegistrationToken == "" {
-		t.Error("token rotation is enabled, the registration token should be present")
+			if test.validate != nil {
+				test.validate(t, resp, clientID)
+			}
+		})
 	}
 }
 
 func TestFetch(t *testing.T) {
-	// Given.
-	ctx, client, regToken := setUp(t)
-
-	// When.
-	resp, err := fetch(ctx, client.ID, regToken)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error fetching the client: %v", err)
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) (oidc.Context, string, string)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, response, string)
+	}{
+		{
+			name: "happy path",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx, c, regToken := setUp(t)
+				return ctx, c.ID, regToken
+			},
+			validate: func(t *testing.T, resp response, clientID string) {
+				if resp.ID != clientID {
+					t.Fatalf("ID = %s, want %s", resp.ID, clientID)
+				}
+			},
+		},
+		{
+			name: "invalid token",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx, c, _ := setUp(t)
+				return ctx, c.ID, "invalid_token"
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+		},
+		{
+			name: "client not found",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx, _, regToken := setUp(t)
+				return ctx, "nonexistent_client", regToken
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
 	}
 
-	if resp.ID != client.ID {
-		t.Errorf("ID = %s, want %s", resp.ID, client.ID)
-	}
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, clientID, regToken := test.setup(t)
 
-func TestFetch_InvalidToken(t *testing.T) {
-	// Given.
-	ctx, client, _ := setUp(t)
+			// When.
+			resp, err := fetch(ctx, clientID, regToken)
 
-	// When.
-	_, err := fetch(ctx, client.ID, "invalid_token")
+			// Then.
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
 
-	// Then.
-	if err == nil {
-		t.Error("fetching the client with an invalid token should result in failure")
-	}
-}
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				if oidcErr.Code != test.wantErr {
+					t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				return
+			}
 
-func TestDeleteClient(t *testing.T) {
-	// Given.
-	ctx, client, regToken := setUp(t)
+			if err != nil {
+				t.Fatalf("unexpected error fetching the client: %v", err)
+			}
 
-	// When.
-	err := remove(ctx, client.ID, regToken)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error deleting the client: %v", err)
-	}
-
-	clients := oidctest.Clients(t, ctx)
-	if len(clients) != 0 {
-		t.Errorf("len(clients) = %d, want 0", len(clients))
-	}
-}
-
-func TestDeleteClient_InvalidToken(t *testing.T) {
-	// Given.
-	ctx, client, _ := setUp(t)
-
-	// When.
-	err := remove(ctx, client.ID, "invalid_token")
-
-	// Then.
-	if err == nil {
-		t.Error("deleting the client with an invalid token should result in failure")
-	}
-}
-
-func TestCreate_InvalidInitialToken(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	ctx.DCRValidateInitialTokenFunc = func(_ context.Context, _ string) error {
-		return errors.New("invalid token")
-	}
-
-	// When.
-	_, err := create(ctx, "bad_token", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for invalid initial access token")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
+			if test.validate != nil {
+				test.validate(t, resp, clientID)
+			}
+		})
 	}
 }
 
-func TestCreate_SecretGeneration(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
-
-	// When.
-	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+func TestRemove(t *testing.T) {
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) (oidc.Context, string, string)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, oidc.Context)
+	}{
+		{
+			name: "happy path",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx, c, regToken := setUp(t)
+				return ctx, c.ID, regToken
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				clients := oidctest.Clients(t, ctx)
+				if len(clients) != 0 {
+					t.Fatalf("len(clients) = %d, want 0", len(clients))
+				}
+			},
+		},
+		{
+			name: "invalid token",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx, c, _ := setUp(t)
+				return ctx, c.ID, "invalid_token"
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+		},
+		{
+			name: "client not found",
+			setup: func(t *testing.T) (oidc.Context, string, string) {
+				ctx := oidctest.NewContext(t)
+				ctx.DCRIsEnabled = true
+				ctx.DCRManager = oidctest.Manager(t, ctx)
+				return ctx, "nonexistent_client", "some_token"
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
 	}
 
-	if resp.Secret == "" {
-		t.Error("expected a non-empty secret for secret_basic authn method")
-	}
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, clientID, regToken := test.setup(t)
 
-func TestCreate_NoSecretForPublicClient(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	c.TokenAuthnMethod = goidc.AuthnMethodNone
-	// Public clients cannot use client_credentials.
-	c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
-	c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
+			// When.
+			err := remove(ctx, clientID, regToken)
 
-	// When.
-	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
+			// Then.
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				if oidcErr.Code != test.wantErr {
+					t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+				}
+				return
+			}
 
-	if resp.Secret != "" {
-		t.Errorf("expected empty secret for public client, got %s", resp.Secret)
-	}
-}
+			if err != nil {
+				t.Fatalf("unexpected error deleting the client: %v", err)
+			}
 
-func TestUpdate_InvalidToken(t *testing.T) {
-	// Given.
-	ctx, c, _ := setUp(t)
-
-	// When.
-	_, err := update(ctx, c.ID, "wrong_token", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for invalid registration token")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
-	}
-}
-
-func TestUpdate_ClientNotFound(t *testing.T) {
-	// Given.
-	ctx, _, regToken := setUp(t)
-
-	// When.
-	_, err := update(ctx, "nonexistent_client", regToken, &client.Client{})
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for non-existent client")
-	}
-}
-
-func TestFetch_ClientNotFound(t *testing.T) {
-	// Given.
-	ctx, _, regToken := setUp(t)
-
-	// When.
-	_, err := fetch(ctx, "nonexistent_client", regToken)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for non-existent client")
+			if test.validate != nil {
+				test.validate(t, ctx)
+			}
+		})
 	}
 }
 
-func TestCreate_SecretForSecretJWT(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	c.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
-
-	// When.
-	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if resp.Secret == "" {
-		t.Error("expected a non-empty secret for secret_jwt authn method")
-	}
-}
-
-func TestDelete_ClientNotFound(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-
-	// When.
-	err := remove(ctx, "nonexistent_client", "some_token")
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for non-existent client")
-	}
-}
-
-func TestCreate_HandleDynamicClientError(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
-		return errors.New("handler error")
-	}
-
-	// When.
-	_, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error from HandleDynamicClient")
-	}
-}
-
-func TestCreate_SecretForSecretPost(t *testing.T) {
-	// Given.
-	c, _ := oidctest.NewClient(t)
-	ctx := oidctest.NewContext(t)
-	c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
-
-	// When.
-	resp, err := create(ctx, "", &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	if resp.Secret == "" {
-		t.Error("expected a non-empty secret for secret_post authn method")
-	}
-}
-
-func TestUpdate_HandleDynamicClientError(t *testing.T) {
-	// Given.
-	ctx, c, regToken := setUp(t)
-	ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
-		return errors.New("handler error")
-	}
-
-	// When.
-	_, err := update(ctx, c.ID, regToken, &client.Client{ClientMeta: c.ClientMeta})
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error from HandleDynamicClient")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-	if oidcErr.Code != goidc.ErrorCodeInvalidClientMetadata {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidClientMetadata)
-	}
-}
-
-func setUp(t *testing.T) (ctx oidc.Context, client *goidc.Client, regToken string) {
+func setUp(t *testing.T) (oidc.Context, *goidc.Client, string) {
 	t.Helper()
 
-	ctx = oidctest.NewContext(t)
+	ctx := newDCRContext(t)
 
-	regToken = "registration_token"
-	client, _ = oidctest.NewClient(t)
-	client.RegistrationToken = regToken
-	if err := ctx.SaveClient(client); err != nil {
-		t.Fatalf("unexpected error creating the client: %v", err)
+	regToken := "registration_token"
+	c, _ := oidctest.NewClient(t)
+	c.RegistrationToken = regToken
+
+	if err := ctx.DCRSaveClient(c); err != nil {
+		t.Fatalf("could not save dcr client: %v", err)
 	}
 
-	return ctx, client, regToken
+	return ctx, c, regToken
+}
+
+func newDCRContext(tb testing.TB) oidc.Context {
+	tb.Helper()
+
+	ctx := oidctest.NewContext(tb)
+	ctx.DCRIsEnabled = true
+	ctx.DCRManager = oidctest.Manager(tb, ctx)
+	ctx.DCRClientIDFunc = func(context.Context) string {
+		return "test_client_id"
+	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
+	}
+	return ctx
 }

@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -24,12 +25,13 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 
 func handleCreate(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("content type must be application/x-www-form-urlencoded")))
 		return
 	}
 
 	req := newRequest(ctx.Request)
-	tokenResp, err := generateGrant(ctx, req)
+	tokenResp, err := generateToken(ctx, req)
 	if err != nil {
 		ctx.WriteError(err)
 		return
@@ -42,7 +44,8 @@ func handleCreate(ctx oidc.Context) {
 
 func handleIntrospection(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("content type must be application/x-www-form-urlencoded")))
 		return
 	}
 
@@ -60,7 +63,8 @@ func handleIntrospection(ctx oidc.Context) {
 
 func handleRevocation(ctx oidc.Context) {
 	if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type"))
+		ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("content type must be application/x-www-form-urlencoded")))
 		return
 	}
 

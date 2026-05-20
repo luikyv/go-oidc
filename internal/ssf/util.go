@@ -18,7 +18,7 @@ import (
 func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 	stream, err := ctx.SSFEventStream(streamID)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not load the event stream %q: %w", streamID, err)
 	}
 
 	// Return an error if the stream did not subscribe to the event type and the event is not a verification event.
@@ -43,21 +43,24 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 	case goidc.SSFDeliveryMethodPush:
 		return pushEvent(ctx, stream, event)
 	case goidc.SSFDeliveryMethodPoll:
-		return ctx.SSFSaveEvent(streamID, event)
+		if err := ctx.SSFSaveEvent(streamID, event); err != nil {
+			return fmt.Errorf("could not save the security event for polling delivery: %w", err)
+		}
+		return nil
 	default:
-		return errors.New("unsupported delivery method")
+		return fmt.Errorf("unsupported SSF delivery method %q", stream.DeliveryMethod)
 	}
 }
 
 func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEvent) error {
 	set, err := signEvent(ctx, stream, event)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not sign the security event token: %w", err)
 	}
 
 	req, err := http.NewRequestWithContext(ctx.Context(), http.MethodPost, stream.DeliveryEndpoint, strings.NewReader(set))
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create the event push request: %w", err)
 	}
 	req.Header.Set("Content-Type", contentTypeSecurityEvent)
 	if stream.AuthorizationHeader != "" {
@@ -66,12 +69,12 @@ func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEv
 
 	resp, err := ctx.SSFHTTPClient().Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not send the event push request: %w", err)
 	}
 	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("push failed with status %d", resp.StatusCode)
+		return fmt.Errorf("sending the event push request returned status %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -107,7 +110,7 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverIsEnabled && len(streams) > 0 {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "multiple streams per receiver are not allowed").WithStatusCode(http.StatusConflict)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("multiple streams per receiver are not allowed")).WithStatusCode(http.StatusConflict)
 	}
 
 	// [SSF 1.0 §8.1.1.1] Default to poll delivery when unspecified.
@@ -144,7 +147,7 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if err := ctx.SSFCreateEventStream(stream); err != nil {
-		return response{}, err
+		return response{}, fmt.Errorf("could not create the event stream: %w", err)
 	}
 
 	return toResponse(ctx, stream), nil
@@ -178,7 +181,7 @@ func updateStream(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if err := ctx.SSFUpdateEventStream(stream); err != nil {
-		return response{}, err
+		return response{}, fmt.Errorf("could not update the event stream: %w", err)
 	}
 
 	return toResponse(ctx, stream), nil
@@ -217,7 +220,7 @@ func patchStream(ctx oidc.Context, req request) (response, error) {
 	}
 
 	if err := ctx.SSFUpdateEventStream(stream); err != nil {
-		return response{}, err
+		return response{}, fmt.Errorf("could not update the event stream: %w", err)
 	}
 
 	return toResponse(ctx, stream), nil
@@ -240,7 +243,7 @@ func fetchStreams(ctx oidc.Context) ([]response, error) {
 
 	streams, err := ctx.SSFEventStreams(receiver.ID)
 	if err != nil {
-		return []response{}, err
+		return []response{}, fmt.Errorf("could not load the event streams for receiver %q: %w", receiver.ID, err)
 	}
 
 	responses := make([]response, 0, len(streams))
@@ -256,7 +259,10 @@ func deleteStream(ctx oidc.Context, id string) error {
 		return err
 	}
 
-	return ctx.SSFDeleteEventStream(stream.ID)
+	if err := ctx.SSFDeleteEventStream(stream.ID); err != nil {
+		return fmt.Errorf("could not delete the event stream: %w", err)
+	}
+	return nil
 }
 
 func fetchStreamStatus(ctx oidc.Context, id string) (responseStatus, error) {
@@ -281,7 +287,7 @@ func updateStreamStatus(ctx oidc.Context, req requestStatus) (responseStatus, er
 	stream.Status = req.Status
 	stream.StatusReason = req.StatusReason
 	if err := ctx.SSFUpdateEventStream(stream); err != nil {
-		return responseStatus{}, err
+		return responseStatus{}, fmt.Errorf("could not update the event stream status: %w", err)
 	}
 
 	return responseStatus{
@@ -305,9 +311,12 @@ func addSubject(ctx oidc.Context, req requestSubject) error {
 	if req.Verified != nil {
 		verified = *req.Verified
 	}
-	return ctx.SSFAddSubject(stream.ID, req.Subject, goidc.SSFSubjectOptions{
+	if err := ctx.SSFAddSubject(stream.ID, req.Subject, goidc.SSFSubjectOptions{
 		Verified: verified,
-	})
+	}); err != nil {
+		return fmt.Errorf("could not add the subject to the event stream: %w", err)
+	}
+	return nil
 }
 
 func removeSubject(ctx oidc.Context, req requestSubject) error {
@@ -319,31 +328,34 @@ func removeSubject(ctx oidc.Context, req requestSubject) error {
 		return err
 	}
 
-	return ctx.SSFRemoveSubject(req.StreamID, req.Subject)
+	if err := ctx.SSFRemoveSubject(req.StreamID, req.Subject); err != nil {
+		return fmt.Errorf("could not remove the subject from the event stream: %w", err)
+	}
+	return nil
 }
 
 func validateStream(ctx oidc.Context, stream *goidc.SSFEventStream) error {
 	if !slices.Contains(ctx.SSFDeliveryMethods, stream.DeliveryMethod) {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid delivery method")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("delivery method %q is not supported", stream.DeliveryMethod))
 	}
 
 	if stream.DeliveryMethod == goidc.SSFDeliveryMethodPush {
 		if stream.DeliveryEndpoint == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "receiver delivery endpoint_url is required for push delivery method")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("delivery endpoint_url is required for push delivery"))
 		}
 
 		if _, err := url.Parse(stream.DeliveryEndpoint); err != nil {
-			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid delivery endpoint_url", err)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("delivery endpoint_url is invalid: %w", err))
 		}
 	}
 
 	if stream.DeliveryMethod == goidc.SSFDeliveryMethodPoll {
 		if stream.DeliveryEndpoint != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "receiver delivery endpoint_url is not allowed for poll delivery method")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("delivery endpoint_url is not allowed for poll delivery"))
 		}
 
 		if stream.AuthorizationHeader != "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "authorization_header is not allowed for poll delivery method")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("authorization_header is not allowed for poll delivery"))
 		}
 	}
 
@@ -371,139 +383,139 @@ var subjectAllowedFields = map[goidc.SSFSubjectFormat]struct {
 	goidc.SSFSubjectFormatComplex:           {user: true, tenant: true, device: true, session: true, orgUnit: true, application: true, group: true, additionalProperties: true},
 }
 
-func validateSubject(ctx oidc.Context, sub goidc.SSFSubject) error {
+func validateSubject(ctx oidc.Context, sub goidc.SSFSubject) error { //nolint:unparam
 	allowed, ok := subjectAllowedFields[sub.Format]
 	if !ok {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("subject format %q is not supported", sub.Format))
 	}
 
 	// Check disallowed fields are empty.
 	if !allowed.id && sub.ID != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "id is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("id is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.email && sub.Email != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "email is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("email is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.phone && sub.Phone != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "phone_number is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("phone_number is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.uri && sub.URI != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "uri is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("uri is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.iss && sub.Iss != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "iss is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("iss is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.sub && sub.Sub != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "sub is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("sub is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.url && sub.URL != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "url is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("url is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.jti && sub.JTI != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "jti is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("jti is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.assertionID && sub.AssertionID != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "assertion_id is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("assertion_id is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.issuer && sub.Issuer != "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "issuer is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("issuer is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.ipAddresses && sub.IPAddresses != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "ip-addresses is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("ip-addresses is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.identifiers && sub.Identifiers != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "identifiers is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("identifiers is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.user && sub.User != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "user is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("user is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.tenant && sub.Tenant != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "tenant is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("tenant is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.device && sub.Device != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "device is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("device is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.session && sub.Session != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "session is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("session is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.orgUnit && sub.OrganizationalUnit != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "org_unit is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("org_unit is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.application && sub.Application != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "application is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("application is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.group && sub.Group != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "group is not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("group is not allowed for %s subject format", sub.Format))
 	}
 	if !allowed.additionalProperties && sub.AdditionalProperties != nil {
-		return goidc.NewError(goidc.ErrorCodeInvalidRequest, "additional properties are not allowed for "+string(sub.Format)+" subject format")
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("additional properties are not allowed for %s subject format", sub.Format))
 	}
 
 	// Format-specific required field validation.
 	switch sub.Format {
 	case goidc.SSFSubjectFormatOpaque:
 		if sub.ID == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "id is required for opaque subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("id is required for opaque subject format"))
 		}
 	case goidc.SSFSubjectFormatEmail:
 		if sub.Email == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "email is required for email subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("email is required for email subject format"))
 		}
 	case goidc.SSFSubjectFormatPhoneNumber:
 		if sub.Phone == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "phone_number is required for phone_number subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("phone_number is required for phone_number subject format"))
 		}
 	case goidc.SSFSubjectFormatAccount, goidc.SSFSubjectFormatURI:
 		if sub.URI == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "uri is required for "+string(sub.Format)+" subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("uri is required for %s subject format", sub.Format))
 		}
 	case goidc.SSFSubjectFormatIssuerSubject:
 		if sub.Iss == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "iss is required for iss_sub subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("iss is required for iss_sub subject format"))
 		}
 		if sub.Sub == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "sub is required for iss_sub subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("sub is required for iss_sub subject format"))
 		}
 	case goidc.SSFSubjectDecentralizedIdentifier:
 		if sub.URL == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "url is required for did subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("url is required for did subject format"))
 		}
 	case goidc.SSFSubjectJWTID:
 		if sub.JTI == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "jti is required for jwt_id subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("jti is required for jwt_id subject format"))
 		}
 		if sub.Iss == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "iss is required for jwt_id subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("iss is required for jwt_id subject format"))
 		}
 	case goidc.SSFSubjectSAMLAssertionID:
 		if sub.AssertionID == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "assertion_id is required for saml_assertion_id subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("assertion_id is required for saml_assertion_id subject format"))
 		}
 		if sub.Issuer == "" {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "issuer is required for saml_assertion_id subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("issuer is required for saml_assertion_id subject format"))
 		}
 	case goidc.SSFSubjectIPAddresses:
 		if len(sub.IPAddresses) == 0 {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "ip-addresses is required for ip-addresses subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("ip-addresses is required for ip-addresses subject format"))
 		}
 	case goidc.SSFSubjectFormatAliases:
 		if len(sub.Identifiers) == 0 {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "identifiers is required for aliases subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("identifiers is required for aliases subject format"))
 		}
 		for _, member := range sub.Identifiers {
 			// [RFC 9493 §3.2.8] A member of an alias must not be an alias.
 			if member.Format == goidc.SSFSubjectFormatAliases {
-				return goidc.NewError(goidc.ErrorCodeInvalidRequest, "aliases cannot contain aliases")
+				return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("aliases cannot contain aliases"))
 			}
 			if err := validateSubject(ctx, member); err != nil {
-				return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid alias identifier", err)
+				return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("alias identifier is invalid: %w", err))
 			}
 		}
 	case goidc.SSFSubjectFormatComplex:
 		// [SSF 1.0 §3.3] A complex subject must contain at least one field.
 		if sub.User == nil && sub.Tenant == nil && sub.Device == nil && sub.Session == nil &&
 			sub.OrganizationalUnit == nil && sub.Application == nil && sub.Group == nil {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "at least one member is required for complex subject format")
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("at least one member is required for complex subject format"))
 		}
 		// Recursively validate nested subjects.
 		for _, nested := range []*goidc.SSFSubject{sub.User, sub.Tenant, sub.Device, sub.Session, sub.OrganizationalUnit, sub.Application, sub.Group} {
@@ -566,14 +578,14 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 	}
 
 	if stream.DeliveryMethod != goidc.SSFDeliveryMethodPoll {
-		return responsePollEvents{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream is not configured for polling")
+		return responsePollEvents{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("stream is not configured for polling"))
 	}
 
 	if req.Acknowledgements != nil {
 		if err := ctx.SSFAcknowledgeEvents(streamID, req.Acknowledgements, goidc.SSFAcknowledgementOptions{
 			ReturnImmediately: req.ReturnImmediately,
 		}); err != nil {
-			return responsePollEvents{}, err
+			return responsePollEvents{}, fmt.Errorf("could not acknowledge the polled security events: %w", err)
 		}
 	}
 
@@ -581,7 +593,7 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 		if err := ctx.SSFAcknowledgeErrors(streamID, req.Errors, goidc.SSFAcknowledgementOptions{
 			ReturnImmediately: req.ReturnImmediately,
 		}); err != nil {
-			return responsePollEvents{}, err
+			return responsePollEvents{}, fmt.Errorf("could not acknowledge the polled security event errors: %w", err)
 		}
 	}
 
@@ -597,14 +609,14 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 		ReturnImmediately: req.ReturnImmediately,
 	})
 	if err != nil {
-		return responsePollEvents{}, err
+		return responsePollEvents{}, fmt.Errorf("could not poll the pending security events: %w", err)
 	}
 
 	sets := make(map[string]string, len(events.Events))
 	for _, event := range events.Events {
 		set, err := signEvent(ctx, stream, event)
 		if err != nil {
-			return responsePollEvents{}, goidc.WrapError(goidc.ErrorCodeInternalError, "internal server error", err)
+			return responsePollEvents{}, fmt.Errorf("could not sign the polled security event token: %w", err)
 		}
 		sets[event.JWTID] = set
 	}
@@ -637,17 +649,20 @@ func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) e
 
 	if ctx.SSFMinVerificationInterval != 0 {
 		if stream.VerifiedAtTimestamp != 0 && stream.VerifiedAtTimestamp+ctx.SSFMinVerificationInterval > timeutil.TimestampNow() {
-			return goidc.NewError(goidc.ErrorCodeInvalidRequest, "verification event cannot be triggered within the minimum verification interval").WithStatusCode(http.StatusTooManyRequests)
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("verification event cannot be triggered within the minimum verification interval")).WithStatusCode(http.StatusTooManyRequests)
 		}
 		stream.VerifiedAtTimestamp = timeutil.TimestampNow()
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
-			return err
+			return fmt.Errorf("could not update the event stream verification timestamp: %w", err)
 		}
 	}
 
-	return ctx.SSFScheduleVerificationEvent(stream.ID, goidc.SSFStreamVerificationOptions{
+	if err := ctx.SSFScheduleVerificationEvent(stream.ID, goidc.SSFStreamVerificationOptions{
 		State: req.State,
-	})
+	}); err != nil {
+		return fmt.Errorf("could not schedule the verification event: %w", err)
+	}
+	return nil
 }
 
 func authorizedStream(ctx oidc.Context, id string) (*goidc.SSFEventStream, error) {
@@ -657,32 +672,35 @@ func authorizedStream(ctx oidc.Context, id string) (*goidc.SSFEventStream, error
 	}
 
 	if id == "" {
-		return nil, goidc.NewError(goidc.ErrorCodeInvalidRequest, "stream_id is required")
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("stream_id is required"))
 	}
 
 	stream, err := ctx.SSFEventStream(id)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "stream not found", err).WithStatusCode(http.StatusNotFound)
+		if errors.Is(err, goidc.ErrNotFound) {
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("stream was not found")).WithStatusCode(http.StatusNotFound)
+		}
+		return nil, fmt.Errorf("could not load the event stream %q: %w", id, err)
 	}
 
 	if stream.ReceiverID != receiver.ID {
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
-	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp < timeutil.TimestampNow() {
+	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp <= timeutil.TimestampNow() {
 		if err := ctx.SSFHandleExpiredEventStream(stream); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not handle the expired event stream: %w", err)
 		}
 		stream.ExpiresAtTimestamp = 0
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not clear the expired event stream timeout: %w", err)
 		}
 	}
 
 	if ctx.SSFInactivityTimeoutSecs != 0 {
 		stream.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.SSFInactivityTimeoutSecs
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
-			return nil, err
+			return nil, fmt.Errorf("could not update the event stream inactivity timeout: %w", err)
 		}
 	}
 

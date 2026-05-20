@@ -10,38 +10,44 @@ import (
 
 type Option func(p *Provider) error
 
-// WithClientManager replaces the default client manager which keeps the clients
-// stored in memory.
-func WithClientManager(manager goidc.ClientManager) Option {
+// WithProfile adjusts the server's behavior for non-configurable settings,
+// ensuring compliance with the associated specification. Depending on
+// the profile selected, the server may modify its operations to meet specific
+// requirements dictated by the corresponding standards or protocols.
+func WithProfile(profile goidc.Profile) Option {
 	return func(p *Provider) error {
-		p.config.ClientManager = manager
+		p.config.Profile = profile
 		return nil
 	}
 }
 
-// WithAuthnSessionManager replaces the default authn session manager which
-// keeps the authn sessions stored in memory.
-func WithAuthnSessionManager(manager goidc.AuthnSessionManager) Option {
+func WithProfileValidation() Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionManager = manager
+		p.profileValidationIsEnabled = true
 		return nil
 	}
 }
 
-// WithGrantManager replaces the default grant manager which
-// keeps the grants stored in memory.
-func WithGrantManager(manager goidc.GrantManager) Option {
+// WithAuthCodeGrant enables the authorization endpoint flows backed by
+// authentication sessions.
+//
+// It always enables the `authorization_code` grant type and registers the
+// response types accepted at the authorization endpoint.
+//
+// The response types determine which flows are available:
+//   - `code` enables the authorization code flow
+//   - `token` and `id_token` enable implicit flows
+//   - combined response types such as `code id_token` enable hybrid flows
+//
+// If any implicit or hybrid response type is informed, the provider also adds
+// the implicit grant type internally.
+//
+// If manager is nil, the default in-memory storage is used.
+func WithAuthCodeGrant(manager goidc.AuthManager, rts ...goidc.ResponseType) Option {
 	return func(p *Provider) error {
-		p.config.GrantManager = manager
-		return nil
-	}
-}
-
-// WithTokenManager replaces the default token manager which keeps the tokens
-// stored in memory.
-func WithTokenManager(manager goidc.TokenManager) Option {
-	return func(p *Provider) error {
-		p.config.TokenManager = manager
+		p.config.AuthManager = manager
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
+		p.config.ResponseTypes = append(p.config.ResponseTypes, rts...)
 		return nil
 	}
 }
@@ -49,6 +55,27 @@ func WithTokenManager(manager goidc.TokenManager) Option {
 func WithGrantIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantIDFunc = f
+		return nil
+	}
+}
+
+func WithPARIDFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.PARIDFunc = f
+		return nil
+	}
+}
+
+func WithCIBAIDFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.CIBAIDFunc = f
+		return nil
+	}
+}
+
+func WithOpaqueTokenFunc(f goidc.OpaqueTokenFunc) Option {
+	return func(p *Provider) error {
+		p.config.OpaqueTokenFunc = f
 		return nil
 	}
 }
@@ -143,14 +170,6 @@ func WithTokenIntrospectionEndpoint(endpoint string) Option {
 func WithTokenRevocationEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationEndpoint = endpoint
-		return nil
-	}
-}
-
-// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is [defaultEndpointCIBA].
-func WithCIBAEndpoint(endpoint string) Option {
-	return func(p *Provider) error {
-		p.config.CIBAEndpoint = endpoint
 		return nil
 	}
 }
@@ -267,10 +286,19 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 }
 
 // WithDCR allows clients to be registered dynamically.
+// If manager is nil, the default in-memory storage is used.
+//
+// By default, enabling DCR does not require an initial access token, so any
+// caller that can reach the endpoint can create clients. Production
+// deployments should typically combine this option with
+// [WithDCRValidateInitialTokenFunc] and/or [WithDCRHandleClientFunc] to enforce
+// their registration policy.
+//
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
-func WithDCR() Option {
+func WithDCR(manager goidc.DCRManager) Option {
 	return func(p *Provider) error {
 		p.config.DCRIsEnabled = true
+		p.config.DCRManager = manager
 		return nil
 	}
 }
@@ -287,6 +315,10 @@ func WithRPMetadataChoices() Option {
 	}
 }
 
+// WithDCRHandleClientFunc installs custom logic for DCR and DCM requests.
+//
+// Use it to enforce registration rules, validate metadata, reject unwanted
+// clients, or apply default values during create and update requests.
 func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRHandleClientFunc = f
@@ -294,9 +326,23 @@ func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
 	}
 }
 
+// WithDCRValidateInitialTokenFunc validates the initial access token used when
+// creating clients through DCR.
+//
+// Without this option, client creation is open to any caller that can reach the
+// registration endpoint.
 func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRValidateInitialTokenFunc = f
+		return nil
+	}
+}
+
+// WithDCRRegistrationTokenFunc customizes the registration access token issued
+// for DCR and DCM operations.
+func WithDCRRegistrationTokenFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.DCRRegistrationTokenFunc = f
 		return nil
 	}
 }
@@ -310,7 +356,7 @@ func WithLocalhostRedirectURIs() Option {
 
 func WithClientIDFunc(f goidc.ClientIDFunc) Option {
 	return func(p *Provider) error {
-		p.config.ClientIDFunc = f
+		p.config.DCRClientIDFunc = f
 		return nil
 	}
 }
@@ -332,6 +378,20 @@ func WithRefreshTokenShouldIssueFunc(f goidc.RefreshTokenShouldIssueFunc) Option
 	}
 }
 
+func WithRefreshTokenFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.RefreshTokenFunc = f
+		return nil
+	}
+}
+
+func WithDeviceCodeFunc(f goidc.RandomFunc) Option {
+	return func(p *Provider) error {
+		p.config.DeviceCodeFunc = f
+		return nil
+	}
+}
+
 func WithRefreshTokenLifetime(lifetimeSecs int) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
@@ -349,17 +409,39 @@ func WithRefreshTokenRotation() Option {
 	}
 }
 
-func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
+// WithCIBAGrant enables the CIBA grant type and configures the delivery modes
+// clients are allowed to use.
+//
+// The manager is used to persist pending CIBA sessions and grants resolved from
+// them. If manager is nil, the default in-memory storage is used.
+func WithCIBAGrant(manager goidc.CIBAManager, mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
+	modes = appendIfNotIn(modes, mode)
 	return func(p *Provider) error {
-		p.config.CIBAHandleSessionFunc = f
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
+		p.config.CIBAManager = manager
+		p.config.CIBATokenDeliveryModes = modes
 		return nil
 	}
 }
 
-func WithCIBADeliveryModes(mode goidc.CIBATokenDeliveryMode, modes ...goidc.CIBATokenDeliveryMode) Option {
-	modes = appendIfNotIn(modes, mode)
+func WithCIBAProfile(profile goidc.CIBAProfile) Option {
 	return func(p *Provider) error {
-		p.config.CIBATokenDeliveryModels = modes
+		p.config.CIBAProfile = profile
+		return nil
+	}
+}
+
+// WithCIBAEndpoint overrides the default value for the CIBA endpoint which is [defaultEndpointCIBA].
+func WithCIBAEndpoint(endpoint string) Option {
+	return func(p *Provider) error {
+		p.config.CIBAEndpoint = endpoint
+		return nil
+	}
+}
+
+func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
+	return func(p *Provider) error {
+		p.config.CIBAHandleSessionFunc = f
 		return nil
 	}
 }
@@ -401,13 +483,6 @@ func WithCIBALifetime(secs int) Option {
 	}
 }
 
-func WithCIBAAuthReqIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.CIBAAuthReqIDFunc = f
-		return nil
-	}
-}
-
 // WithOpenIDScopeRequired forces the openid scope to be informed in all
 // the authorization requests.
 func WithOpenIDScopeRequired() Option {
@@ -417,7 +492,10 @@ func WithOpenIDScopeRequired() Option {
 	}
 }
 
-// WithTokenOptions configures the way access tokens are issued by the provider.
+// WithTokenOptions configures how access tokens are issued by the provider.
+//
+// It is called for each issuance and can choose, for example, the token format
+// (opaque or JWT) and token lifetime based on the grant and client.
 //
 // If pairwise subject identifiers are enabled and applicable to the subject,
 // the token will be issued as an opaque token, even when the token option is set
@@ -476,27 +554,27 @@ func WithTokenClaims(f goidc.TokenClaimsFunc) Option {
 	}
 }
 
-func WithAuthorizationCodeGrant() Option {
+// WithRefreshTokenGrant enables the `refresh_token` grant type.
+//
+// Refresh token requests do not create a new authorization. Instead, they load
+// an existing grant by its refresh token and issue a new access token under the
+// same grant.
+//
+// The manager is used to resolve grants by refresh token. If manager is nil,
+// the default in-memory storage is used.
+func WithRefreshTokenGrant(manager goidc.RefreshTokenManager) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantAuthorizationCode)
-		return nil
-	}
-}
-
-func WithImplicitGrant() Option {
-	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantImplicit)
-		return nil
-	}
-}
-
-func WithRefreshTokenGrant() Option {
-	return func(p *Provider) error {
+		p.config.RefreshTokenManager = manager
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantRefreshToken)
 		return nil
 	}
 }
 
+// WithClientCredentialsGrant enables the `client_credentials` grant type.
+//
+// This flow does not involve an end-user or an authentication session. The
+// client authenticates directly at the token endpoint and receives a token for
+// itself.
 func WithClientCredentialsGrant() Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantClientCredentials)
@@ -504,6 +582,16 @@ func WithClientCredentialsGrant() Option {
 	}
 }
 
+// WithJWTBearerGrant enables the `urn:ietf:params:oauth:grant-type:jwt-bearer`
+// grant type.
+//
+// The handler receives the raw assertion from the token request and must
+// validate it according to the deployment rules. If the assertion is accepted,
+// it returns the subject represented by that assertion so the provider can
+// create a grant and issue a token from it.
+//
+// To also require client authentication on JWT bearer token requests, see
+// [WithJWTBearerGrantClientAuthnRequired].
 func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantJWTBearer)
@@ -512,17 +600,21 @@ func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	}
 }
 
-func WithCIBAGrant(profile goidc.CIBAProfile) Option {
+func WithPreAuthorizedCodeGrant() Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantCIBA)
-		p.config.CIBAProfile = profile
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
 		return nil
 	}
 }
 
-func WithPreAuthorizedCodeGrant() Option {
+// WithDeviceGrant enables the device authorization grant.
+// If manager is nil, the default in-memory storage is used.
+func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFunc, confirmationFunc goidc.RenderFunc) Option {
 	return func(p *Provider) error {
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantDeviceCode)
+		p.config.DeviceAuthManager = manager
+		p.config.DeviceAuthPromptUserCodeFunc = promptFunc
+		p.config.DeviceAuthRenderConfirmationFunc = confirmationFunc
 		return nil
 	}
 }
@@ -546,10 +638,26 @@ func WithScopes(scopes ...goidc.Scope) Option {
 
 // WithPAR allows authorization flows to start at the pushed authorization
 // request endpoint.
-func WithPAR() Option {
+//
+// The manager stores the pushed authorization request session that will later
+// be resolved by `request_uri` at the authorization endpoint. If manager is
+// nil, the default in-memory storage is used.
+func WithPAR(manager goidc.PARManager) Option {
 	return func(p *Provider) error {
 		p.config.PARIsEnabled = true
+		p.config.PARManager = manager
 		return nil
+	}
+}
+
+// WithPARRequired forces authorization flows to start at the pushed
+// authorization request endpoint.
+// If manager is nil, the default in-memory storage is used.
+// For more info, see [WithPAR].
+func WithPARRequired(manager goidc.PARManager) Option {
+	return func(p *Provider) error {
+		p.config.PARIsRequired = true
+		return WithPAR(manager)(p)
 	}
 }
 
@@ -567,29 +675,12 @@ func WithPARLifetime(secs int) Option {
 	}
 }
 
-// WithPARRequired forces authorization flows to start at the pushed
-// authorization request endpoint.
-// For more info, see [WithPAR].
-func WithPARRequired() Option {
-	return func(p *Provider) error {
-		p.config.PARIsRequired = true
-		return WithPAR()(p)
-	}
-}
-
 // WithPARUnregisteredRedirectURIs allows clients to inform unregistered
 // redirect URIs during requests to pushed authorization endpoint.
 // To enable pushed authorization request, see [WithPAR].
 func WithPARUnregisteredRedirectURIs() Option {
 	return func(p *Provider) error {
 		p.config.PARUnregisteredRedirectURIIsEnabled = true
-		return nil
-	}
-}
-
-func WithPARIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.PARIDFunc = f
 		return nil
 	}
 }
@@ -618,11 +709,21 @@ func WithJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 	}
 }
 
-// TODO: Split this.
-func WithJARByReference(requireReqURIRegistration bool) Option {
+// WithJARByReference enables support for request objects referenced by the
+// "request_uri" authorization parameter.
+func WithJARByReference() Option {
 	return func(p *Provider) error {
 		p.config.JARByReferenceIsEnabled = true
-		p.config.JARRequestURIRegistrationIsRequired = requireReqURIRegistration
+		return nil
+	}
+}
+
+// WithJARByReferenceUnregisteredURIs allows request_uri values that were not
+// pre-registered by the client.
+// To enable request objects by reference, see [WithJARByReference].
+func WithJARByReferenceUnregisteredURIs() Option {
+	return func(p *Provider) error {
+		p.config.JARByReferenceUnregisteredURIIsEnabled = true
 		return nil
 	}
 }
@@ -764,6 +865,15 @@ func WithIssuerResponseParameter() Option {
 	}
 }
 
+// WithFormPostResponseMode enables support for the `form_post` response mode
+// at the authorization endpoint.
+func WithFormPostResponseMode() Option {
+	return func(p *Provider) error {
+		p.config.ResponseModes = appendIfNotIn(p.config.ResponseModes, goidc.ResponseModeFormPost)
+		return nil
+	}
+}
+
 // WithClaimsParameter allows clients to send the "claims" parameter during
 // authorization requests.
 func WithClaimsParameter() Option {
@@ -873,7 +983,16 @@ func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.Aut
 	}
 }
 
-// WithTokenIntrospection allows authorized clients to introspect tokens.
+// WithTokenIntrospection enables the token introspection endpoint.
+//
+// The client calling the endpoint must authenticate first. For each
+// introspection request, the provided function receives the authenticated
+// client and the resolved token and must return whether that client is
+// allowed to introspect it.
+//
+// If the function allows the request, the provider returns the introspection
+// response derived from the stored token state. If the token is unknown,
+// expired, or otherwise inactive, the endpoint returns an inactive response.
 func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenIntrospectionIsEnabled = true
@@ -883,10 +1002,24 @@ func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Opti
 }
 
 // WithTokenRevocation allows clients to revoke tokens.
+//
+// Refresh token revocation always invalidates the underlying grant and related
+// access tokens. Access token revocation deletes only the presented access
+// token unless [WithTokenRevocationDeleteGrantOnAccessToken] is also enabled.
 func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationIsEnabled = true
 		p.config.TokenRevocationIsClientAllowedFunc = f
+		return nil
+	}
+}
+
+// WithTokenRevocationDeleteGrantOnAccessToken makes access token revocation
+// invalidate the underlying grant and all related tokens instead of deleting
+// only the presented access token.
+func WithTokenRevocationDeleteGrantOnAccessToken() Option {
+	return func(p *Provider) error {
+		p.config.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
 		return nil
 	}
 }
@@ -933,19 +1066,19 @@ func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) O
 	}
 }
 
-// WithAuthnSessionTimeout sets the user authentication session lifetime.
+// WithAuthTimeout sets the user authentication session lifetime.
 // This defines how long an authorization request may last.
 // The default is [defaultAuthnSessionTimeoutSecs].
-func WithAuthnSessionTimeout(secs int) Option {
+func WithAuthTimeout(secs int) Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionTimeoutSecs = secs
+		p.config.AuthTimeoutSecs = secs
 		return nil
 	}
 }
 
 func WithAuthnSessionIDFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
-		p.config.AuthnSessionGenerateIDFunc = f
+		p.config.AuthSessionIDFunc = f
 		return nil
 	}
 }
@@ -981,11 +1114,11 @@ func WithRenderErrorFunc(render goidc.RenderErrorFunc) Option {
 	}
 }
 
-// WithNotifyErrorFunc defines a handler to be executed when an error happens.
+// WithHandleErrorFunc defines a handler to be executed when an error happens.
 // For instance, this can be used to log information about the error.
-func WithNotifyErrorFunc(f goidc.NotifyErrorFunc) Option {
+func WithHandleErrorFunc(f goidc.HandleErrorFunc) Option {
 	return func(p *Provider) error {
-		p.config.NotifyErrorFunc = f
+		p.config.HandleErrorFunc = f
 		return nil
 	}
 }
@@ -1112,6 +1245,8 @@ func WithErrorURI(uri string) Option {
 // through signed entity statements rather than pre-configured client registrations.
 //
 // Parameters:
+//   - manager: The storage used to persist federated clients. If nil, the
+//     default in-memory storage is used.
 //   - jwksFunc: A function that returns the provider's Federation JWKS, used to sign
 //     the provider's entity configuration. This JWKS is separate from the provider's
 //     regular signing keys. See [WithSignerFunc] if the private keys are not available.
@@ -1125,10 +1260,11 @@ func WithErrorURI(uri string) Option {
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
 //
 // [OpenID Federation specification]: https://openid.net/specs/openid-federation-1_0.html.
-func WithOpenIDFederation(jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
+func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
 	anchors = appendIfNotIn(anchors, anchor)
 	return func(p *Provider) error {
 		p.config.OpenIDFedIsEnabled = true
+		p.config.OpenIDFedManager = manager
 		p.config.OpenIDFedJWKSFunc = jwksFunc
 		p.config.OpenIDFedTrustedAnchors = anchors
 		return nil
@@ -1277,26 +1413,27 @@ func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
 }
 
 // WithLogout enables the [OpenID Connect RP-initiated logout flow](https://openid.net/specs/openid-connect-rpinitiated-1_0.html).
-// The default logout function is used to handle the logout when the flow is
-// completed when the client does not provide a post_logout_redirect_uri and
-// the logout policies are used to determine the logout flow to be executed.
-// By default, the logout sessions are stored in memory and are not persisted.
-// See [WithLogoutSessionManager] to change the storage mechanism.
-// The default logout session timeout is [defaultLogoutSessionTimeoutSecs].
-func WithLogout(handleFunc goidc.HandleDefaultPostLogoutFunc, logoutPolicies ...goidc.LogoutPolicy) Option {
+// The manager stores pending logout sessions while the flow is in progress. If
+// manager is nil, the default in-memory storage is used.
+// The default logout function is used when the flow is completed and the client
+// does not provide a post_logout_redirect_uri. Use [WithLogoutPolicies] to
+// configure which logout flows will be executed. The default logout session
+// timeout is [defaultLogoutSessionTimeoutSecs].
+func WithLogout(manager goidc.LogoutManager, handleFunc goidc.HandleDefaultPostLogoutFunc) Option {
 	return func(p *Provider) error {
 		p.config.LogoutIsEnabled = true
+		p.config.LogoutManager = manager
 		p.config.HandleDefaultPostLogoutFunc = handleFunc
-		p.config.LogoutPolicies = logoutPolicies
 		return nil
 	}
 }
 
-// WithLogoutSessionManager sets the logout session manager.
-// For more information, see [WithLogout].
-func WithLogoutSessionManager(manager goidc.LogoutSessionManager) Option {
+// WithLogoutPolicies configures the logout policies that are evaluated for each
+// RP-initiated logout request. The first policy whose setup function matches is
+// used to execute the logout flow.
+func WithLogoutPolicies(logoutPolicies ...goidc.LogoutPolicy) Option {
 	return func(p *Provider) error {
-		p.config.LogoutSessionManager = manager
+		p.config.LogoutPolicies = logoutPolicies
 		return nil
 	}
 }
@@ -1333,23 +1470,16 @@ func WithJWTIDFunc(f goidc.RandomFunc) Option {
 	}
 }
 
-func WithAuthorizationCodeFunc(f goidc.RandomFunc) Option {
+func WithAuthCodeFunc(f goidc.RandomFunc) Option {
 	return func(p *Provider) error {
-		p.config.AuthorizationCodeFunc = f
+		p.config.AuthCodeFunc = f
 		return nil
 	}
 }
 
-func WithAuthorizationCodeLifetime(secs int) Option {
+func WithAuthCodeLifetime(secs int) Option {
 	return func(p *Provider) error {
-		p.config.AuthorizationCodeLifetimeSecs = secs
-		return nil
-	}
-}
-
-func WithCallbackIDFunc(f goidc.RandomFunc) Option {
-	return func(p *Provider) error {
-		p.config.CallbackIDFunc = f
+		p.config.AuthCodeLifetimeSecs = secs
 		return nil
 	}
 }
@@ -1404,7 +1534,8 @@ func WithSSFEventTypes(eventType goidc.SSFEventType, events ...goidc.SSFEventTyp
 
 // WithSSFEventStreamManager replaces the default in-memory event stream storage.
 // The event stream manager is responsible for persisting event stream configurations
-// created by receivers.
+// created by receivers. If manager is nil, the default in-memory storage is
+// used.
 // For more information, see [WithSSF].
 func WithSSFEventStreamManager(manager goidc.SSFEventStreamManager) Option {
 	return func(p *Provider) error {
@@ -1427,7 +1558,8 @@ func WithSSFDeliveryMethods(method goidc.SSFDeliveryMethod, methods ...goidc.SSF
 
 // WithSSFEventPollManager replaces the default in-memory poll event storage.
 // The poll manager is responsible for queuing events for receivers using the poll
-// delivery method and tracking acknowledgements.
+// delivery method and tracking acknowledgements. If manager is nil, the default
+// in-memory storage is used.
 // For more information, see [WithSSF].
 func WithSSFEventPollManager(manager goidc.SSFEventPollManager) Option {
 	return func(p *Provider) error {
@@ -1582,9 +1714,11 @@ func WithCredentialIssuers(issuers ...goidc.VCIssuer) Option {
 }
 
 // appendIfNotIn adds 'value' to the beginning of 'values' if it is not already present.
-func appendIfNotIn[T comparable](values []T, value T) []T {
-	if !slices.Contains(values, value) {
-		return append([]T{value}, values...) // Prepend value if not found.
+func appendIfNotIn[T comparable](values []T, newValues ...T) []T {
+	for _, v := range slices.Backward(newValues) {
+		if !slices.Contains(values, v) {
+			values = append([]T{v}, values...)
+		}
 	}
 	return values
 }

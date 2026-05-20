@@ -1,26 +1,15 @@
 package goidc
 
-import (
-	"context"
-)
-
-// ClientManager gathers all the logic needed to manage clients.
-type ClientManager interface {
-	Save(ctx context.Context, client *Client) error
-	Client(ctx context.Context, id string) (*Client, error)
-	Delete(ctx context.Context, id string) error
-}
-
 type Client struct {
 	ID     string `json:"id"`
 	Secret string `json:"secret,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
 	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.
-	RegistrationToken  string `json:"registration_token,omitempty"`
-	CreatedAtTimestamp int    `json:"created_at,omitempty"`
-	ExpiresAtTimestamp int    `json:"expires_at,omitempty"`
-	Federation         *struct {
+	RegistrationToken string `json:"registration_token,omitempty"`
+	CreatedAt         int    `json:"created_at,omitempty"`
+	ExpiresAt         int    `json:"expires_at,omitempty"`
+	Federation        *struct {
 		TrustAnchor string   `json:"trust_anchor"`
 		TrustMarks  []string `json:"trust_marks,omitempty"`
 	} `json:"federation,omitempty"`

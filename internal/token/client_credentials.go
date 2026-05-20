@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"slices"
 	"strings"
 
@@ -9,13 +10,30 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, error) {
+func generateClientCredentialsToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err := validateClientCredentialsGrantRequest(ctx, req, c); err != nil {
+	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the client is not allowed to use the client_credentials grant type"))
+	}
+
+	if err := ValidateBinding(ctx, c, nil); err != nil {
+		return response{}, err
+	}
+
+	if err := validateScopes(ctx, req, c, ""); err != nil {
+		return response{}, err
+	}
+
+	if err := validateResources(ctx, req, ctx.Resources); err != nil {
+		return response{}, err
+	}
+
+	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
 		return response{}, err
 	}
 
@@ -27,7 +45,6 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
-		Type:                 goidc.GrantClientCredentials,
 		Subject:              c.ID,
 		ClientID:             c.ID,
 		Scopes:               strings.Join(scopes, " "),
@@ -53,29 +70,4 @@ func generateClientCredentialsGrant(ctx oidc.Context, req request) (response, er
 		Resources:            tkn.Resources,
 		Scopes:               tkn.Scopes,
 	}, nil
-}
-
-func validateClientCredentialsGrantRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-
-	if !slices.Contains(c.GrantTypes, goidc.GrantClientCredentials) {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
-	}
-
-	if err := ValidateBinding(ctx, c, nil); err != nil {
-		return err
-	}
-
-	if err := validateScopes(ctx, req, c, ""); err != nil {
-		return err
-	}
-
-	if err := validateResources(ctx, req, ctx.Resources); err != nil {
-		return err
-	}
-
-	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
-		return err
-	}
-
-	return nil
 }

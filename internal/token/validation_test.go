@@ -4,261 +4,283 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/hashutil"
+	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestValidatePKCE_Plain_Valid(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = true
-	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodPlain
-	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain}
+func TestValidatePKCE(t *testing.T) {
+	plainVerifier := "0123456789abcdef0123456789abcdef0123456789a"
+	shaVerifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
 
-	verifier := "0123456789abcdef0123456789abcdef0123456789a"
-	session := &goidc.AuthnSession{}
-	session.CodeChallenge = verifier
-	session.CodeChallengeMethod = goidc.CodeChallengeMethodPlain
-	req := request{codeVerifier: verifier}
+	tests := []struct {
+		name    string
+		setup   func(*testing.T) (request, *goidc.Grant)
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name: "disabled",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: "anything"}, &goidc.Grant{}
+			},
+		},
+		{
+			name: "missing previous challenge with verifier",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: shaVerifier}, &goidc.Grant{}
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+		},
+		{
+			name: "plain valid",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: plainVerifier}, &goidc.Grant{
+					AuthParams: goidc.AuthorizationParameters{
+						CodeChallenge:       plainVerifier,
+						CodeChallengeMethod: goidc.CodeChallengeMethodPlain,
+					},
+				}
+			},
+		},
+		{
+			name: "plain invalid",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: "0123456789abcdef0123456789abcdef0123456789b"}, &goidc.Grant{
+					AuthParams: goidc.AuthorizationParameters{
+						CodeChallenge:       plainVerifier,
+						CodeChallengeMethod: goidc.CodeChallengeMethodPlain,
+					},
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+		},
+		{
+			name: "sha256 valid",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: shaVerifier}, &goidc.Grant{
+					AuthParams: goidc.AuthorizationParameters{
+						CodeChallenge:       hashutil.Thumbprint(shaVerifier),
+						CodeChallengeMethod: goidc.CodeChallengeMethodSHA256,
+					},
+				}
+			},
+		},
+		{
+			name: "sha256 invalid",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: "wrong_verifier_value_here_0000000000000000000"}, &goidc.Grant{
+					AuthParams: goidc.AuthorizationParameters{
+						CodeChallenge:       hashutil.Thumbprint(shaVerifier),
+						CodeChallengeMethod: goidc.CodeChallengeMethodSHA256,
+					},
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+		},
+		{
+			name: "too short",
+			setup: func(*testing.T) (request, *goidc.Grant) {
+				return request{codeVerifier: "short"}, &goidc.Grant{
+					AuthParams: goidc.AuthorizationParameters{
+						CodeChallenge:       "some_challenge",
+						CodeChallengeMethod: goidc.CodeChallengeMethodSHA256,
+					},
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidGrant,
+		},
+	}
 
-	// When.
-	err := validatePKCE(ctx, req, nil, session)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.PKCEIsEnabled = test.name != "disabled"
+			ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+			ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{
+				goidc.CodeChallengeMethodPlain,
+				goidc.CodeChallengeMethodSHA256,
+			}
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+			req, grant := test.setup(t)
+			err := validatePKCE(ctx, req, grant)
+
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("expected error %q", test.wantErr)
+			}
+
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidatePKCE_Plain_Invalid(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = true
-	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodPlain
-	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain}
+func TestValidateBindingRequirement(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  func(*oidc.Context)
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name:   "not required",
+			config: func(*oidc.Context) {},
+		},
+		{
+			name: "required without binding",
+			config: func(ctx *oidc.Context) {
+				ctx.TokenBindingIsRequired = true
+				ctx.DPoPIsEnabled = false
+				ctx.MTLSTokenBindingIsEnabled = false
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+	}
 
-	session := &goidc.AuthnSession{}
-	session.CodeChallenge = "0123456789abcdef0123456789abcdef0123456789a"
-	session.CodeChallengeMethod = goidc.CodeChallengeMethodPlain
-	req := request{codeVerifier: "0123456789abcdef0123456789abcdef0123456789b"}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			test.config(&ctx)
 
-	// When.
-	err := validatePKCE(ctx, req, nil, session)
+			err := validateBindingRequirement(ctx)
 
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for mismatched plain verifier")
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("expected error %q", test.wantErr)
+			}
+
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidatePKCE_SHA256_Valid(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = true
-	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
-	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
+func TestValidateScopes(t *testing.T) {
+	tests := []struct {
+		name    string
+		req     request
+		granted string
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name: "empty request scopes",
+			req:  request{},
+		},
+		{
+			name:    "invalid requested scope",
+			req:     request{scopes: "openid scope_not_granted"},
+			granted: "openid scope1",
+			wantErr: goidc.ErrorCodeInvalidScope,
+		},
+	}
 
-	verifier := "dBjftJeZ4CVP-mB92K27uhbUJU1p1r_wW1gFWFOEjXk"
-	challenge := "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
-	session := &goidc.AuthnSession{}
-	session.CodeChallenge = challenge
-	session.CodeChallengeMethod = goidc.CodeChallengeMethodSHA256
-	req := request{codeVerifier: verifier}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			client, _ := oidctest.NewClient(t)
 
-	// When.
-	err := validatePKCE(ctx, req, nil, session)
+			err := validateScopes(ctx, test.req, client, test.granted)
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
+
+			if err == nil {
+				t.Fatalf("expected error %q", test.wantErr)
+			}
+
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
 	}
 }
 
-func TestValidatePKCE_SHA256_Invalid(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = true
-	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
-	ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
-
-	challenge := "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM"
-	session := &goidc.AuthnSession{}
-	session.CodeChallenge = challenge
-	session.CodeChallengeMethod = goidc.CodeChallengeMethodSHA256
-	req := request{codeVerifier: "wrong_verifier_value_here_0000000000000000000"}
-
-	// When.
-	err := validatePKCE(ctx, req, nil, session)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for incorrect SHA256 verifier")
-	}
-}
-
-func TestValidateBindingRequirement_NotRequired(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.TokenBindingIsRequired = false
-
-	// When.
-	err := validateBindingRequirement(ctx)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateBindingRequirement_RequiredButNoBinding(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.TokenBindingIsRequired = true
-	ctx.DPoPIsEnabled = false
-	ctx.MTLSTokenBindingIsEnabled = false
-
-	// When.
-	err := validateBindingRequirement(ctx)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error when binding is required but no mechanism is available")
+func TestValidateResources(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(*oidc.Context) (request, goidc.Resources)
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name: "disabled",
+			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+				ctx.ResourceIndicatorsIsEnabled = false
+				return request{resources: []string{"https://resource.com"}}, nil
+			},
+		},
+		{
+			name: "valid resource",
+			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.Resources = []string{"https://resource.com", "https://other.com"}
+				return request{resources: []string{"https://resource.com"}}, goidc.Resources{"https://resource.com", "https://other.com"}
+			},
+		},
+		{
+			name: "invalid resource",
+			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+				ctx.ResourceIndicatorsIsEnabled = true
+				return request{resources: []string{"https://unknown.com"}}, goidc.Resources{"https://resource.com"}
+			},
+			wantErr: goidc.ErrorCodeInvalidTarget,
+		},
 	}
 
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
-	}
-}
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			req, granted := test.setup(&ctx)
 
-func TestValidatePkce_CodeVerifierTooShort(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = true
-	ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
+			err := validateResources(ctx, req, granted)
 
-	session := &goidc.AuthnSession{}
-	session.CodeChallenge = "some_challenge"
-	req := request{
-		codeVerifier: "short", // Less than 43 chars.
-	}
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("unexpected error: %v", err)
+				}
+				return
+			}
 
-	// When.
-	err := validatePKCE(ctx, req, nil, session)
+			if err == nil {
+				t.Fatalf("expected error %q", test.wantErr)
+			}
 
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for code_verifier shorter than 43 characters")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-	if oidcErr.Code != goidc.ErrorCodeInvalidGrant {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidGrant)
-	}
-}
-
-func TestValidatePkce_Disabled(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.PKCEIsEnabled = false
-
-	// When.
-	err := validatePKCE(ctx, request{codeVerifier: "anything"}, nil, &goidc.AuthnSession{})
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestValidateScopes_InvalidScope(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	c, _ := oidctest.NewClient(t)
-	req := request{scopes: "openid scope_not_granted"}
-
-	// When.
-	err := validateScopes(ctx, req, c, "openid scope1")
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for invalid scope")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-	if oidcErr.Code != goidc.ErrorCodeInvalidScope {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidScope)
-	}
-}
-
-func TestValidateResources_Disabled(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.ResourceIndicatorsIsEnabled = false
-	req := request{
-		resources: []string{"https://resource.com"},
-	}
-
-	// When.
-	err := validateResources(ctx, req, nil)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-}
-
-func TestValidateResources_ValidResource(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.ResourceIndicatorsIsEnabled = true
-	ctx.Resources = []string{"https://resource.com", "https://other.com"}
-	granted := goidc.Resources{"https://resource.com", "https://other.com"}
-	req := request{
-		resources: []string{"https://resource.com"},
-	}
-
-	// When.
-	err := validateResources(ctx, req, granted)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("expected nil error, got %v", err)
-	}
-}
-
-func TestValidateResources_InvalidResource(t *testing.T) {
-	// Given.
-	ctx := oidctest.NewContext(t)
-	ctx.ResourceIndicatorsIsEnabled = true
-	granted := goidc.Resources{"https://resource.com"}
-	req := request{
-		resources: []string{"https://unknown.com"},
-	}
-
-	// When.
-	err := validateResources(ctx, req, granted)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidTarget {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidTarget)
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/tls"
+	"crypto/x509"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -15,9 +16,11 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/storage"
+	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -28,8 +31,8 @@ var (
 
 func PointerOf[T any](v T) *T { return &v }
 
-func NewClient(t testing.TB) (client *goidc.Client, secret string) {
-	t.Helper()
+func NewClient(tb testing.TB) (client *goidc.Client, secret string) {
+	tb.Helper()
 
 	secret = "test_secret"
 	client = &goidc.Client{
@@ -60,22 +63,18 @@ func NewClient(t testing.TB) (client *goidc.Client, secret string) {
 	return client, secret
 }
 
-func NewContext(t testing.TB) oidc.Context {
-	t.Helper()
+func NewContext(tb testing.TB) oidc.Context {
+	tb.Helper()
 
 	keyID := "test_server_key"
-	jwk := PrivatePS256JWK(t, keyID, goidc.KeyUsageSignature)
+	jwk := PrivatePS256JWK(tb, keyID, goidc.KeyUsageSignature)
+	manager := storage.NewManager(100)
 
 	config := &oidc.Configuration{
-		Profile: goidc.ProfileOpenID,
-		Host:    "https://example.com",
-
-		ClientManager:       storage.NewClientManager(100),
-		AuthnSessionManager: storage.NewAuthnSessionManager(100),
-		GrantManager:        storage.NewGrantManager(100),
-		TokenManager:        storage.NewTokenManager(100),
-
-		Scopes: []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
+		Profile:      goidc.ProfileOpenID,
+		Host:         "https://example.com",
+		GrantManager: manager,
+		Scopes:       []goidc.Scope{goidc.ScopeOpenID, Scope1, Scope2},
 		JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk}}, nil
 		},
@@ -100,6 +99,12 @@ func NewContext(t testing.TB) oidc.Context {
 			goidc.ResponseModeFragment,
 			goidc.ResponseModeFormPost,
 		},
+		OpaqueTokenFunc: func(context.Context, *goidc.Grant) string {
+			return uuid.NewString()
+		},
+		RefreshTokenFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
 		TokenOptionsFunc: func(
 			_ context.Context,
 			_ *goidc.Grant,
@@ -117,7 +122,77 @@ func NewContext(t testing.TB) oidc.Context {
 			}
 			return nil
 		},
-		AuthnSessionTimeoutSecs: 60,
+		DCRHandleClientFunc: func(context.Context, string, *goidc.ClientMeta) error {
+			return nil
+		},
+		DCRRegistrationTokenFunc: func(context.Context) string {
+			return strutil.Random(50)
+		},
+		CheckJTIFunc: func(context.Context, string) error {
+			return nil
+		},
+		ClientCertFunc: func(context.Context) (*x509.Certificate, error) {
+			return nil, errors.New("the client certificate function was not defined")
+		},
+		TokenIntrospectionIsClientAllowedFunc: func(context.Context, *goidc.Client, goidc.TokenInfo) bool {
+			return false
+		},
+		TokenRevocationIsClientAllowedFunc: func(context.Context, *goidc.Client) bool {
+			return false
+		},
+		HandleErrorFunc: func(context.Context, error) {},
+		RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
+			return nil
+		},
+		OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+			return nil
+		},
+		OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {
+			return nil
+		},
+		RefreshTokenShouldIssueFunc: func(context.Context, *goidc.Client, *goidc.Grant) bool {
+			return true
+		},
+		HandleGrantFunc: func(context.Context, *goidc.Grant) error {
+			return nil
+		},
+		HandleTokenFunc: func(context.Context, *goidc.Token, *goidc.Grant) error {
+			return nil
+		},
+		IDTokenClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+			return nil
+		},
+		UserInfoClaimsFunc: func(context.Context, *goidc.Grant) map[string]any {
+			return nil
+		},
+		TokenClaimsFunc: func(context.Context, *goidc.Token, *goidc.Grant) map[string]any {
+			return nil
+		},
+		PairwiseSubjectFunc: func(_ context.Context, sub string, _ *goidc.Client) string {
+			return sub
+		},
+		PARHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+			return nil
+		},
+		CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+			return errors.New("ciba init back auth function is not set")
+		},
+		SSFScheduleVerificationEventFunc: func(context.Context, string, goidc.SSFStreamVerificationOptions) error {
+			return errors.New("schedule verification event function is not set")
+		},
+		SSFHandleExpiredEventStreamFunc: func(context.Context, *goidc.SSFEventStream) error {
+			return nil
+		},
+		VCHandlePreAuthCodeFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+			return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
+		},
+		VCOfferIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		VCIssuerStateFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		AuthTimeoutSecs: 60,
 		TokenAuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodSecretPost,
@@ -140,8 +215,23 @@ func NewContext(t testing.TB) oidc.Context {
 		UserInfoEndpoint:           "/userinfo",
 		TokenIntrospectionEndpoint: "/introspect",
 		JWTLifetimeSecs:            600,
-		IDTokenLifetimeSecs:        60,
-		SubIdentifierTypeDefault:   goidc.SubIdentifierPublic,
+		GrantIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		PARIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		CIBAIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		JWTIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		DeviceCodeFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		IDTokenLifetimeSecs:      60,
+		SubIdentifierTypeDefault: goidc.SubIdentifierPublic,
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},
@@ -163,22 +253,28 @@ func NewContext(t testing.TB) oidc.Context {
 	return ctx
 }
 
-func PrivateJWKS(t testing.TB, ctx oidc.Context) goidc.JSONWebKeySet {
-	t.Helper()
+func PrivateJWKS(tb testing.TB, ctx oidc.Context) goidc.JSONWebKeySet {
+	tb.Helper()
 
 	jwks, err := ctx.JWKS()
 	if err != nil {
-		t.Fatal(err)
+		tb.Fatal(err)
 	}
 	return jwks
 }
 
-func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
-	t.Helper()
+func Manager(tb testing.TB, ctx oidc.Context) *storage.Manager {
+	tb.Helper()
+	m, _ := ctx.GrantManager.(*storage.Manager)
+	return m
+}
 
-	sessionManager, _ := ctx.AuthnSessionManager.(*storage.AuthnSessionManager)
-	sessions := make([]*goidc.AuthnSession, 0, len(sessionManager.Sessions))
-	for _, s := range sessionManager.Sessions {
+func AuthnSessions(tb testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
+	tb.Helper()
+
+	m := Manager(tb, ctx)
+	sessions := make([]*goidc.AuthnSession, 0, len(m.Sessions))
+	for _, s := range m.Sessions {
 		sessions = append(sessions, s)
 	}
 
@@ -188,9 +284,9 @@ func AuthnSessions(t testing.TB, ctx oidc.Context) []*goidc.AuthnSession {
 func Grants(t *testing.T, ctx oidc.Context) []*goidc.Grant {
 	t.Helper()
 
-	manager, _ := ctx.GrantManager.(*storage.GrantManager)
-	grants := make([]*goidc.Grant, 0, len(manager.Sessions))
-	for _, g := range manager.Sessions {
+	m := Manager(t, ctx)
+	grants := make([]*goidc.Grant, 0, len(m.Grants))
+	for _, g := range m.Grants {
 		grants = append(grants, g)
 	}
 
@@ -200,9 +296,9 @@ func Grants(t *testing.T, ctx oidc.Context) []*goidc.Grant {
 func Tokens(t *testing.T, ctx oidc.Context) []*goidc.Token {
 	t.Helper()
 
-	manager, _ := ctx.TokenManager.(*storage.TokenManager)
-	tokens := make([]*goidc.Token, 0, len(manager.Tokens))
-	for _, tkn := range manager.Tokens {
+	m := Manager(t, ctx)
+	tokens := make([]*goidc.Token, 0, len(m.Tokens))
+	for _, tkn := range m.Tokens {
 		tokens = append(tokens, tkn)
 	}
 
@@ -212,9 +308,9 @@ func Tokens(t *testing.T, ctx oidc.Context) []*goidc.Token {
 func Clients(t *testing.T, ctx oidc.Context) []*goidc.Client {
 	t.Helper()
 
-	manager, _ := ctx.ClientManager.(*storage.ClientManager)
-	clients := make([]*goidc.Client, 0, len(manager.Clients))
-	for _, c := range manager.Clients {
+	m := Manager(t, ctx)
+	clients := make([]*goidc.Client, 0, len(m.Clients))
+	for _, c := range m.Clients {
 		clients = append(clients, c)
 	}
 
@@ -247,23 +343,26 @@ func PrivateRSAOAEPJWK(t *testing.T, keyID string) goidc.JSONWebKey {
 }
 
 func PrivateRSAOAEP256JWK(t *testing.T, keyID string) goidc.JSONWebKey {
+	t.Helper()
 	return privateRSAJWK(t, keyID, string(goidc.RSA_OAEP_256), goidc.KeyUsageEncryption)
 }
 
 func PrivateRS256JWK(t *testing.T, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	t.Helper()
 	return privateRSAJWK(t, keyID, string(goidc.RS256), usage)
 }
 
-func PrivatePS256JWK(t testing.TB, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
-	return privateRSAJWK(t, keyID, string(goidc.PS256), usage)
+func PrivatePS256JWK(tb testing.TB, keyID string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	tb.Helper()
+	return privateRSAJWK(tb, keyID, string(goidc.PS256), usage)
 }
 
-func privateRSAJWK(t testing.TB, keyID string, alg string, usage goidc.KeyUsage) goidc.JSONWebKey {
-	t.Helper()
+func privateRSAJWK(tb testing.TB, keyID string, alg string, usage goidc.KeyUsage) goidc.JSONWebKey {
+	tb.Helper()
 
 	privateKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
-		t.Fatalf("could not generated PS256 JWK: %v", err)
+		tb.Fatalf("could not generated PS256 JWK: %v", err)
 	}
 	return goidc.JSONWebKey{
 		Key:       privateKey,
@@ -303,13 +402,13 @@ func UnsafeClaims(jws string, algs ...goidc.SignatureAlgorithm) (map[string]any,
 	return claims, nil
 }
 
-func Sign(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
-	t.Helper()
-	return SignWithOptions(t, claims, jwk, nil)
+func Sign(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
+	tb.Helper()
+	return SignWithOptions(tb, claims, jwk, nil)
 }
 
-func SignWithOptions(t testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {
-	t.Helper()
+func SignWithOptions(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {
+	tb.Helper()
 	jws, _ := joseutil.Sign(claims, jose.SigningKey{Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm), Key: jwk}, opts)
 	return jws
 }

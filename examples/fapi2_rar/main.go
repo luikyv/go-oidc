@@ -19,21 +19,22 @@ func main() {
 	clientOne, _ := authutil.ClientPrivateKeyJWT("client_one")
 	clientTwo, _ := authutil.ClientPrivateKeyJWT("client_two")
 	op, err := provider.New(
-		goidc.ProfileFAPI2,
 		authutil.Issuer,
+		nil,
 		authutil.PrivateJWKSFunc(),
+		provider.WithProfile(goidc.ProfileFAPI2),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithPARRequired(),
+		provider.WithPARRequired(nil),
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithDPoPRequired(goidc.PS256, goidc.ES256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCERequired(goidc.CodeChallengeMethodSHA256),
-		provider.WithAuthorizationCodeGrant(),
-		provider.WithRefreshTokenGrant(),
+		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode),
+		provider.WithRefreshTokenGrant(nil),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
@@ -41,13 +42,13 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithStaticClients(clientOne, clientTwo),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 		provider.WithRAR("customer_information"),
-		provider.WithRARCompareDetailsFunc(func(_ context.Context, granted, requested []goidc.AuthDetail) error {
+		provider.WithRARCompareDetailsFunc(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
 			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
 			for i, grantedDetail := range granted {
 				grantedDetailTypes[i] = grantedDetail.Type()

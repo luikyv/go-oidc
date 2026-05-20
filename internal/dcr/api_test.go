@@ -2,6 +2,7 @@ package dcr
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -76,8 +77,9 @@ func TestHandleGet(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
+	ctx.DCRManager = oidctest.Manager(t, ctx)
+	if err := ctx.DCRSaveClient(c); err != nil {
+		t.Fatalf("could not save client: %v", err)
 	}
 
 	rec := httptest.NewRecorder()
@@ -128,8 +130,9 @@ func TestHandleUpdate(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
+	ctx.DCRManager = oidctest.Manager(t, ctx)
+	if err := ctx.DCRSaveClient(c); err != nil {
+		t.Fatalf("could not save client: %v", err)
 	}
 
 	c.Name = "Updated Name"
@@ -199,8 +202,9 @@ func TestHandleDelete(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 	c.RegistrationToken = regToken
 	ctx := oidctest.NewContext(t)
-	if err := ctx.SaveClient(c); err != nil {
-		t.Fatal(err)
+	ctx.DCRManager = oidctest.Manager(t, ctx)
+	if err := ctx.DCRSaveClient(c); err != nil {
+		t.Fatalf("could not save client: %v", err)
 	}
 
 	rec := httptest.NewRecorder()
@@ -241,6 +245,13 @@ func TestRegisterHandlers(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
 	ctx.DCRIsEnabled = true
+	ctx.DCRManager = oidctest.Manager(t, ctx)
+	ctx.DCRClientIDFunc = func(context.Context) string {
+		return "test_client_id"
+	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
+	}
 	mux := http.NewServeMux()
 
 	// When.
@@ -285,5 +296,12 @@ func TestRegisterHandlers_Disabled(t *testing.T) {
 func newHTTPContext(t *testing.T, w http.ResponseWriter, r *http.Request) oidc.Context {
 	t.Helper()
 	ctx := oidctest.NewContext(t)
+	ctx.DCRManager = oidctest.Manager(t, ctx)
+	ctx.DCRClientIDFunc = func(context.Context) string {
+		return "test_client_id"
+	}
+	ctx.DCRValidateInitialTokenFunc = func(context.Context, string) error {
+		return nil
+	}
 	return oidc.NewHTTPContext(w, r, ctx.Configuration)
 }

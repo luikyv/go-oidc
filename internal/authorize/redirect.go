@@ -20,7 +20,7 @@ func redirectError(ctx oidc.Context, err error, c *goidc.Client) error {
 		return err
 	}
 
-	ctx.NotifyError(err)
+	ctx.HandleError(err)
 
 	redirectParams := response{
 		errorCode:        redirectErr.Code(),
@@ -37,7 +37,6 @@ func redirectError(ctx oidc.Context, err error, c *goidc.Client) error {
 }
 
 func redirectResponse(ctx oidc.Context, c *goidc.Client, params goidc.AuthorizationParameters, redirectParams response) error {
-
 	if ctx.IssuerRespParamIsEnabled {
 		redirectParams.issuer = ctx.Issuer()
 	}

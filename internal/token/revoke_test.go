@@ -12,339 +12,400 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestRevoke_OpaqueToken(t *testing.T) {
-	// Given.
-	ctx, client := setUpRevocation(t)
+func TestRevoke(t *testing.T) {
+	setup := func(tb testing.TB) (oidc.Context, *goidc.Client) {
+		tb.Helper()
 
-	accessToken := "opaque_token"
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		CreatedAtTimestamp: now,
-		ClientID:           client.ID,
-	}
-	_ = ctx.SaveGrant(grantSession)
+		ctx := oidctest.NewContext(tb)
+		ctx.TokenRevocationIsEnabled = true
+		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
+		ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
+			return true
+		}
 
-	tokenEntity := &goidc.Token{
-		ID:                 accessToken,
-		GrantID:            grantSession.ID,
-		ClientID:           client.ID,
-		ExpiresAtTimestamp: now + 10,
-	}
-	_ = ctx.SaveToken(tokenEntity)
+		c, secret := oidctest.NewClient(tb)
+		c.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretPost
+		ctx.StaticClients = append(ctx.StaticClients, c)
+		ctx.Request.PostForm = map[string][]string{
+			"client_id":     {c.ID},
+			"client_secret": {secret},
+		}
 
-	tokenReq := queryRequest{
-		token: accessToken,
+		return ctx, c
 	}
 
-	// When.
-	err := revoke(ctx, tokenReq)
+	saveAccessToken := func(tb testing.TB, ctx oidc.Context, id, grantID, clientID string, expiresAt int) {
+		tb.Helper()
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
+		if err := ctx.SaveToken(&goidc.Token{
+			ID:        id,
+			GrantID:   grantID,
+			ClientID:  clientID,
+			ExpiresAt: expiresAt,
+		}); err != nil {
+			tb.Fatalf("SaveToken() error = %v", err)
+		}
 	}
 
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 0 {
-		t.Errorf("len(grantSessions) = %d, want 0", len(grantSessions))
+	tests := []struct {
+		name     string
+		setup    func(*testing.T) (oidc.Context, queryRequest, *goidc.Client)
+		wantErr  goidc.ErrorCode
+		validate func(*testing.T, oidc.Context)
+	}{
+		{
+			name: "access token revocation only deletes the access token by default",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "revoked_access_token", grant.ID, c.ID, now+60)
+				saveAccessToken(t, ctx, "sibling_access_token", grant.ID, c.ID, now+60)
+
+				return ctx, queryRequest{token: "revoked_access_token"}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 2 {
+					t.Fatalf("len(tokens) = %d, want 2", len(tokens))
+				}
+				var revoked, active int
+				for _, token := range tokens {
+					if token.RevokedAt != 0 {
+						revoked++
+					} else {
+						active++
+					}
+				}
+				if revoked != 1 || active != 1 {
+					t.Fatalf("revoked=%d active=%d, want 1/1", revoked, active)
+				}
+			},
+		},
+		{
+			name: "access token revocation can delete the whole grant when configured",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+				ctx.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
+
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "revoked_access_token", grant.ID, c.ID, now+60)
+				saveAccessToken(t, ctx, "sibling_access_token", grant.ID, c.ID, now+60)
+
+				return ctx, queryRequest{token: "revoked_access_token"}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 2 {
+					t.Fatalf("len(tokens) = %d, want 2", len(tokens))
+				}
+			},
+		},
+		{
+			name: "refresh token revocation deletes the grant and related access tokens",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				grant := &goidc.Grant{
+					ID:                    "grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now + 60,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "associated_access_token", grant.ID, c.ID, now+60)
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+			},
+		},
+		{
+			name: "invalid token returns success and does not mutate state",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				if err := ctx.SaveGrant(&goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				return ctx, queryRequest{token: "invalid_token"}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+			},
+		},
+		{
+			name: "expired access token returns success and does not mutate state",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "expired_access_token", grant.ID, c.ID, now-10)
+				return ctx, queryRequest{token: "expired_access_token"}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+			},
+		},
+		{
+			name: "expired refresh token returns success and does not mutate state",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				grant := &goidc.Grant{
+					ID:                    "grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now - 10,
+					CreatedAt:             now - 20,
+					ClientID:              c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+			},
+		},
+		{
+			name: "access token issued to another client is rejected",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  "another_client_id",
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "opaque_token", grant.ID, "another_client_id", now+60)
+				return ctx, queryRequest{token: "opaque_token"}, c
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+			},
+		},
+		{
+			name: "refresh token issued to another client is rejected",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				if err := ctx.SaveGrant(&goidc.Grant{
+					ID:                    "grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now + 60,
+					CreatedAt:             now,
+					ClientID:              "another_client_id",
+				}); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+			},
+		},
+		{
+			name: "client not allowed is rejected before revocation",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+				ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
+					return false
+				}
+
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "opaque_token", grant.ID, c.ID, now+60)
+				return ctx, queryRequest{token: "opaque_token"}, c
+			},
+			wantErr: goidc.ErrorCodeAccessDenied,
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+			},
+		},
+		{
+			name: "missing token is rejected",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				if err := ctx.SaveGrant(&goidc.Grant{
+					ID:        "grant_id",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				}); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				return ctx, queryRequest{token: ""}, c
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+			},
+		},
 	}
 
-	tokens := oidctest.Tokens(t, ctx)
-	if len(tokens) != 0 {
-		t.Errorf("len(tokens) = %d, want 0", len(tokens))
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			// Given.
+			ctx, req, _ := test.setup(t)
+
+			// When.
+			err := revoke(ctx, req)
+
+			// Then.
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatalf("expected error %q", test.wantErr)
+				}
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
+					t.Fatalf("got %v, want error code %s", err, test.wantErr)
+				}
+			} else if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+
+			if test.validate != nil {
+				test.validate(t, ctx)
+			}
+		})
 	}
-}
-
-func TestRevoke_RefreshToken(t *testing.T) {
-	// Given.
-	ctx, client := setUpRevocation(t)
-
-	refreshToken := strutil.Random(100)
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		RefreshToken:       refreshToken,
-		CreatedAtTimestamp: now,
-		ClientID:           client.ID,
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	tokenReq := queryRequest{
-		token: refreshToken,
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 0 {
-		t.Errorf("len(grantSessions) = %d, want 0", len(grantSessions))
-	}
-}
-
-func TestRevoke_InvalidToken(t *testing.T) {
-	// Given.
-	ctx, _ := setUpRevocation(t)
-
-	tokenReq := queryRequest{
-		token: "invalid_token",
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestRevoke_TokenNotIssuedToClient(t *testing.T) {
-	// Given.
-	ctx, _ := setUpRevocation(t)
-
-	accessToken := "opaque_token"
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		CreatedAtTimestamp: now,
-		ClientID:           "another_client_id",
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	tokenEntity := &goidc.Token{
-		ID:                 accessToken,
-		GrantID:            grantSession.ID,
-		ClientID:           "another_client_id",
-		ExpiresAtTimestamp: now + 10,
-	}
-	_ = ctx.SaveToken(tokenEntity)
-
-	tokenReq := queryRequest{
-		token: accessToken,
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err == nil {
-		t.Fatal("an error must be returned")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("invalid error")
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
-	}
-
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-}
-
-func TestRevoke_ClientNotAllowed(t *testing.T) {
-	// Given.
-	ctx, client := setUpRevocation(t)
-	ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
-		return false
-	}
-
-	accessToken := "opaque_token"
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		CreatedAtTimestamp: now,
-		ClientID:           client.ID,
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	tokenEntity := &goidc.Token{
-		ID:                 accessToken,
-		GrantID:            grantSession.ID,
-		ClientID:           client.ID,
-		ExpiresAtTimestamp: now + 10,
-	}
-	_ = ctx.SaveToken(tokenEntity)
-
-	tokenReq := queryRequest{
-		token: accessToken,
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for disallowed client")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeAccessDenied {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeAccessDenied)
-	}
-
-	// Grant should NOT be deleted.
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-}
-
-func TestRevoke_RefreshTokenDeletesTokens(t *testing.T) {
-	// Given.
-	ctx, client := setUpRevocation(t)
-
-	refreshToken := strutil.Random(100)
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		RefreshToken:       refreshToken,
-		CreatedAtTimestamp: now,
-		ClientID:           client.ID,
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	// Also create an associated access token.
-	tokenEntity := &goidc.Token{
-		ID:                 "associated_access_token",
-		GrantID:            grantSession.ID,
-		ClientID:           client.ID,
-		ExpiresAtTimestamp: now + 60,
-	}
-	_ = ctx.SaveToken(tokenEntity)
-
-	tokenReq := queryRequest{
-		token: refreshToken,
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 0 {
-		t.Errorf("len(grantSessions) = %d, want 0", len(grantSessions))
-	}
-
-	tokens := oidctest.Tokens(t, ctx)
-	if len(tokens) != 0 {
-		t.Errorf("len(tokens) = %d, want 0", len(tokens))
-	}
-}
-
-// TestRevoke_MissingToken verifies that the revocation endpoint rejects
-// requests without the REQUIRED token parameter with invalid_request, per
-// [RFC 7009 §2.1] (token is REQUIRED) and [RFC 6749 §5.2] (invalid_request
-// is the error code for missing required parameters).
-func TestRevoke_MissingToken(t *testing.T) {
-	// Given.
-	ctx, client := setUpRevocation(t)
-
-	now := timeutil.TimestampNow()
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		CreatedAtTimestamp: now,
-		ClientID:           client.ID,
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	tokenReq := queryRequest{
-		token: "",
-	}
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err == nil {
-		t.Fatal("expected error for missing token parameter")
-	}
-
-	var oidcErr goidc.Error
-	if !errors.As(err, &oidcErr) {
-		t.Fatalf("expected goidc.Error, got %v", err)
-	}
-
-	if oidcErr.Code != goidc.ErrorCodeInvalidRequest {
-		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidRequest)
-	}
-
-	// The unrelated grant must remain untouched.
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-}
-
-func TestRevoke_ExpiredToken(t *testing.T) {
-	// Given.
-	ctx, _ := setUpRevocation(t)
-
-	// Use a token value that doesn't exist in storage, simulating a fully
-	// expired/purged token. IntrospectionInfo will return an error (not found),
-	// so revoke returns nil without deleting anything.
-	tokenReq := queryRequest{
-		token: "purged_expired_token",
-	}
-
-	grantSession := &goidc.Grant{
-		ID:                 "random_grant_id",
-		CreatedAtTimestamp: timeutil.TimestampNow(),
-		ClientID:           "some_client",
-	}
-	_ = ctx.SaveGrant(grantSession)
-
-	// When.
-	err := revoke(ctx, tokenReq)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	// Grant should still exist since the token was not found.
-	grantSessions := oidctest.Grants(t, ctx)
-	if len(grantSessions) != 1 {
-		t.Errorf("len(grantSessions) = %d, want 1", len(grantSessions))
-	}
-}
-
-func setUpRevocation(t *testing.T) (ctx oidc.Context, client *goidc.Client) {
-	t.Helper()
-
-	ctx = oidctest.NewContext(t)
-	ctx.TokenRevocationIsEnabled = true
-	ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, c *goidc.Client) bool {
-		return true
-	}
-
-	client, secret := oidctest.NewClient(t)
-	client.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretPost
-	_ = ctx.SaveClient(client)
-
-	ctx.Request.PostForm = map[string][]string{
-		"client_id":     {client.ID},
-		"client_secret": {secret},
-	}
-
-	return ctx, client
 }

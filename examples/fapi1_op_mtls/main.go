@@ -17,9 +17,10 @@ func main() {
 	clientOne, _ := authutil.ClientMTLS("client_one")
 	clientTwo, _ := authutil.ClientMTLS("client_two")
 	op, err := provider.New(
-		goidc.ProfileFAPI1,
 		authutil.Issuer,
+		nil,
 		authutil.PrivateJWKSFunc(),
+		provider.WithProfile(goidc.ProfileFAPI1),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithOpenIDScopeRequired(),
 		provider.WithIDTokenSignatureAlgs(goidc.PS256),
@@ -30,9 +31,8 @@ func main() {
 		provider.WithTokenAuthnMethods(goidc.AuthnMethodTLS),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
-		provider.WithAuthorizationCodeGrant(),
-		provider.WithImplicitGrant(),
-		provider.WithRefreshTokenGrant(),
+		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),
+		provider.WithRefreshTokenGrant(nil),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
@@ -40,7 +40,7 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithNotifyErrorFunc(authutil.ErrorLoggingFunc),
+		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithStaticClients(clientOne, clientTwo),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
 		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),

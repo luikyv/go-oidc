@@ -79,7 +79,7 @@ var JSONFields = []string{
 	"authorization_encryption_enc_values_supported",
 }
 
-type Client struct {
+type Meta struct {
 	SubIdentifierTypes     []goidc.SubIdentifierType          `json:"subject_types_supported,omitempty"`
 	IDTokenSigAlgs         []goidc.SignatureAlgorithm         `json:"id_token_signing_alg_values_supported,omitempty"`
 	IDTokenKeyEncAlgs      []goidc.KeyEncryptionAlgorithm     `json:"id_token_encryption_alg_values_supported,omitempty"`

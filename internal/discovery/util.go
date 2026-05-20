@@ -51,8 +51,10 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		config.JARIsEnabled = ctx.JARIsEnabled
 		config.JARIsRequired = ctx.JARIsRequired
 		config.JARAlgs = ctx.JARSigAlgs
-		config.JARByReferenceIsEnabled = ctx.JARByReferenceIsEnabled
-		config.JARRequestURIRegistrationIsRequired = ctx.JARRequestURIRegistrationIsRequired
+		if ctx.JARByReferenceIsEnabled {
+			config.JARByReferenceIsEnabled = ctx.JARByReferenceIsEnabled
+			config.JARRequestURIRegistrationIsRequired = !ctx.JARByReferenceUnregisteredURIIsEnabled
+		}
 		if ctx.JAREncIsEnabled {
 			config.JARKeyEncAlgs = ctx.JARKeyEncAlgs
 			config.JARContentEncAlgs = ctx.JARContentEncAlgs
@@ -128,12 +130,16 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 
 	if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
 		config.CIBAEndpoint = ctx.BaseURL() + ctx.CIBAEndpoint
-		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModels
+		config.CIBATokenDeliveryModes = ctx.CIBATokenDeliveryModes
 		config.CIBAUserCodeIsEnabled = ctx.CIBAUserCodeIsEnabled
 
 		if ctx.CIBAJARIsEnabled {
 			config.CIBAJARSigAlgs = ctx.CIBAJARSigAlgs
 		}
+	}
+
+	if slices.Contains(ctx.GrantTypes, goidc.GrantDeviceCode) {
+		config.DeviceAuthorizationEndpoint = ctx.BaseURL() + ctx.DeviceAuthEndpoint
 	}
 
 	if ctx.LogoutIsEnabled {

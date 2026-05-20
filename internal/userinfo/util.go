@@ -1,6 +1,7 @@
 package userinfo
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
@@ -16,20 +17,20 @@ import (
 func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	accessToken, _, ok := ctx.AuthorizationToken()
 	if !ok {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", errors.New("authorization bearer token is required"))
 	}
 
-	tokenInfo, err := token.IntrospectionInfo(ctx, accessToken)
+	tokenInfo, err := token.Introspect(ctx, accessToken)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
+		return response{}, fmt.Errorf("could not introspect the access token: %w", err)
 	}
 
 	if !tokenInfo.IsActive {
-		return response{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "invalid token")
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", errors.New("the access token is inactive or expired"))
 	}
 
 	if !strutil.ContainsOpenID(tokenInfo.Scopes) {
-		return response{}, goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid scope")
+		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the access token does not include the openid scope"))
 	}
 
 	if tokenInfo.Confirmation != nil {
@@ -38,14 +39,14 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		}
 	}
 
-	c, err := ctx.Client(tokenInfo.ClientID)
+	c, err := client.Client(ctx, tokenInfo.ClientID)
 	if err != nil {
-		return response{}, err
+		return response{}, fmt.Errorf("could not load the client for the active token: %w", err)
 	}
 
-	grant, err := ctx.GrantByID(tokenInfo.GrantID)
+	grant, err := ctx.Grant(tokenInfo.GrantID)
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "grant not found", err)
+		return response{}, fmt.Errorf("could not load the grant for the active token: %w", err)
 	}
 
 	subType := ctx.SubIdentifierTypeDefault
@@ -92,8 +93,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	jwk, err := client.JWKByAlg(ctx, c, string(c.UserInfoKeyEncAlg))
 	if err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest,
-			"could not find a jwk to encrypt the user info response", err)
+		return response{}, fmt.Errorf("could not resolve an encryption key for the user info response: %w", err)
 	}
 
 	contentEncAlg := ctx.UserInfoDefaultContentEncAlg

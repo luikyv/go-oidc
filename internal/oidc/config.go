@@ -7,15 +7,18 @@ import (
 )
 
 type Configuration struct {
-	ClientManager       goidc.ClientManager
-	AuthnSessionManager goidc.AuthnSessionManager
-	GrantManager        goidc.GrantManager
-	TokenManager        goidc.TokenManager
+	GrantManager goidc.GrantManager
 
 	Profile goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
+
+	AuthManager          goidc.AuthManager
+	AuthTimeoutSecs      int
+	AuthCodeFunc         goidc.RandomFunc
+	AuthCodeLifetimeSecs int
+	AuthSessionIDFunc    goidc.RandomFunc
 
 	// JWKSFunc retrieves the server's JWKS.
 	// The returned JWKS must include private keys if SignFunc or DecryptFunc
@@ -25,22 +28,20 @@ type Configuration struct {
 	SignerFunc    goidc.SignerFunc
 	DecrypterFunc goidc.DecrypterFunc
 
-	HandleGrantFunc            goidc.HandleGrantFunc
-	HandleTokenFunc            goidc.HandleTokenFunc
-	IDTokenClaimsFunc          goidc.IDTokenClaimsFunc
-	UserInfoClaimsFunc         goidc.UserInfoClaimsFunc
-	TokenClaimsFunc            goidc.TokenClaimsFunc
-	Policies                   []goidc.AuthnPolicy
-	Scopes                     []goidc.Scope
-	OpenIDIsRequired           bool
-	GrantTypes                 []goidc.GrantType
-	ResponseTypes              []goidc.ResponseType
-	ResponseModes              []goidc.ResponseMode
-	AuthnSessionTimeoutSecs    int
-	AuthnSessionGenerateIDFunc goidc.RandomFunc
-	GrantIDFunc                goidc.RandomFunc
-	ACRs                       []goidc.ACR
-	DisplayValues              []goidc.DisplayValue
+	HandleGrantFunc    goidc.HandleGrantFunc
+	HandleTokenFunc    goidc.HandleTokenFunc
+	IDTokenClaimsFunc  goidc.IDTokenClaimsFunc
+	UserInfoClaimsFunc goidc.UserInfoClaimsFunc
+	TokenClaimsFunc    goidc.TokenClaimsFunc
+	Policies           []goidc.AuthnPolicy
+	Scopes             []goidc.Scope
+	OpenIDIsRequired   bool
+	GrantTypes         []goidc.GrantType
+	ResponseTypes      []goidc.ResponseType
+	ResponseModes      []goidc.ResponseMode
+	GrantIDFunc        goidc.RandomFunc
+	ACRs               []goidc.ACR
+	DisplayValues      []goidc.DisplayValue
 	// Claims defines the user claims that can be returned in the userinfo endpoint or in ID tokens.
 	// This will be published in the /.well-known/openid-configuration endpoint.
 	Claims                   []string
@@ -55,18 +56,16 @@ type Configuration struct {
 	// ClaimsParamIsEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParamIsEnabled          bool
-	RenderErrorFunc               goidc.RenderErrorFunc
-	NotifyErrorFunc               goidc.NotifyErrorFunc
-	AuthorizationCodeFunc         goidc.RandomFunc
-	AuthorizationCodeLifetimeSecs int
-	CallbackIDFunc                goidc.RandomFunc
+	ClaimsParamIsEnabled bool
+	RenderErrorFunc      goidc.RenderErrorFunc
+	HandleErrorFunc      goidc.HandleErrorFunc
 
 	TokenAuthnMethodDefault        goidc.AuthnMethod
 	TokenAuthnMethods              []goidc.AuthnMethod
 	TokenAuthnPrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
 	TokenAuthnSecretJWTSigAlgs     []goidc.SignatureAlgorithm
 	TokenEndpoint                  string
+	OpaqueTokenFunc                goidc.OpaqueTokenFunc
 	TokenOptionsFunc               goidc.TokenOptionsFunc
 	VerifyClientSecretFunc         goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
@@ -102,21 +101,26 @@ type Configuration struct {
 	RPMetadataChoicesIsEnabled bool
 
 	DCRIsEnabled                  bool
+	DCRManager                    goidc.DCRManager
 	DCREndpoint                   string
 	DCRTokenRotationIsEnabled     bool
 	DCRHandleClientFunc           goidc.DCRHandleClientFunc
 	DCRValidateInitialTokenFunc   goidc.DCRValidateInitialTokenFunc
+	DCRRegistrationTokenFunc      goidc.RandomFunc
 	LocalhostRedirectURIIsEnabled bool
-	ClientIDFunc                  goidc.ClientIDFunc
+	DCRClientIDFunc               goidc.ClientIDFunc
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionEndpoint            string
 	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenInstrospectionFunc
 
-	TokenRevocationIsEnabled           bool
-	TokenRevocationEndpoint            string
-	TokenRevocationIsClientAllowedFunc goidc.IsClientAllowedFunc
+	TokenRevocationIsEnabled                         bool
+	TokenRevocationEndpoint                          string
+	TokenRevocationIsClientAllowedFunc               goidc.IsClientAllowedFunc
+	TokenRevocationDeleteGrantOnAccessTokenIsEnabled bool
 
+	RefreshTokenManager           goidc.RefreshTokenManager
+	RefreshTokenFunc              goidc.RandomFunc
 	RefreshTokenShouldIssueFunc   goidc.RefreshTokenShouldIssueFunc
 	RefreshTokenRotationIsEnabled bool
 	RefreshTokenLifetimeSecs      int
@@ -137,33 +141,35 @@ type Configuration struct {
 	// JARByReferenceIsEnabled determines whether Request Objects can be provided
 	// by reference using the "request_uri" parameter. When enabled, the authorization
 	// server retrieves the request object from the specified URI.
-	JARByReferenceIsEnabled             bool
-	JARRequestURIRegistrationIsRequired bool
-	JAREncIsEnabled                     bool
-	JARKeyEncAlgs                       []goidc.KeyEncryptionAlgorithm
-	JARContentEncAlgs                   []goidc.ContentEncryptionAlgorithm
+	JARByReferenceIsEnabled                bool
+	JARByReferenceUnregisteredURIIsEnabled bool
+	JAREncIsEnabled                        bool
+	JARKeyEncAlgs                          []goidc.KeyEncryptionAlgorithm
+	JARContentEncAlgs                      []goidc.ContentEncryptionAlgorithm
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
 	// PARIsRequired indicates that authorization requests can only be made if
 	// they were pushed.
 	PARIsRequired        bool
+	PARManager           goidc.PARManager
+	PARIDFunc            goidc.RandomFunc
 	PAREndpoint          string
 	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
 	// PARUnregisteredRedirectURIIsEnabled indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
 	PARUnregisteredRedirectURIIsEnabled bool
-	PARIDFunc                           goidc.RandomFunc
 
 	CIBAEndpoint                   string
+	CIBAManager                    goidc.CIBAManager
 	CIBAProfile                    goidc.CIBAProfile // TODO: Use this.
-	CIBATokenDeliveryModels        []goidc.CIBATokenDeliveryMode
+	CIBATokenDeliveryModes         []goidc.CIBATokenDeliveryMode
+	CIBAIDFunc                     goidc.RandomFunc
 	CIBAHandleSessionFunc          goidc.HandleSessionFunc
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
-	CIBAAuthReqIDFunc              goidc.RandomFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -204,6 +210,7 @@ type Configuration struct {
 	ErrorURI string
 
 	OpenIDFedIsEnabled              bool
+	OpenIDFedManager                goidc.OpenIDFedManager
 	OpenIDFedEndpoint               string
 	OpenIDFedRegistrationEndpoint   string
 	OpenIDFedJWKSFunc               goidc.JWKSFunc
@@ -227,7 +234,7 @@ type Configuration struct {
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string
-	LogoutSessionManager        goidc.LogoutSessionManager
+	LogoutManager               goidc.LogoutManager
 	LogoutSessionTimeoutSecs    int
 	LogoutPolicies              []goidc.LogoutPolicy
 	LogoutSessionIDFunc         goidc.RandomFunc
@@ -271,4 +278,15 @@ type Configuration struct {
 	VCManager                             goidc.VCManager
 	VCHandlePreAuthCodeFunc               goidc.VCHandlePreAuthCodeFunc
 	VCPreAuthCodeAnonymousAccessIsEnabled bool
+
+	DeviceAuthManager                          goidc.DeviceAuthManager
+	DeviceAuthEndpoint                         string
+	DeviceAuthVerificationEndpoint             string
+	DeviceAuthVerificationURICompleteIsEnabled bool
+	DeviceAuthLifetimeSecs                     int
+	DeviceAuthPollingIntervalSecs              int
+	DeviceCodeFunc                             goidc.RandomFunc
+	DeviceAuthGenerateUserCodeFunc             goidc.RandomFunc
+	DeviceAuthPromptUserCodeFunc               goidc.RenderFunc
+	DeviceAuthRenderConfirmationFunc           goidc.RenderFunc
 }

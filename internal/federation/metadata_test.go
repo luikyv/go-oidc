@@ -13,7 +13,7 @@ func TestMetadata_Merge_SubordinateHasNoClientMetadata(t *testing.T) {
 		OpenIDClient: nil,
 	}
 	entityConfig := metadata{
-		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
+		OpenIDClient: &client.Meta{ClientMeta: goidc.ClientMeta{
 			GrantTypes:    []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
 			RedirectURIs:  []string{"https://client.example.com/callback"},
@@ -48,12 +48,12 @@ func TestMetadata_Merge_SubordinateHasNoClientMetadata(t *testing.T) {
 func TestMetadata_Merge_SubordinateOverridesEntityConfig(t *testing.T) {
 	// Given: subordinate statement overrides some fields from entity config.
 	subordinate := metadata{
-		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
+		OpenIDClient: &client.Meta{ClientMeta: goidc.ClientMeta{
 			TokenAuthnMethod: goidc.AuthnMethodPrivateKeyJWT,
 		}},
 	}
 	entityConfig := metadata{
-		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
+		OpenIDClient: &client.Meta{ClientMeta: goidc.ClientMeta{
 			GrantTypes:       []goidc.GrantType{goidc.GrantAuthorizationCode},
 			TokenAuthnMethod: goidc.AuthnMethodSecretBasic,
 			RedirectURIs:     []string{"https://client.example.com/callback"},
@@ -108,7 +108,7 @@ func TestMetadata_Merge_BothHaveNoClientMetadata(t *testing.T) {
 func TestMetadata_Merge_OnlySubordinateHasClientMetadata(t *testing.T) {
 	// Given: only subordinate has client metadata.
 	subordinate := metadata{
-		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
+		OpenIDClient: &client.Meta{ClientMeta: goidc.ClientMeta{
 			GrantTypes: []goidc.GrantType{goidc.GrantClientCredentials},
 		}},
 	}
@@ -137,7 +137,7 @@ func TestMetadata_Merge_PreservesAllEntityConfigFields(t *testing.T) {
 		OpenIDClient: nil,
 	}
 	entityConfig := metadata{
-		OpenIDClient: &client.Client{ClientMeta: goidc.ClientMeta{
+		OpenIDClient: &client.Meta{ClientMeta: goidc.ClientMeta{
 			Name:              "Test Client",
 			GrantTypes:        []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantRefreshToken},
 			ResponseTypes:     []goidc.ResponseType{goidc.ResponseTypeCode},

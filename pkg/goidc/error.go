@@ -6,6 +6,12 @@ import (
 	"net/http"
 )
 
+// ErrNotFound signals that a requested entity does not exist.
+//
+// Custom manager implementations should return this error, or wrap it so that
+// errors.Is(err, [ErrNotFound]) is true, when the requested state is missing.
+// go-oidc relies on this contract to distinguish missing entities from
+// operational failures and to produce the correct protocol behavior.
 var ErrNotFound = errors.New("not found")
 
 type ErrorCode string

@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -50,10 +51,11 @@ func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error
 	}
 
 	if !slices.Contains(c.ClientRegistrationTypes, goidc.ClientRegistrationTypeExplicit) {
-		return "", goidc.NewError(goidc.ErrorCodeInvalidRequest, "the entity is not registered for explicit registration")
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+			errors.New("the entity is not registered for explicit registration"))
 	}
 
-	if err := ctx.SaveClient(c); err != nil {
+	if err := ctx.OpenIDFedSaveClient(c); err != nil {
 		return "", fmt.Errorf("could not save the federation client: %w", err)
 	}
 
@@ -68,9 +70,14 @@ func registerClientExplicitly(ctx oidc.Context, chain trustChain) (string, error
 		AuthorityHints: []string{chain.firstSubordinateStatement().Issuer},
 		TrustAnchor:    c.Federation.TrustAnchor,
 		Metadata: metadata{
-			OpenIDClient: &client.Client{ClientMeta: c.ClientMeta},
+			OpenIDClient: &client.Meta{ClientMeta: c.ClientMeta},
 		},
 	}
 
-	return ctx.OpenIDFedSign(statement, (&jose.SignerOptions{}).WithType(jwtTypeExplicitRegistration))
+	signed, err := ctx.OpenIDFedSign(statement, (&jose.SignerOptions{}).WithType(jwtTypeExplicitRegistration))
+	if err != nil {
+		return "", fmt.Errorf("could not sign the statement: %w", err)
+	}
+
+	return signed, nil
 }

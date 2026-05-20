@@ -12,8 +12,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
-
+func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
@@ -37,7 +36,32 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 		}
 	}
 
-	if err := validateJWTBearerGrantRequest(ctx, req, c); err != nil {
+	if !slices.Contains(ctx.GrantTypes, goidc.GrantJWTBearer) {
+		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
+	}
+
+	if !slices.Contains(c.GrantTypes, goidc.GrantJWTBearer) {
+		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the urn:ietf:params:oauth:grant-type:jwt-bearer grant type"))
+	}
+
+	if err := ValidateBinding(ctx, c, nil); err != nil {
+		return response{}, err
+	}
+
+	if req.assertion == "" {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion",
+			errors.New("assertion is required"))
+	}
+
+	if err := validateScopes(ctx, req, c, ""); err != nil {
+		return response{}, err
+	}
+
+	if err := validateResources(ctx, req, ctx.Resources); err != nil {
+		return response{}, err
+	}
+
+	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
 		return response{}, err
 	}
 
@@ -47,10 +71,10 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
-		Type:                 goidc.GrantJWTBearer,
 		Subject:              sub,
 		ClientID:             c.ID,
 		Scopes:               req.scopes,
+		AuthDetails:          req.authDetails,
 		Resources:            req.resources,
 		JWKThumbprint:        dpopThumbprint(ctx),
 		ClientCertThumbprint: tlsThumbprint(ctx),
@@ -77,7 +101,7 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	if strutil.ContainsOpenID(tkn.Scopes) {
 		tokenResp.IDToken, err = MakeIDToken(ctx, c, IDTokenOptions{
 			Subject: grant.Subject,
-			Nonce:   grant.Nonce,
+			Nonce:   grant.AuthParams.Nonce,
 			Claims:  ctx.IDTokenClaims(grant),
 		})
 		if err != nil {
@@ -86,36 +110,4 @@ func generateJWTBearerGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	return tokenResp, nil
-}
-
-func validateJWTBearerGrantRequest(ctx oidc.Context, req request, c *goidc.Client) error {
-	if !slices.Contains(ctx.GrantTypes, goidc.GrantJWTBearer) {
-		return goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
-	}
-
-	if !slices.Contains(c.GrantTypes, goidc.GrantJWTBearer) {
-		return goidc.NewError(goidc.ErrorCodeUnauthorizedClient, "invalid grant type")
-	}
-
-	if err := ValidateBinding(ctx, c, nil); err != nil {
-		return err
-	}
-
-	if req.assertion == "" {
-		return goidc.NewError(goidc.ErrorCodeInvalidGrant, "invalid assertion")
-	}
-
-	if err := validateScopes(ctx, req, c, ""); err != nil {
-		return err
-	}
-
-	if err := validateResources(ctx, req, ctx.Resources); err != nil {
-		return err
-	}
-
-	if err := validateAuthDetails(ctx, req, c, nil); err != nil {
-		return err
-	}
-
-	return nil
 }

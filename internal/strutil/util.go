@@ -15,20 +15,11 @@ import (
 const charset string = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
 
 func ContainsOpenID(scopes string) bool {
-	return slices.Contains(SplitWithSpaces(scopes), goidc.ScopeOpenID.ID)
+	return slices.Contains(strings.Fields(scopes), goidc.ScopeOpenID.ID)
 }
 
 func ContainsOfflineAccess(scopes string) bool {
-	return slices.Contains(SplitWithSpaces(scopes), goidc.ScopeOfflineAccess.ID)
-}
-
-func SplitWithSpaces(s string) []string {
-	slice := []string{}
-	if strings.ReplaceAll(strings.Trim(s, " "), " ", "") != "" {
-		slice = strings.Split(s, " ")
-	}
-
-	return slice
+	return slices.Contains(strings.Fields(scopes), goidc.ScopeOfflineAccess.ID)
 }
 
 func Random(length int) string {

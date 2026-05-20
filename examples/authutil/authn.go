@@ -19,7 +19,7 @@ func Policy() goidc.AuthnPolicy {
 	authenticator := authenticator{tmpl: tmpl}
 	return goidc.NewPolicy(
 		"main",
-		func(r *http.Request, c *goidc.Client, as *goidc.AuthnSession) bool {
+		func(r *http.Request, as *goidc.AuthnSession, c *goidc.Client) bool {
 			// The flow starts at the login step.
 			as.Store = map[string]any{
 				paramStepID: stepIDLoadUser,
@@ -90,7 +90,7 @@ type authenticator struct {
 	tmpl *template.Template
 }
 
-func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
+func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 
 	if as.Store[paramStepID] == stepIDLoadUser {
 		if status, err := a.loadUser(r, as); status != goidc.StatusSuccess {
@@ -127,8 +127,7 @@ func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *
 	return goidc.StatusFailure, errors.New("access denied")
 }
 
-func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
-
+func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) { //nolint:unparam
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
 		as.Subject = as.IDTokenHintClaims[goidc.ClaimSubject].(string)
@@ -137,7 +136,7 @@ func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.
 
 	cookie, err := r.Cookie(cookieUserSessionID)
 	if err != nil {
-		return goidc.StatusSuccess, nil
+		return goidc.StatusSuccess, nil //nolint:nilerr
 	}
 
 	session, ok := userSessionStore[cookie.Value]
@@ -196,7 +195,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 	return goidc.StatusSuccess, nil
 }
 
-func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) {
+func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnSession) (goidc.Status, error) { //nolint:unparam
 	sessionID := uuid.NewString()
 	if id, ok := as.Store[paramUserSessionID]; ok && id != nil {
 		sessionID = id.(string)
@@ -356,7 +355,7 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		CallbackID: as.ID,
 		Session:    mapify(as),
 	}
 
@@ -374,7 +373,7 @@ func (a authenticator) renderPage(w http.ResponseWriter, tmplName string, as *go
 
 	w.WriteHeader(http.StatusOK)
 	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
-	return goidc.StatusInProgress, nil
+	return goidc.StatusPending, nil
 }
 
 func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *goidc.AuthnSession, err string) (goidc.Status, error) {
@@ -382,7 +381,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 	params := authnPage{
 		Subject:    as.Subject,
 		BaseURL:    Issuer,
-		CallbackID: as.CallbackID,
+		CallbackID: as.ID,
 		Session:    mapify(as),
 		Error:      err,
 	}
@@ -401,7 +400,7 @@ func (a authenticator) renderError(w http.ResponseWriter, tmplName string, as *g
 
 	w.WriteHeader(http.StatusOK)
 	_ = a.tmpl.ExecuteTemplate(w, tmplName, params)
-	return goidc.StatusInProgress, nil
+	return goidc.StatusPending, nil
 }
 
 func mapify(as any) map[string]any {

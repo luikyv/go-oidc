@@ -1,6 +1,7 @@
 package logout
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -31,7 +32,8 @@ func handle(ctx oidc.Context) {
 	var req request
 	if ctx.RequestMethod() == http.MethodPost {
 		if mediaType := ctx.MediaType(); mediaType != "" && mediaType != "application/x-www-form-urlencoded" {
-			ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid content type").WithStatusCode(http.StatusUnsupportedMediaType))
+			ctx.WriteError(goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+				errors.New("content type must be application/x-www-form-urlencoded")).WithStatusCode(http.StatusUnsupportedMediaType))
 			return
 		}
 		req = newFormRequest(ctx.Request)
@@ -49,9 +51,10 @@ func handle(ctx oidc.Context) {
 
 func handleCallback(ctx oidc.Context) {
 	callbackID := ctx.Request.PathValue("callback")
-	err := continueLogout(ctx, callbackID)
-	if err != nil {
-		ctx.WriteError(err)
+	if err := continueLogout(ctx, callbackID); err != nil {
+		if err := ctx.RenderError(err); err != nil {
+			ctx.WriteError(err)
+		}
 		return
 	}
 }
