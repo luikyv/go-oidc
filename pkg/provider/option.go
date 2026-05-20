@@ -709,6 +709,8 @@ func WithJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 	}
 }
 
+// WithJARByReference enables support for request objects referenced by the
+// "request_uri" authorization parameter.
 func WithJARByReference() Option {
 	return func(p *Provider) error {
 		p.config.JARByReferenceIsEnabled = true
@@ -716,6 +718,9 @@ func WithJARByReference() Option {
 	}
 }
 
+// WithJARByReferenceUnregisteredURIs allows request_uri values that were not
+// pre-registered by the client.
+// To enable request objects by reference, see [WithJARByReference].
 func WithJARByReferenceUnregisteredURIs() Option {
 	return func(p *Provider) error {
 		p.config.JARByReferenceUnregisteredURIIsEnabled = true
