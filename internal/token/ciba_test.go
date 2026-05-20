@@ -504,16 +504,15 @@ func TestGenerateCIBAToken(t *testing.T) {
 				ctx, c, grant := setup(t)
 				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 
-				otherClient, otherSecret := oidctest.NewClient(t)
+				otherClient, _ := oidctest.NewClient(t)
 				otherClient.ID = "other_ciba_client"
 				otherClient.Secret = "other_ciba_secret"
-				otherSecret = otherClient.Secret
 				otherClient.GrantTypes = append(otherClient.GrantTypes, goidc.GrantCIBA)
 				otherClient.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 				ctx.StaticClients = append(ctx.StaticClients, otherClient)
 				ctx.Request.PostForm = map[string][]string{
 					"client_id":     {otherClient.ID},
-					"client_secret": {otherSecret},
+					"client_secret": {otherClient.Secret},
 				}
 
 				session := &goidc.AuthnSession{

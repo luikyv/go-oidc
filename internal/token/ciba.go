@@ -202,6 +202,10 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.NewError(goidc.ErrorCodeInvalidRequest, "auth_req_id is required")
 	}
 
+	if err := ValidateBinding(ctx, c, nil); err != nil {
+		return response{}, err
+	}
+
 	grant, err := ctx.GrantByAuthReqID(req.authReqID)
 	if err != nil {
 		if !errors.Is(err, goidc.ErrNotFound) {
@@ -254,10 +258,6 @@ func generateCIBAToken(ctx oidc.Context, req request) (response, error) {
 
 		if c.ID != grant.ClientID {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid auth_req_id", errors.New("the auth_req_id belongs to a different client"))
-		}
-
-		if err := ValidateBinding(ctx, c, nil); err != nil {
-			return response{}, err
 		}
 
 		if err := validateResources(ctx, req, grant.Resources); err != nil {

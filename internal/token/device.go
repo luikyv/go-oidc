@@ -23,6 +23,10 @@ func generateDeviceCodeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
+	if err := ValidateBinding(ctx, c, nil); err != nil {
+		return response{}, err
+	}
+
 	grant, err := ctx.GrantByDeviceCode(req.deviceCode)
 	if err != nil {
 		if !errors.Is(err, goidc.ErrNotFound) {
