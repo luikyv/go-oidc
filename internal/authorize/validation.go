@@ -368,7 +368,7 @@ func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationPa
 		return goidc.WrapError(goidc.ErrorCodeRequestURINotSupported, "request_uri_not_supported", errors.New("request_uri is not supported"))
 	}
 
-	if ctx.JARRequestURIRegistrationIsRequired && !slices.Contains(c.RequestURIs, params.RequestURI) {
+	if !ctx.JARByReferenceUnregisteredURIIsEnabled && !slices.Contains(c.RequestURIs, params.RequestURI) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri", errors.New("request_uri is not registered for the client"))
 	}
 

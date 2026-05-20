@@ -51,8 +51,10 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		config.JARIsEnabled = ctx.JARIsEnabled
 		config.JARIsRequired = ctx.JARIsRequired
 		config.JARAlgs = ctx.JARSigAlgs
-		config.JARByReferenceIsEnabled = ctx.JARByReferenceIsEnabled
-		config.JARRequestURIRegistrationIsRequired = ctx.JARRequestURIRegistrationIsRequired
+		if ctx.JARByReferenceIsEnabled {
+			config.JARByReferenceIsEnabled = ctx.JARByReferenceIsEnabled
+			config.JARRequestURIRegistrationIsRequired = !ctx.JARByReferenceUnregisteredURIIsEnabled
+		}
 		if ctx.JAREncIsEnabled {
 			config.JARKeyEncAlgs = ctx.JARKeyEncAlgs
 			config.JARContentEncAlgs = ctx.JARContentEncAlgs

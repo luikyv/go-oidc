@@ -709,11 +709,16 @@ func WithJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 	}
 }
 
-// TODO: Split this.
-func WithJARByReference(requireReqURIRegistration bool) Option {
+func WithJARByReference() Option {
 	return func(p *Provider) error {
 		p.config.JARByReferenceIsEnabled = true
-		p.config.JARRequestURIRegistrationIsRequired = requireReqURIRegistration
+		return nil
+	}
+}
+
+func WithJARByReferenceUnregisteredURIs() Option {
+	return func(p *Provider) error {
+		p.config.JARByReferenceUnregisteredURIIsEnabled = true
 		return nil
 	}
 }

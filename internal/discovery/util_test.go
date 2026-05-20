@@ -234,3 +234,53 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		t.Error(diff)
 	}
 }
+
+func TestOIDCConfig_JARByReferenceMetadata(t *testing.T) {
+	tests := []struct {
+		name                               string
+		byReferenceEnabled                 bool
+		unregisteredURIsEnabled            bool
+		wantByReferenceEnabled             bool
+		wantRegistrationRequiredAdvertised bool
+	}{
+		{
+			name:                               "disabled",
+			byReferenceEnabled:                 false,
+			unregisteredURIsEnabled:            false,
+			wantByReferenceEnabled:             false,
+			wantRegistrationRequiredAdvertised: false,
+		},
+		{
+			name:                               "enabled with registration required",
+			byReferenceEnabled:                 true,
+			unregisteredURIsEnabled:            false,
+			wantByReferenceEnabled:             true,
+			wantRegistrationRequiredAdvertised: true,
+		},
+		{
+			name:                               "enabled with unregistered uris allowed",
+			byReferenceEnabled:                 true,
+			unregisteredURIsEnabled:            true,
+			wantByReferenceEnabled:             true,
+			wantRegistrationRequiredAdvertised: false,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.JARIsEnabled = true
+			ctx.JARByReferenceIsEnabled = test.byReferenceEnabled
+			ctx.JARByReferenceUnregisteredURIIsEnabled = test.unregisteredURIsEnabled
+
+			got := NewOpenIDConfiguration(ctx)
+
+			if got.JARByReferenceIsEnabled != test.wantByReferenceEnabled {
+				t.Fatalf("JARByReferenceIsEnabled = %v, want %v", got.JARByReferenceIsEnabled, test.wantByReferenceEnabled)
+			}
+			if got.JARRequestURIRegistrationIsRequired != test.wantRegistrationRequiredAdvertised {
+				t.Fatalf("JARRequestURIRegistrationIsRequired = %v, want %v", got.JARRequestURIRegistrationIsRequired, test.wantRegistrationRequiredAdvertised)
+			}
+		})
+	}
+}

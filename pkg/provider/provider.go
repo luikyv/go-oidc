@@ -106,6 +106,10 @@ func (op *Provider) validate() error {
 		return errors.New("par cannot be enabled without authorization code grant")
 	}
 
+	if op.config.JARByReferenceUnregisteredURIIsEnabled && !op.config.JARByReferenceIsEnabled {
+		return errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
+	}
+
 	return nil
 }
 
@@ -629,7 +633,13 @@ func defaultRefreshTokenFunc(_ context.Context) string {
 }
 
 func defaultHTTPClientFunc(_ context.Context) *http.Client {
-	return http.DefaultClient
+	transport := http.DefaultTransport.(*http.Transport).Clone()
+	transport.ResponseHeaderTimeout = 5 * time.Second
+	transport.TLSHandshakeTimeout = 5 * time.Second
+	return &http.Client{
+		Timeout:   10 * time.Second,
+		Transport: transport,
+	}
 }
 
 func defaultAuthCodeFunc(_ context.Context) string {

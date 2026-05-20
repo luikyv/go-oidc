@@ -2408,7 +2408,7 @@ func TestWithJARByReference(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARByReference(true)(p)
+	err := WithJARByReference()(p)
 
 	// Then.
 	if err != nil {
@@ -2417,8 +2417,7 @@ func TestWithJARByReference(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			JARByReferenceIsEnabled:             true,
-			JARRequestURIRegistrationIsRequired: true,
+			JARByReferenceIsEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

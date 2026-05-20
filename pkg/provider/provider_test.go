@@ -243,6 +243,26 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNew_JARByReferenceUnregisteredURIsRequireJARByReference(t *testing.T) {
+	issuer := "https://example.com"
+	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+		return goidc.JSONWebKeySet{}, nil
+	}
+
+	_, err := New(
+		issuer,
+		storage.NewManager(100),
+		jwksFunc,
+		WithJARByReferenceUnregisteredURIs(),
+	)
+	if err == nil {
+		t.Fatal("New() error = nil, want non-nil")
+	}
+	if got, want := err.Error(), "jar by-reference unregistered uris cannot be enabled without jar by-reference"; got != want {
+		t.Fatalf("New() error = %q, want %q", got, want)
+	}
+}
+
 func TestMakeToken(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"
