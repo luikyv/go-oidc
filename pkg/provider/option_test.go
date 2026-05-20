@@ -41,6 +41,44 @@ func TestWithPathPrefix(t *testing.T) {
 	}
 }
 
+func TestWithProfile(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithProfile(goidc.ProfileFAPI2)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.Profile != goidc.ProfileFAPI2 {
+		t.Fatalf("Profile = %s, want %s", p.config.Profile, goidc.ProfileFAPI2)
+	}
+}
+
+func TestWithProfileValidation(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithProfileValidation()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !p.profileValidationIsEnabled {
+		t.Fatal("profile validation must be enabled")
+	}
+}
+
 func TestWithJWKSEndpoint(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -185,6 +223,56 @@ func TestWithUserInfoEndpoint(t *testing.T) {
 	}
 }
 
+func TestWithRPMetadataChoices(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithRPMetadataChoices()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !p.config.RPMetadataChoicesIsEnabled {
+		t.Fatal("RP metadata choices must be enabled")
+	}
+}
+
+func TestWithDCRHandleClientFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	var called bool
+	f := func(context.Context, string, *goidc.ClientMeta) error {
+		called = true
+		return nil
+	}
+
+	// When.
+	err := WithDCRHandleClientFunc(f)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.DCRHandleClientFunc == nil {
+		t.Fatal("DCRHandleClientFunc must be set")
+	}
+
+	if err := p.config.DCRHandleClientFunc(context.Background(), "client", &goidc.ClientMeta{}); err != nil {
+		t.Fatalf("unexpected handler error: %v", err)
+	}
+	if !called {
+		t.Fatal("DCRHandleClientFunc was not called")
+	}
+}
+
 func TestWithIntrospectionEndpoint(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -230,6 +318,39 @@ func TestWithTokenRevocationEndpoint(t *testing.T) {
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithVerifyClientSecretFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	var gotStored string
+	var gotPresented string
+	f := func(_ context.Context, stored, presented string) error {
+		gotStored = stored
+		gotPresented = presented
+		return nil
+	}
+
+	// When.
+	err := WithVerifyClientSecretFunc(f)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.VerifyClientSecretFunc == nil {
+		t.Fatal("VerifyClientSecretFunc must be set")
+	}
+
+	if err := p.config.VerifyClientSecretFunc(context.Background(), "stored", "presented"); err != nil {
+		t.Fatalf("unexpected verifier error: %v", err)
+	}
+	if gotStored != "stored" || gotPresented != "presented" {
+		t.Fatalf("verifier inputs = (%q, %q), want (%q, %q)", gotStored, gotPresented, "stored", "presented")
 	}
 }
 
@@ -1455,6 +1576,37 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 	}
 }
 
+func TestWithOpenIDFedHandleClientFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	var called bool
+	f := func(context.Context, *goidc.Client) error {
+		called = true
+		return nil
+	}
+
+	// When.
+	err := WithOpenIDFedHandleClientFunc(f)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.OpenIDFedHandleClientFunc == nil {
+		t.Fatal("OpenIDFedHandleClientFunc must be set")
+	}
+
+	if err := p.config.OpenIDFedHandleClientFunc(context.Background(), &goidc.Client{}); err != nil {
+		t.Fatalf("unexpected handler error: %v", err)
+	}
+	if !called {
+		t.Fatal("OpenIDFedHandleClientFunc was not called")
+	}
+}
+
 func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -2521,6 +2673,25 @@ func TestWithAuthCodeFunc(t *testing.T) {
 	}
 }
 
+func TestWithAuthCodeLifetime(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithAuthCodeLifetime(90)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.AuthCodeLifetimeSecs != 90 {
+		t.Fatalf("AuthCodeLifetimeSecs = %d, want %d", p.config.AuthCodeLifetimeSecs, 90)
+	}
+}
+
 func TestWithLogout(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -2706,6 +2877,25 @@ func TestWithSSFEventTypes(t *testing.T) {
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithSSFSignatureAlgorithm(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithSSFSignatureAlgorithm(goidc.PS256)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.SSFDefaultSigAlg != goidc.PS256 {
+		t.Fatalf("SSFDefaultSigAlg = %s, want %s", p.config.SSFDefaultSigAlg, goidc.PS256)
 	}
 }
 
@@ -3260,6 +3450,54 @@ func TestWithOpenIDFedTrustChainMaxDepth(t *testing.T) {
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithOpenIDFedTrustMark(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	marks := map[goidc.TrustMark]string{
+		"https://example.com/trust-mark": "https://issuer.example.com",
+	}
+
+	// When.
+	err := WithOpenIDFedTrustMark(marks)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if diff := cmp.Diff(p.config.OpenIDFedTrustMarks, marks); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithCredentialIssuers(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	issuers := []goidc.VCIssuer{
+		{ID: "issuer-1"},
+		{ID: "issuer-2"},
+	}
+
+	// When.
+	err := WithCredentialIssuers(issuers...)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !p.config.VCIsEnabled {
+		t.Fatal("VC must be enabled")
+	}
+	if diff := cmp.Diff(p.config.VCIssuers, issuers); diff != "" {
 		t.Error(diff)
 	}
 }
