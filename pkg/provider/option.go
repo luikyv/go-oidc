@@ -107,7 +107,7 @@ func WithJWKSEndpoint(endpoint string) Option {
 	}
 }
 
-// WithTokenEndpoint overrides the default value for the authorization
+// WithTokenEndpoint overrides the default value for the token
 // endpoint which is [defaultEndpointToken].
 func WithTokenEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
@@ -116,7 +116,7 @@ func WithTokenEndpoint(endpoint string) Option {
 	}
 }
 
-// WithAuthorizeEndpoint overrides the default value for the token endpoint
+// WithAuthorizeEndpoint overrides the default value for the authorization endpoint
 // which is [defaultEndpointAuthorize].
 func WithAuthorizeEndpoint(endpoint string) Option {
 	return func(p *Provider) error {
@@ -177,7 +177,7 @@ func WithTokenRevocationEndpoint(endpoint string) Option {
 // WithClaims signals support for user claims.
 // The claims are meant to appear in ID tokens and the userinfo endpoint.
 // The values provided will be shared in the field "claims_supported" of the
-// well known endpoint response.
+// openid configuration endpoint response.
 // The default value for "claim_types_supported" is set to "normal".
 // To define other claim types, see [WithClaimTypes].
 func WithClaims(claim string, claims ...string) Option {
@@ -228,7 +228,7 @@ func WithUserInfoEncryption(keyEncAlg goidc.KeyEncryptionAlgorithm, keyEncAlgs .
 
 // WithUserInfoContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
-// To enabled encryption of user information, see [WithUserInfoEncryption].
+// To enable encryption of user information, see [WithUserInfoEncryption].
 func WithUserInfoContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
@@ -238,7 +238,7 @@ func WithUserInfoContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorit
 	}
 }
 
-// WithUserSignatureAlgs set the algorithms available to sign ID tokens.
+// WithIDTokenSignatureAlgs sets the algorithms available to sign ID tokens.
 func WithIDTokenSignatureAlgs(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
@@ -275,7 +275,7 @@ func WithIDTokenEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEn
 
 // WithIDTokenContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
-// To enabled encryption of ID tokens, see [WithIDTokenEncryption].
+// To enable encryption of ID tokens, see [WithIDTokenEncryption].
 func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
@@ -507,7 +507,7 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) Option {
 	}
 }
 
-// WithHandleGrantFunc defines a function executed everytime a new grant is created.
+// WithHandleGrantFunc defines a function executed every time a new grant is created.
 // It can be used to perform validations or change the grant information before
 // issuing a new access token.
 func WithHandleGrantFunc(f goidc.HandleGrantFunc) Option {
@@ -517,7 +517,7 @@ func WithHandleGrantFunc(f goidc.HandleGrantFunc) Option {
 	}
 }
 
-// WithHandleTokenFunc defines a function executed everytime a new token is created.
+// WithHandleTokenFunc defines a function executed every time a new token is created.
 // It can be used to perform validations or change the token information before
 // issuing it.
 func WithHandleTokenFunc(f goidc.HandleTokenFunc) Option {
@@ -620,7 +620,7 @@ func WithDeviceGrant(manager goidc.DeviceAuthManager, promptFunc goidc.RenderFun
 }
 
 // WithScopes defines the scopes accepted by the provider.
-// The scope openid is required, so it will be added in case scopes doesn't
+// The scope openid is required, so it will be added in case the scope list doesn't
 // contain it.
 func WithScopes(scopes ...goidc.Scope) Option {
 	return func(p *Provider) error {
@@ -773,8 +773,8 @@ func WithJARM(defaultAlg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgori
 // WithJARM allows responses for authorization requests to be sent as encrypted JWTs.
 // The default content encryption algorithm is A128CBC-HS256.
 // Clients can choose the encryption algorithms by setting the attributes
-// "authorization_encrypted_response_al" and "authorization_encrypted_response_enc".
-// To enabled JARM, see [WithJARM].
+// "authorization_encrypted_response_alg" and "authorization_encrypted_response_enc".
+// To enable JARM, see [WithJARM].
 func WithJARMEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
@@ -786,7 +786,7 @@ func WithJARMEncryption(alg goidc.KeyEncryptionAlgorithm, algs ...goidc.KeyEncry
 
 // WithJARMContentEncryptionAlgs overrides the default content encryption
 // algorithm which is A128CBC-HS256.
-// To enabled JARM encryption, see [WithJARM].
+// To enable JARM encryption, see [WithJARM].
 func WithJARMContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, algs ...goidc.ContentEncryptionAlgorithm) Option {
 	algs = appendIfNotIn(algs, defaultAlg)
 	return func(p *Provider) error {
@@ -847,7 +847,7 @@ func WithJWTLifetime(secs int) Option {
 	}
 }
 
-// WithJWTLeewayTime defines a tolarance in seconds when validating time based
+// WithJWTLeewayTime defines a tolerance in seconds when validating time based
 // claims in JWTs.
 func WithJWTLeewayTime(secs int) Option {
 	return func(p *Provider) error {
@@ -993,7 +993,7 @@ func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.Aut
 // If the function allows the request, the provider returns the introspection
 // response derived from the stored token state. If the token is unknown,
 // expired, or otherwise inactive, the endpoint returns an inactive response.
-func WithTokenIntrospection(f goidc.IsClientAllowedTokenInstrospectionFunc) Option {
+func WithTokenIntrospection(f goidc.IsClientAllowedTokenIntrospectionFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenIntrospectionIsEnabled = true
 		p.config.TokenIntrospectionIsClientAllowedFunc = f
@@ -1046,7 +1046,7 @@ func WithPKCERequired(method goidc.CodeChallengeMethod, methods ...goidc.CodeCha
 }
 
 // WithACRs makes available authentication context references.
-// These values will be published as are in the well know endpoint response.
+// These values will be published as are in the openid configuration endpoint response.
 func WithACRs(value goidc.ACR, values ...goidc.ACR) Option {
 	values = appendIfNotIn(values, value)
 	return func(p *Provider) error {
@@ -1057,7 +1057,7 @@ func WithACRs(value goidc.ACR, values ...goidc.ACR) Option {
 
 // WithDisplayValues makes available display values during requests to the
 // authorization endpoint.
-// These values will be published as are in the well known endpoint response.
+// These values will be published as are in the openid configuration endpoint response.
 func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) Option {
 	values = appendIfNotIn(values, value)
 	return func(p *Provider) error {
@@ -1094,7 +1094,7 @@ func WithStaticClients(c *goidc.Client, cs ...*goidc.Client) Option {
 	}
 }
 
-// WithPolicy adds an authentication policy that will be evaluated at runtime
+// WithPolicies adds an authentication policy that will be evaluated at runtime
 // and then executed if selected.
 func WithPolicies(policies ...goidc.AuthnPolicy) Option {
 	return func(p *Provider) error {
@@ -1103,7 +1103,7 @@ func WithPolicies(policies ...goidc.AuthnPolicy) Option {
 	}
 }
 
-// WithAuthorizeErrorPlugin defines a handler to be executed when the
+// WithRenderErrorFunc defines a handler to be executed when the
 // authorization request results in error, but the error can't be redirected.
 // This can be used to display a page with the error.
 // The default behavior is to display a JSON with the error information to the user.
@@ -1254,7 +1254,7 @@ func WithErrorURI(uri string) Option {
 //     accepts when resolving trust chains for federated clients.
 //
 // Defaults:
-//   - Client registration type: [goidc.ClientRegistrationTypeAutomatic] (see [WithOpenIDFerationClientRegistrationTypes])
+//   - Client registration type: [goidc.ClientRegistrationTypeAutomatic] (see [WithOpenIDFedClientRegistrationTypes])
 //   - Entity configuration endpoint: [defaultEndpointOpenIDFederation] (see [WithOpenIDFedRegistrationEndpoint])
 //   - Signature algorithm: [defaultAsymmetricSigAlg] (see [WithOpenIDFedSignatureAlgs])
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
@@ -1283,7 +1283,7 @@ func WithOpenIDFedAuthorityHints(hint string, hints ...string) Option {
 	}
 }
 
-// WithOpenIDFerationClientRegistrationTypes sets the client registration types available for the OpenID Federation.
+// WithOpenIDFedClientRegistrationTypes sets the client registration types available for the OpenID Federation.
 // For more information, see [WithOpenIDFederation].
 func WithOpenIDFedClientRegistrationTypes(typ goidc.ClientRegistrationType, types ...goidc.ClientRegistrationType) Option {
 	types = appendIfNotIn(types, typ)

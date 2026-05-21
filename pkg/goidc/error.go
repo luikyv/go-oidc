@@ -25,7 +25,7 @@ const (
 	ErrorCodeInvalidScope           ErrorCode = "invalid_scope"
 	ErrorCodeInvalidAuthDetails     ErrorCode = "invalid_authorization_details"
 	ErrorCodeUnsupportedGrantType   ErrorCode = "unsupported_grant_type"
-	ErrorCodeInvalidResquestObject  ErrorCode = "invalid_request_object"
+	ErrorCodeInvalidRequestObject   ErrorCode = "invalid_request_object"
 	ErrorCodeInvalidToken           ErrorCode = "invalid_token"
 	ErrorCodeInternalError          ErrorCode = "internal_error"
 	ErrorCodeInvalidTarget          ErrorCode = "invalid_target"

@@ -345,7 +345,7 @@ func TestPushAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeInvalidResquestObject,
+			wantErr: goidc.ErrorCodeInvalidRequestObject,
 			validate: func(t *testing.T, ctx oidc.Context, _ parResponse, _ *goidc.Client) {
 				if len(oidctest.AuthnSessions(t, ctx)) != 0 {
 					t.Fatal("expected no sessions to be created")
@@ -384,7 +384,7 @@ func TestPushAuth(t *testing.T) {
 				}
 				return ctx, req, client
 			},
-			wantErr: goidc.ErrorCodeInvalidResquestObject,
+			wantErr: goidc.ErrorCodeInvalidRequestObject,
 			validate: func(t *testing.T, ctx oidc.Context, _ parResponse, _ *goidc.Client) {
 				if len(oidctest.AuthnSessions(t, ctx)) != 0 {
 					t.Fatal("expected no sessions to be created")

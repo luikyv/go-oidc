@@ -89,11 +89,11 @@ func validatePushedRequestWithJAR(ctx oidc.Context, req request, jar request, c 
 	}
 
 	if jar.ClientID != c.ID {
-		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object", errors.New("client_id in the request object does not match the authenticated client"))
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object", errors.New("client_id in the request object does not match the authenticated client"))
 	}
 
 	if jar.RequestObject != "" || jar.RequestURI != "" {
-		return goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object", errors.New("nested request objects and request_uri are not allowed inside JAR"))
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object", errors.New("nested request objects and request_uri are not allowed inside JAR"))
 	}
 
 	// The PAR RFC says:

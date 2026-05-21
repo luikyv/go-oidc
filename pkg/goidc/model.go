@@ -403,7 +403,7 @@ type MatchScopeFunc func(requestedScope string) bool
 
 type Scope struct {
 	// ID is the string representation of the scope.
-	// Its value will be published as is in the well known endpoint.
+	// Its value will be published as is in the openid configuration endpoint.
 	ID string
 	// Matches validates if a requested scope matches the current scope.
 	Matches MatchScopeFunc
@@ -725,7 +725,7 @@ type JWTBearerHandleAssertionFunc func(context.Context, string) (sub string, err
 
 type IsClientAllowedFunc func(context.Context, *Client) bool
 
-type IsClientAllowedTokenInstrospectionFunc func(context.Context, *Client, TokenInfo) bool
+type IsClientAllowedTokenIntrospectionFunc func(context.Context, *Client, TokenInfo) bool
 
 type PairwiseSubjectFunc func(ctx context.Context, sub string, client *Client) string
 

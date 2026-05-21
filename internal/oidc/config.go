@@ -112,7 +112,7 @@ type Configuration struct {
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionEndpoint            string
-	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenInstrospectionFunc
+	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenIntrospectionFunc
 
 	TokenRevocationIsEnabled                         bool
 	TokenRevocationEndpoint                          string
