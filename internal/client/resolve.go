@@ -195,7 +195,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		if c.TLSSubAlternativeName != "" {
 			numberOfIdentifiers++
 		}
-		if c.TLSSubAlternativeNameIp != "" {
+		if c.TLSSubAlternativeNameIP != "" {
 			numberOfIdentifiers++
 		}
 		if numberOfIdentifiers != 1 {
@@ -211,7 +211,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	if c.TokenAuthnMethod != goidc.AuthnMethodTLS {
 		c.TLSSubDistinguishedName = ""
 		c.TLSSubAlternativeName = ""
-		c.TLSSubAlternativeNameIp = ""
+		c.TLSSubAlternativeNameIP = ""
 	}
 
 	if ctx.TokenIntrospectionIsEnabled {
@@ -550,7 +550,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	if !ctx.MTLSIsEnabled {
 		c.TLSSubDistinguishedName = ""
 		c.TLSSubAlternativeName = ""
-		c.TLSSubAlternativeNameIp = ""
+		c.TLSSubAlternativeNameIP = ""
 		c.TLSTokenBindingIsRequired = false
 	}
 

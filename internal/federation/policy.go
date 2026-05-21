@@ -1142,11 +1142,11 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 	}
 	c.TLSSubAlternativeName = tlsSubAlternativeName
 
-	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubAlternativeNameIp)
+	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubAlternativeNameIP)
 	if err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubAlternativeNameIp = tlsSubAlternativeNameIp
+	c.TLSSubAlternativeNameIP = tlsSubAlternativeNameIp
 
 	tlsTokenBindingIsRequired, err := policy.TLSTokenBindingIsRequired.Apply(c.TLSTokenBindingIsRequired)
 	if err != nil {

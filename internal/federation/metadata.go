@@ -193,8 +193,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 	if sub.TLSSubAlternativeName != "" {
 		merged.TLSSubAlternativeName = sub.TLSSubAlternativeName
 	}
-	if sub.TLSSubAlternativeNameIp != "" {
-		merged.TLSSubAlternativeNameIp = sub.TLSSubAlternativeNameIp
+	if sub.TLSSubAlternativeNameIP != "" {
+		merged.TLSSubAlternativeNameIP = sub.TLSSubAlternativeNameIP
 	}
 	if sub.TLSTokenBindingIsRequired {
 		merged.TLSTokenBindingIsRequired = sub.TLSTokenBindingIsRequired

@@ -1173,7 +1173,8 @@ func WithResourceIndicatorsRequired(resource string, resources ...string) Option
 
 // WithHTTPClientFunc defines how to generate the client used to make HTTP
 // requests to, for instance, a client's JWKS endpoint.
-// The default behavior is to use the default HTTP client from the std library.
+// By default, the provider uses an HTTP client with request, response header,
+// and TLS handshake timeouts configured.
 func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.HTTPClientFunc = f
