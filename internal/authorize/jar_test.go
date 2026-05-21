@@ -168,7 +168,7 @@ func TestJARFromRequestObject(t *testing.T) {
 
 				return ctx, requestObject, client, request{}
 			},
-			wantErr:         goidc.ErrorCodeInvalidResquestObject,
+			wantErr:         goidc.ErrorCodeInvalidRequestObject,
 			wantDescription: "invalid request object",
 		},
 	}

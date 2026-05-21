@@ -46,7 +46,7 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 		}
 		jws, err := ctx.Decrypt(reqObject, ctx.JARKeyEncAlgs, contentEncAlgs)
 		if err != nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject,
 				"invalid request object", fmt.Errorf("could not decrypt the encrypted request object: %w", err))
 		}
 		reqObject = jws
@@ -60,13 +60,13 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 	if slices.Contains(ctx.JARSigAlgs, goidc.None) && joseutil.IsUnsignedJWT(reqObject) {
 		parsedJWT, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 		if err != nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				fmt.Errorf("could not parse the unsigned request object: %w", err))
 		}
 
 		var jarReq request
 		if err := parsedJWT.UnsafeClaimsWithoutVerification(&jarReq); err != nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				fmt.Errorf("could not extract claims from the unsigned request object: %w", err))
 		}
 
@@ -75,59 +75,59 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 
 	parsedToken, err := jwt.ParseSigned(reqObject, jarAlgorithms)
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object", fmt.Errorf("could not parse the request object: %w", err))
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object", fmt.Errorf("could not parse the request object: %w", err))
 	}
 
 	if len(parsedToken.Headers) != 1 {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 			errors.New("the request object must contain exactly one JOSE header"))
 	}
 
 	// Verify that the key ID belongs to the client.
 	jwk, err := client.JWKMatchingHeader(ctx, c, parsedToken.Headers[0])
 	if err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject,
 			"invalid request object", fmt.Errorf("could not resolve the client public key for the request object header: %w", err))
 	}
 
 	var claims jwt.Claims
 	var jarReq request
 	if err := parsedToken.Claims(jwk.Key, &claims, &jarReq); err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject,
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject,
 			"invalid request object", fmt.Errorf("could not extract claims from the request object: %w", err))
 	}
 
 	if ctx.Profile.IsFAPI() {
 		if claims.NotBefore == nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'nbf' is required in the request object"))
 		}
 
 		if claims.NotBefore.Time().Before(timeutil.Now().Add(-1 * time.Hour)) {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'nbf' is too far in the past"))
 		}
 
 		if claims.Expiry == nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'exp' is required in the request object"))
 		}
 
 		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'exp' is too far in the future"))
 		}
 	}
 
 	if claims.ID != "" {
 		if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				fmt.Errorf("could not validate the request object jti: %w", err))
 		}
 	}
 
 	if claims.Subject != "" {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "invalid request object",
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 			errors.New("claim 'sub' is not allowed in the request object"))
 	}
 
@@ -135,7 +135,7 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 		Issuer:      c.ID,
 		AnyAudience: []string{ctx.Issuer()},
 	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidResquestObject, "the request object contains invalid claims", err)
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "the request object contains invalid claims", err)
 	}
 
 	return jarReq, nil

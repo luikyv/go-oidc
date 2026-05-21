@@ -35,7 +35,7 @@ type Grant struct {
 	// successfully redeemed, so reuse can be detected.
 	AuthCodeConsumedAt int `json:"auth_code_consumed_at,omitempty"`
 	// PreAuthCode is populated for pre-authorized code flows.
-	PreAuthCode string `json:"pre_aut_code,omitempty"`
+	PreAuthCode string `json:"pre_auth_code,omitempty"`
 	// AuthReqID is populated when a CIBA request is approved and turned into a
 	// grant.
 	AuthReqID string `json:"auth_req_id,omitempty"`

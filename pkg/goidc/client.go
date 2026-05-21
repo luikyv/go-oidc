@@ -44,18 +44,17 @@ type ClientMeta struct {
 	JWKSURI           string          `json:"jwks_uri,omitempty"`
 	JWKS              *JSONWebKeySet  `json:"jwks,omitempty"`
 	SignedJWKSURI     string          `json:"signed_jwks_uri,omitempty"`
-	// ScopeIDs contains the scopes available to the client separeted by spaces.
-	ScopeIDs              string                     `json:"scope,omitempty"`
-	SubIdentifierType     SubIdentifierType          `json:"subject_type,omitempty"`
-	SectorIdentifierURI   string                     `json:"sector_identifier_uri,omitempty"`
-	IDTokenSigAlg         SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
-	IDTokenKeyEncAlg      KeyEncryptionAlgorithm     `json:"id_token_encrypted_response_alg,omitempty"`
-	IDTokenContentEncAlg  ContentEncryptionAlgorithm `json:"id_token_encrypted_response_enc,omitempty"`
-	UserInfoSigAlg        SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
-	UserInfoKeyEncAlg     KeyEncryptionAlgorithm     `json:"userinfo_encrypted_response_alg,omitempty"`
-	UserInfoContentEncAlg ContentEncryptionAlgorithm `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARIsRequired         bool                       `json:"require_signed_request_object,omitempty"`
-	// TODO: Is JAR required if this is informed?
+	// ScopeIDs contains the scopes available to the client separated by spaces.
+	ScopeIDs                      string                     `json:"scope,omitempty"`
+	SubIdentifierType             SubIdentifierType          `json:"subject_type,omitempty"`
+	SectorIdentifierURI           string                     `json:"sector_identifier_uri,omitempty"`
+	IDTokenSigAlg                 SignatureAlgorithm         `json:"id_token_signed_response_alg,omitempty"`
+	IDTokenKeyEncAlg              KeyEncryptionAlgorithm     `json:"id_token_encrypted_response_alg,omitempty"`
+	IDTokenContentEncAlg          ContentEncryptionAlgorithm `json:"id_token_encrypted_response_enc,omitempty"`
+	UserInfoSigAlg                SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
+	UserInfoKeyEncAlg             KeyEncryptionAlgorithm     `json:"userinfo_encrypted_response_alg,omitempty"`
+	UserInfoContentEncAlg         ContentEncryptionAlgorithm `json:"userinfo_encrypted_response_enc,omitempty"`
+	JARIsRequired                 bool                       `json:"require_signed_request_object,omitempty"`
 	JARSigAlg                     SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
 	JARKeyEncAlg                  KeyEncryptionAlgorithm     `json:"request_object_encryption_alg,omitempty"`
 	JARContentEncAlg              ContentEncryptionAlgorithm `json:"request_object_encryption_enc,omitempty"`

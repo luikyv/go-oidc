@@ -372,7 +372,7 @@ func (op *Provider) setDefaults() {
 
 	if op.config.TokenIntrospectionIsEnabled {
 		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
-		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenInstrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
+		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenIntrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
 	}
 
 	if op.config.TokenRevocationIsEnabled {
