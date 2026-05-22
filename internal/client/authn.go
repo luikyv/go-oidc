@@ -255,7 +255,7 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 			errors.New("the audience claim is invalid"))
 	}
 
-	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 

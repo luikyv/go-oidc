@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"slices"
@@ -12,6 +13,10 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
+)
+
+const (
+	maxResponseByteSize int64 = 1_000_000 // 1 MB.
 )
 
 func Resolve(ctx oidc.Context, c *Meta) (err error) {
@@ -706,19 +711,19 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			return err
 		}
 
-		httpClient := ctx.HTTPClient()
-		resp, err := httpClient.Get(c.SectorIdentifierURI)
-		if err != nil || resp.StatusCode != http.StatusOK {
-			if err != nil {
-				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
-			}
+		resp, err := ctx.HTTPClient().Get(c.SectorIdentifierURI)
+		if err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
+		}
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("fetching sector_identifier_uri returned status %d", resp.StatusCode))
 		}
-		defer func() { _ = resp.Body.Close() }()
 
 		var uris []string
-		if err := json.NewDecoder(resp.Body).Decode(&uris); err != nil {
+		if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseByteSize)).Decode(&uris); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 		}
 

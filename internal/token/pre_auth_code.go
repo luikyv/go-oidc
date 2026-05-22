@@ -11,7 +11,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
+func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	if req.preAuthCode == "" {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
 			errors.New("pre-authorized_code is required"))
@@ -102,15 +102,15 @@ func generatePreAuthCodeGrant(ctx oidc.Context, req request) (response, error) {
 	}
 
 	for scope := range strings.FieldsSeq(req.scopes) {
-		isVCScope := false
-		for _, config := range issuer.Configurations {
-			if config.Scope.ID == scope {
-				isVCScope = true
+		isAllowed := false
+		for id, config := range issuer.Configurations {
+			if _, ok := result.ConfigurationIDs[id]; ok && config.Scope.ID == scope {
+				isAllowed = true
 				break
 			}
 		}
-		if !isVCScope {
-			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("the requested scope is not associated with any credential configuration: "+scope))
+		if !isAllowed {
+			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", errors.New("the requested scope was not authorized by the pre-authorized code: "+scope))
 		}
 	}
 

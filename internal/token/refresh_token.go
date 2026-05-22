@@ -1,6 +1,7 @@
 package token
 
 import (
+	"errors"
 	"fmt"
 	"slices"
 
@@ -33,6 +34,10 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 
 	if c.ID != grant.ClientID {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", fmt.Errorf("the refresh token belongs to client %q, not %q", grant.ClientID, c.ID))
+	}
+
+	if grant.RevokedAt != 0 {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant", errors.New("the grant associated to the refresh token was revoked"))
 	}
 
 	if grant.RefreshTokenExpiresAt != 0 && timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {

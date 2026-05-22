@@ -188,14 +188,14 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 		if opts.RefreshToken != "" {
 			claims[goidc.ClaimRefreshTokenHash] = hashutil.HalfHash(opts.RefreshToken, alg)
 		}
-
-		if opts.AuthReqID != "" {
-			claims[goidc.ClaimAuthReqID] = hashutil.HalfHash(opts.AuthReqID, alg)
-		}
 	}
 
 	if opts.Nonce != "" {
 		claims[goidc.ClaimNonce] = opts.Nonce
+	}
+
+	if opts.AuthReqID != "" {
+		claims[goidc.ClaimAuthReqID] = opts.AuthReqID
 	}
 
 	maps.Copy(claims, opts.Claims)
@@ -293,7 +293,7 @@ func generateToken(ctx oidc.Context, req request) (response, error) {
 	case goidc.GrantCIBA:
 		return generateCIBAToken(ctx, req)
 	case goidc.GrantPreAuthorizedCode:
-		return generatePreAuthCodeGrant(ctx, req)
+		return generatePreAuthCodeToken(ctx, req)
 	case goidc.GrantDeviceCode:
 		return generateDeviceCodeToken(ctx, req)
 	default:

@@ -21,6 +21,10 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+const (
+	maxResponseByteSize int64 = 1_000_000 // 1 MB.
+)
+
 func FetchEntityConfigurationJWKS(ctx oidc.Context, id string) (goidc.JSONWebKeySet, error) {
 	config, err := fetchEntityConfiguration(ctx, id)
 	if err != nil {
@@ -361,9 +365,21 @@ func fetchEntityStatement(ctx oidc.Context, r *http.Request) (string, error) {
 			fmt.Errorf("the federation endpoint returned content type %q", resp.Header.Get("Content-Type")))
 	}
 
-	signedStatement, err := io.ReadAll(resp.Body)
+	if resp.ContentLength > maxResponseByteSize {
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the entity statement",
+			fmt.Errorf("statement exceeds max size of %d bytes", maxResponseByteSize),
+		)
+	}
+
+	signedStatement, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseByteSize+1))
 	if err != nil {
 		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the entity statement", err)
+	}
+
+	if int64(len(signedStatement)) > maxResponseByteSize {
+		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the entity statement",
+			fmt.Errorf("statement exceeds max size of %d bytes", maxResponseByteSize),
+		)
 	}
 
 	return string(signedStatement), nil
@@ -915,9 +931,21 @@ func fetchTrustMark(ctx oidc.Context, markType goidc.TrustMark, issuerID string)
 			fmt.Errorf("the trust mark endpoint returned content type %q", resp.Header.Get("Content-Type")))
 	}
 
-	mark, err := io.ReadAll(resp.Body)
+	if resp.ContentLength > maxResponseByteSize {
+		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not fetch the trust mark",
+			fmt.Errorf("trust mark exceeds max size of %d bytes", maxResponseByteSize),
+		)
+	}
+
+	mark, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseByteSize+1))
 	if err != nil {
 		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the trust mark", err)
+	}
+
+	if int64(len(mark)) > maxResponseByteSize {
+		return trustMarkInfo{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not read the trust mark",
+			fmt.Errorf("trust mark exceeds max size of %d bytes", maxResponseByteSize),
+		)
 	}
 
 	return trustMarkInfo{

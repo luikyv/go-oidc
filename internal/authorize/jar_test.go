@@ -222,9 +222,8 @@ func TestJARFromRequestURI(t *testing.T) {
 			JARIsEnabled:            true,
 			JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 			JARByReferenceIsEnabled: true,
-			HTTPClientFunc: func(_ context.Context) *http.Client {
-				return http.DefaultClient
-			},
+			HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
+			JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
 		},
 		Request: &http.Request{Method: http.MethodPost},
 	}
@@ -315,9 +314,8 @@ func TestJARFromRequestURIErrors(t *testing.T) {
 				JARIsEnabled:            true,
 				JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 				JARByReferenceIsEnabled: true,
-				HTTPClientFunc: func(_ context.Context) *http.Client {
-					return http.DefaultClient
-				},
+				HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
+				JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
 			},
 			Request: &http.Request{Method: http.MethodPost},
 		}
@@ -341,4 +339,64 @@ func TestJARFromRequestURIErrors(t *testing.T) {
 			t.Fatalf("wrapped error = %v, want %q", unwrapped, "request_uri returned HTTP status 502")
 		}
 	})
+}
+
+func TestJARFromRequestURIUsesDedicatedClient(t *testing.T) {
+	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
+	client := &goidc.Client{
+		ID: "test_client",
+		ClientMeta: goidc.ClientMeta{
+			JWKS: &goidc.JSONWebKeySet{
+				Keys: []goidc.JSONWebKey{privateJWK.Public()},
+			},
+		},
+	}
+
+	now := timeutil.TimestampNow()
+	requestObject := oidctest.Sign(t, map[string]any{
+		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimAudience: "https://server.example.com",
+		goidc.ClaimIssuedAt: now,
+		goidc.ClaimExpiry:   now + 10,
+		"client_id":         client.ID,
+		"redirect_uri":      "https://example.com",
+		"response_type":     goidc.ResponseTypeCode,
+	}, privateJWK)
+
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		if _, err := w.Write([]byte(requestObject)); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			Host:                    "https://server.example.com",
+			JARIsEnabled:            true,
+			JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+			JARByReferenceIsEnabled: true,
+			HTTPClientFunc: func(_ context.Context) *http.Client {
+				return &http.Client{
+					Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+						return nil, errors.New("wrong client used")
+					}),
+				}
+			},
+			JARHTTPClientFunc: func(_ context.Context) *http.Client {
+				return http.DefaultClient
+			},
+		},
+		Request: &http.Request{Method: http.MethodPost},
+	}
+
+	if _, err := jarFromRequestURI(ctx, server.URL, client); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
 }

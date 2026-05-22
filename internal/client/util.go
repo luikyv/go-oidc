@@ -104,15 +104,21 @@ func fetchJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, error) 
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 			fmt.Errorf("fetching the client jwks returned status %d", resp.StatusCode))
 	}
 
+	if resp.ContentLength > maxResponseByteSize {
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("client jwks exceeds max size of %d bytes", maxResponseByteSize),
+		)
+	}
+
 	var jwks goidc.JSONWebKeySet
-	if err := json.NewDecoder(resp.Body).Decode(&jwks); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseByteSize+1)).Decode(&jwks); err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
 
@@ -131,16 +137,28 @@ func fetchSignedJWKS(ctx oidc.Context, c *goidc.Client) (*goidc.JSONWebKeySet, e
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
 	}
-	defer func() { _ = resp.Body.Close() }()
+	defer resp.Body.Close() //nolint:errcheck
 
 	if resp.StatusCode != http.StatusOK {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 			fmt.Errorf("fetching the client signed jwks returned status %d", resp.StatusCode))
 	}
 
-	signedJWKS, err := io.ReadAll(resp.Body)
+	if resp.ContentLength > maxResponseByteSize {
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("client signed jwks exceeds max size of %d bytes", maxResponseByteSize),
+		)
+	}
+
+	signedJWKS, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseByteSize+1))
 	if err != nil {
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", err)
+	}
+
+	if int64(len(signedJWKS)) > maxResponseByteSize {
+		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			fmt.Errorf("client signed jwks exceeds max size of %d bytes", maxResponseByteSize),
+		)
 	}
 
 	// Parse and verify the signed JWKS using the entity configuration's keys.

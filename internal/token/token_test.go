@@ -155,6 +155,26 @@ func TestMakeIDToken(t *testing.T) {
 			},
 		},
 		{
+			name: "auth req id claim",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client, IDTokenOptions) {
+				ctx := oidctest.NewContext(t)
+				client, _ := oidctest.NewClient(t)
+				return ctx, client, IDTokenOptions{
+					Subject:   "random_subject",
+					AuthReqID: "random_auth_req_id",
+				}
+			},
+			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Client, opts IDTokenOptions, idToken string) {
+				claims, err := oidctest.SafeClaims(idToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				if claims[goidc.ClaimAuthReqID] != opts.AuthReqID {
+					t.Fatalf("%s = %v, want %s", goidc.ClaimAuthReqID, claims[goidc.ClaimAuthReqID], opts.AuthReqID)
+				}
+			},
+		},
+		{
 			name: "pairwise subject",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, IDTokenOptions) {
 				ctx := oidctest.NewContext(t)

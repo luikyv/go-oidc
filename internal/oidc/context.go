@@ -117,8 +117,8 @@ func (ctx Context) ClientID() string {
 	return ctx.DCRClientIDFunc(ctx)
 }
 
-func (ctx Context) CheckJTI(jti string) error {
-	return ctx.CheckJTIFunc(ctx, jti)
+func (ctx Context) ConsumeJTI(jti string) error {
+	return ctx.ConsumeJTIFunc(ctx, jti)
 }
 
 func (ctx Context) RenderError(err error) error {
@@ -537,6 +537,20 @@ func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {
 
 func (ctx Context) HTTPClient() *http.Client {
 	return ctx.HTTPClientFunc(ctx)
+}
+
+func (ctx Context) JARHTTPClient() *http.Client {
+	if ctx.JARHTTPClientFunc == nil {
+		return ctx.HTTPClient()
+	}
+	return ctx.JARHTTPClientFunc(ctx)
+}
+
+func (ctx Context) CIBAHTTPClient() *http.Client {
+	if ctx.CIBAHTTPClientFunc == nil {
+		return ctx.HTTPClient()
+	}
+	return ctx.CIBAHTTPClientFunc(ctx)
 }
 
 func (ctx Context) PairwiseSubject(sub string, c *goidc.Client) string {

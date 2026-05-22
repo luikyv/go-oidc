@@ -10,7 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestGeneratePreAuthCodeGrant(t *testing.T) {
+func TestGeneratePreAuthCodeToken(t *testing.T) {
 	tests := []struct {
 		name     string
 		setup    func(*testing.T) (oidc.Context, request)
@@ -143,13 +143,45 @@ func TestGeneratePreAuthCodeGrant(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
 		},
+		{
+			name: "scope not authorized by pre-authorized code",
+			setup: func(t *testing.T) (oidc.Context, request) {
+				ctx := oidctest.NewContext(t)
+				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
+				ctx.VCPreAuthCodeAnonymousAccessIsEnabled = true
+				ctx.VCIsEnabled = true
+				ctx.Scopes = []goidc.Scope{goidc.NewScope("vc_scope1"), goidc.NewScope("vc_scope2")}
+				ctx.VCIssuers = []goidc.VCIssuer{
+					{
+						ID: "https://issuer.example.com",
+						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+							"cred2": {Scope: goidc.NewScope("vc_scope2")},
+						},
+					},
+				}
+				ctx.VCHandlePreAuthCodeFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+					return goidc.VCPreAuthCodeResult{
+						Subject: "subject",
+						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
+							"cred1": {"credential_1"},
+						},
+					}, nil
+				}
+				return ctx, request{
+					preAuthCode: "pre_auth_code",
+					scopes:      "vc_scope2",
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidScope,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, req := test.setup(t)
 
-			resp, err := generatePreAuthCodeGrant(ctx, req)
+			resp, err := generatePreAuthCodeToken(ctx, req)
 
 			if test.wantErr != "" {
 				if err == nil {

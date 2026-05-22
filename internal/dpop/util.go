@@ -89,7 +89,7 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 			errors.New("the jti claim is required"))
 	}
 
-	if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 

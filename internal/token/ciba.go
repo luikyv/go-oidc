@@ -179,7 +179,7 @@ func sendClientNotification(ctx oidc.Context, client *goidc.Client, session *goi
 	req.Header.Set("Content-Type", "application/json")
 	req.Header.Set("Authorization", "Bearer "+session.ClientNotificationToken)
 
-	notificationResp, err := ctx.HTTPClient().Do(req)
+	notificationResp, err := ctx.CIBAHTTPClient().Do(req)
 	if err != nil {
 		return err
 	}

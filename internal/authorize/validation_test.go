@@ -140,6 +140,20 @@ func TestValidateRequest(t *testing.T) {
 			},
 		},
 		{
+			name: "redirect uri non loopback native app keeps exact port match",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
+				ctx := oidctest.NewContext(t)
+				client, _ := oidctest.NewClient(t)
+				client.ApplicationType = goidc.ApplicationTypeNative
+				client.RedirectURIs = []string{"https://example.com/callback"}
+				req := newValidRequest(client)
+				req.RedirectURI = "https://example.com:444/callback"
+				return ctx, client, req
+			},
+			wantErr:         goidc.ErrorCodeInvalidRequest,
+			wantNonRedirect: true,
+		},
+		{
 			name: "redirect uri loopback not registered",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx := oidctest.NewContext(t)

@@ -16,8 +16,12 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
+const (
+	maxJARResponseByteSize int64 = 1_000_000 // 1 MB.
+)
+
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
-	resp, err := ctx.HTTPClient().Get(reqURI)
+	resp, err := ctx.JARHTTPClient().Get(reqURI)
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri",
 			fmt.Errorf("could not fetch the request object from request_uri: %w", err))
@@ -29,10 +33,22 @@ func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (r
 			fmt.Errorf("request_uri returned HTTP status %d", resp.StatusCode))
 	}
 
-	reqObject, err := io.ReadAll(resp.Body)
+	if resp.ContentLength > maxJARResponseByteSize {
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri",
+			fmt.Errorf("request object exceeds max size of %d bytes", maxJARResponseByteSize),
+		)
+	}
+
+	reqObject, err := io.ReadAll(io.LimitReader(resp.Body, maxJARResponseByteSize+1))
 	if err != nil {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri",
 			fmt.Errorf("could not read the request object from request_uri: %w", err))
+	}
+
+	if int64(len(reqObject)) > maxJARResponseByteSize {
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri",
+			fmt.Errorf("request object exceeds max size of %d bytes", maxJARResponseByteSize),
+		)
 	}
 
 	return jarFromRequestObject(ctx, string(reqObject), client)
@@ -120,7 +136,7 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 	}
 
 	if claims.ID != "" {
-		if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+		if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				fmt.Errorf("could not validate the request object jti: %w", err))
 		}

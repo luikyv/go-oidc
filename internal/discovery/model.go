@@ -75,7 +75,7 @@ type OpenIDConfiguration struct {
 type openIDMTLSConfiguration struct {
 	TokenEndpoint              string `json:"token_endpoint"`
 	ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
-	UserinfoEndpoint           string `json:"userinfo_endpoint"`
+	UserInfoEndpoint           string `json:"userinfo_endpoint"`
 	ClientRegistrationEndpoint string `json:"registration_endpoint,omitempty"`
 	TokenIntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
 	TokenRevocationEndpoint    string `json:"revocation_endpoint,omitempty"`

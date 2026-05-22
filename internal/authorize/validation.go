@@ -3,6 +3,7 @@ package authorize
 import (
 	"errors"
 	"fmt"
+	"net"
 	"net/url"
 	"slices"
 	"strings"
@@ -344,8 +345,9 @@ func validateRedirectURIAsOptional(_ oidc.Context, params goidc.AuthorizationPar
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid redirect_uri", err)
 	}
 
-	// RFC 8252: Native apps can use loopback interface on any port.
-	if host := parsedURI.Hostname(); c.ApplicationType == goidc.ApplicationTypeNative {
+	// RFC 8252: Native apps can use loopback interface redirect URIs on any port.
+	// Port wildcards must not apply to non-loopback redirect URIs.
+	if host, ip := parsedURI.Hostname(), net.ParseIP(parsedURI.Hostname()); c.ApplicationType == goidc.ApplicationTypeNative && ip != nil && ip.IsLoopback() {
 		if host == "::1" {
 			host = "[::1]"
 		}

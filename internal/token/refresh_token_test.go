@@ -249,6 +249,37 @@ func TestGenerateRefreshToken(t *testing.T) {
 			},
 		},
 		{
+			name: "revoked grant",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.RevokedAt = timeutil.TimestampNow()
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr:         goidc.ErrorCodeInvalidGrant,
+			wantDescription: "invalid grant",
+			validateErr: func(t *testing.T, err error, _ *goidc.Client, _ *goidc.Grant) {
+				t.Helper()
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) {
+					t.Fatalf("expected goidc.Error, got %v", err)
+				}
+				want := "the grant associated to the refresh token was revoked"
+				if unwrapped := errors.Unwrap(oidcErr); unwrapped == nil || unwrapped.Error() != want {
+					t.Fatalf("wrapped error = %v, want %q", unwrapped, want)
+				}
+			},
+			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 0 {
+					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
+				}
+			},
+		},
+		{
 			name: "expired refresh token",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)

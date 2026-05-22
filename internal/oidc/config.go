@@ -148,6 +148,7 @@ type Configuration struct {
 	JAREncIsEnabled                        bool
 	JARKeyEncAlgs                          []goidc.KeyEncryptionAlgorithm
 	JARContentEncAlgs                      []goidc.ContentEncryptionAlgorithm
+	JARHTTPClientFunc                      goidc.HTTPClientFunc
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
@@ -172,6 +173,7 @@ type Configuration struct {
 	CIBAUserCodeIsEnabled          bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
+	CIBAHTTPClientFunc             goidc.HTTPClientFunc
 
 	CIBAJARIsEnabled  bool
 	CIBAJARIsRequired bool
@@ -204,7 +206,7 @@ type Configuration struct {
 	Resources                    []string
 
 	HTTPClientFunc goidc.HTTPClientFunc
-	CheckJTIFunc   goidc.CheckJTIFunc
+	ConsumeJTIFunc goidc.ConsumeJTIFunc
 
 	JWTBearerClientAuthnIsRequired bool
 	JWTBearerHandleAssertionFunc   goidc.JWTBearerHandleAssertionFunc

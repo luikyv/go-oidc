@@ -90,7 +90,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 
 		config.MTLSConfig = &openIDMTLSConfiguration{
 			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.TokenEndpoint,
-			UserinfoEndpoint: ctx.MTLSBaseURL() + ctx.UserInfoEndpoint,
+			UserInfoEndpoint: ctx.MTLSBaseURL() + ctx.UserInfoEndpoint,
 		}
 
 		if ctx.PARIsEnabled {

@@ -536,18 +536,18 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 		{
 			name: "check jti",
 			run: func(t *testing.T, ctx oidc.Context) {
-				ctx.CheckJTIFunc = func(context.Context, string) error {
+				ctx.ConsumeJTIFunc = func(context.Context, string) error {
 					return nil
 				}
-				if err := ctx.CheckJTI("jti"); err != nil {
-					t.Fatalf("CheckJTI() error = %v", err)
+				if err := ctx.ConsumeJTI("jti"); err != nil {
+					t.Fatalf("ConsumeJTI() error = %v", err)
 				}
 
-				ctx.CheckJTIFunc = func(context.Context, string) error {
+				ctx.ConsumeJTIFunc = func(context.Context, string) error {
 					return errors.New("error")
 				}
-				if err := ctx.CheckJTI("jti"); err == nil {
-					t.Fatal("CheckJTI() error = nil, want non-nil")
+				if err := ctx.ConsumeJTI("jti"); err == nil {
+					t.Fatal("ConsumeJTI() error = nil, want non-nil")
 				}
 			},
 		},
@@ -983,6 +983,12 @@ func TestHTTPClientFallbacks(t *testing.T) {
 	if got := ctx.OpenIDFedHTTPClient(); got != baseClient {
 		t.Fatal("OpenIDFedHTTPClient() did not fall back to HTTPClient()")
 	}
+	if got := ctx.JARHTTPClient(); got != baseClient {
+		t.Fatal("JARHTTPClient() did not fall back to HTTPClient()")
+	}
+	if got := ctx.CIBAHTTPClient(); got != baseClient {
+		t.Fatal("CIBAHTTPClient() did not fall back to HTTPClient()")
+	}
 
 	customFedClient := &http.Client{}
 	ctx.OpenIDFedHTTPClientFunc = func(context.Context) *http.Client {
@@ -990,6 +996,22 @@ func TestHTTPClientFallbacks(t *testing.T) {
 	}
 	if got := ctx.OpenIDFedHTTPClient(); got != customFedClient {
 		t.Fatal("OpenIDFedHTTPClient() did not return the configured federation client")
+	}
+
+	customJARClient := &http.Client{}
+	ctx.JARHTTPClientFunc = func(context.Context) *http.Client {
+		return customJARClient
+	}
+	if got := ctx.JARHTTPClient(); got != customJARClient {
+		t.Fatal("JARHTTPClient() did not return the configured JAR client")
+	}
+
+	customCIBAClient := &http.Client{}
+	ctx.CIBAHTTPClientFunc = func(context.Context) *http.Client {
+		return customCIBAClient
+	}
+	if got := ctx.CIBAHTTPClient(); got != customCIBAClient {
+		t.Fatal("CIBAHTTPClient() did not return the configured CIBA client")
 	}
 }
 

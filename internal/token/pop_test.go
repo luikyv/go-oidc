@@ -39,6 +39,28 @@ func TestValidateTLSPoP_NoThumbprint(t *testing.T) {
 	}
 }
 
+func TestValidateTLSPoP_DisabledButBound(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	cnf := goidc.TokenConfirmation{
+		CertThumbprint: "bound_thumbprint",
+	}
+
+	err := validateTLSPoP(ctx, cnf)
+
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeInvalidToken {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeInvalidToken)
+	}
+}
+
 func TestValidateTLSPoP_NoCert(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
@@ -144,6 +166,28 @@ func TestValidateDPoP_MissingHeader(t *testing.T) {
 	err := validateDPoP(ctx, "random_token", cnf)
 
 	// Then.
+	if err == nil {
+		t.Fatal("expected error")
+	}
+
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("expected goidc.Error, got %v", err)
+	}
+
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Errorf("Code = %s, want %s", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
+	}
+}
+
+func TestValidateDPoP_DisabledButBound(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	cnf := goidc.TokenConfirmation{
+		JWKThumbprint: "bound_thumbprint",
+	}
+
+	err := validateDPoP(ctx, "random_token", cnf)
+
 	if err == nil {
 		t.Fatal("expected error")
 	}
