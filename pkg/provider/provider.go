@@ -91,7 +91,7 @@ func (op *Provider) validate() error {
 	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
-		return errors.New("mtls must be enabled for tls_client_aut or self_signed_tls_client_auth")
+		return errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
 	}
 
 	if op.config.MTLSTokenBindingIsEnabled && !op.config.MTLSIsEnabled {
@@ -108,6 +108,18 @@ func (op *Provider) validate() error {
 
 	if op.config.JARByReferenceUnregisteredURIIsEnabled && !op.config.JARByReferenceIsEnabled {
 		return errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
+	}
+
+	if op.config.DCRSecretLifetimeSecs != 0 && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
+	}) {
+		return errors.New("dcr secret lifetime requires a secret-based token authentication method")
+	}
+
+	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
+	}) {
+		return errors.New("dcr secret rotation requires a secret-based token authentication method")
 	}
 
 	return nil
@@ -675,10 +687,10 @@ func defaultCompareAuthDetailsFunc(_ context.Context, requested, granted []goidc
 func defaultGenerateUserCodeFunc() goidc.RandomFunc {
 	// [RFC 8628 §6.1].
 	charset := "BCDFGHJKLMNPQRSTVWXZ"
+	charsetLength := big.NewInt(int64(len(charset)))
 	length := 8
 	return func(_ context.Context) string {
 		result := strings.Builder{}
-		charsetLength := big.NewInt(int64(length))
 		for range length {
 			n, err := rand.Int(rand.Reader, charsetLength)
 			if err != nil {

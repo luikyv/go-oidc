@@ -97,6 +97,34 @@ func TestAuthenticated(t *testing.T) {
 			wantErr: goidc.ErrorCodeInvalidClient,
 		},
 		{
+			name: "secret post authn expired secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				expiredAt := timeutil.TimestampNow() - 1
+				c.SecretExpiresAt = expiredAt
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {c.Secret},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "secret post authn zero secret expiry",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretPost)
+				zero := 0
+				c.SecretExpiresAt = zero
+				ctx.Request.PostForm = map[string][]string{
+					"client_id":     {c.ID},
+					"client_secret": {c.Secret},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
 			name: "basic secret authn",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
@@ -124,6 +152,28 @@ func TestAuthenticated(t *testing.T) {
 				return ctx, nil
 			},
 			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "basic secret authn expired secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+				expiredAt := timeutil.TimestampNow() - 1
+				c.SecretExpiresAt = expiredAt
+				ctx.Request.SetBasicAuth(c.ID, c.Secret)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "basic secret authn zero secret expiry",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c := setUpSecretAuthn(t, goidc.AuthnMethodSecretBasic)
+				zero := 0
+				c.SecretExpiresAt = zero
+				ctx.Request.SetBasicAuth(c.ID, c.Secret)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
 		},
 		{
 			name: "client secret jwt",
@@ -156,6 +206,50 @@ func TestAuthenticated(t *testing.T) {
 				return ctx, nil
 			},
 			wantClientID: "random_client_id",
+		},
+		{
+			name: "client secret jwt zero secret expiry",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, secret := setUpClientSecretJWTAuthn(t)
+				zero := 0
+				c.SecretExpiresAt = zero
+				ctx.Request.PostForm = secretJWTPostForm(t, ctx, c.ID, secret, "zero_secret_expiry_jti")
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "client secret jwt expired secret",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, secret := setUpClientSecretJWTAuthn(t)
+				expiredAt := timeutil.TimestampNow() - 1
+				c.SecretExpiresAt = expiredAt
+				ctx.Request.PostForm = secretJWTPostForm(t, ctx, c.ID, secret, "expired_secret_jti")
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "client secret jwt expired secret does not check jti",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, secret := setUpClientSecretJWTAuthn(t)
+				expiredAt := timeutil.TimestampNow() - 1
+				c.SecretExpiresAt = expiredAt
+				ctx.Request.PostForm = secretJWTPostForm(t, ctx, c.ID, secret, "expired_secret_jti")
+
+				var called bool
+				ctx.CheckJTIFunc = func(context.Context, string) error {
+					called = true
+					return nil
+				}
+
+				return ctx, func(t *testing.T) {
+					if called {
+						t.Fatal("CheckJTIFunc was called for an expired client_secret_jwt")
+					}
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
 		},
 		{
 			name: "private key jwt success",
@@ -688,6 +782,36 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	return ctx, c, secret
+}
+
+func secretJWTPostForm(t *testing.T, ctx oidc.Context, clientID, secret, jti string) map[string][]string {
+	t.Helper()
+
+	now := timeutil.TimestampNow()
+	claims := map[string]any{
+		goidc.ClaimIssuer:   clientID,
+		goidc.ClaimSubject:  clientID,
+		goidc.ClaimAudience: ctx.Issuer(),
+		goidc.ClaimIssuedAt: now,
+		goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+		goidc.ClaimTokenID:  jti,
+	}
+	signer, err := jose.NewSigner(
+		jose.SigningKey{Algorithm: goidc.HS256, Key: []byte(secret)},
+		(&jose.SignerOptions{}).WithType("jwt"),
+	)
+	if err != nil {
+		t.Fatalf("could not create signer: %v", err)
+	}
+	assertion, err := jwt.Signed(signer).Claims(claims).Serialize()
+	if err != nil {
+		t.Fatalf("could not create assertion: %v", err)
+	}
+
+	return map[string][]string{
+		"client_assertion":      {assertion},
+		"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+	}
 }
 
 func setUpTLSAuthn(t *testing.T) (

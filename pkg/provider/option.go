@@ -86,6 +86,7 @@ func WithOpaqueTokenFunc(f goidc.OpaqueTokenFunc) Option {
 //
 //	op, err := provider.New(
 //		"http://example.com",
+//		nil,
 //		jwksFunc,
 //		provider.WithPathPrefix("/auth"),
 //	)
@@ -362,11 +363,32 @@ func WithClientIDFunc(f goidc.ClientIDFunc) Option {
 }
 
 // WithDCRTokenRotation makes the registration access token rotate during client
-// update requests.
+// read and update requests.
 // To enable dynamic client registration, see [WithDCR].
 func WithDCRTokenRotation() Option {
 	return func(p *Provider) error {
 		p.config.DCRTokenRotationIsEnabled = true
+		return nil
+	}
+}
+
+// WithDCRSecretRotation makes client secrets rotate during client read and
+// update requests when the client uses a secret-based authentication method.
+// To enable dynamic client registration, see [WithDCR].
+func WithDCRSecretRotation() Option {
+	return func(p *Provider) error {
+		p.config.DCRSecretRotationIsEnabled = true
+		return nil
+	}
+}
+
+// WithDCRSecretLifetime sets the client secret lifetime in seconds for
+// dynamically registered clients that use a secret-based authentication method.
+// A value of 0 means the issued client secret does not expire.
+// To enable dynamic client registration, see [WithDCR].
+func WithDCRSecretLifetime(lifetimeSecs int) Option {
+	return func(p *Provider) error {
+		p.config.DCRSecretLifetimeSecs = lifetimeSecs
 		return nil
 	}
 }
@@ -458,7 +480,7 @@ func WithCIBAJAR(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm)
 func WithCIBAJARRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	return func(p *Provider) error {
 		p.config.CIBAJARIsRequired = true
-		return WithJAR(alg, algs...)(p)
+		return WithCIBAJAR(alg, algs...)(p)
 	}
 }
 
@@ -809,7 +831,7 @@ func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.
 
 		for _, a := range algs {
 			if strings.HasPrefix(string(a), "HS") {
-				return errors.New("symetric algorithms are not allowed for private_key_jwt authentication")
+				return errors.New("symmetric algorithms are not allowed for private_key_jwt authentication")
 			}
 		}
 

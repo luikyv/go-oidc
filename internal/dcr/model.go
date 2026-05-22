@@ -40,6 +40,7 @@ func (r *request) UnmarshalJSON(data []byte) error {
 type response struct {
 	ID                string `json:"client_id"`
 	Secret            string `json:"client_secret,omitempty"`
+	SecretExpiresAt   *int   `json:"client_secret_expires_at,omitempty"`
 	RegistrationToken string `json:"registration_access_token,omitempty"`
 	RegistrationURI   string `json:"registration_client_uri"`
 	*goidc.ClientMeta

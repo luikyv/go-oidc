@@ -14,7 +14,6 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Connect Dynamic Client Registration 1.0](https://openid.net/specs/openid-connect-registration-1_0.html)
 * [`RFC 7591` - OAuth 2.0 Dynamic Client Registration Protocol (DCR)](https://www.rfc-editor.org/rfc/rfc7591.html)
 * [`RFC 7592` - OAuth 2.0 Dynamic Client Registration Management Protocol (DCM)](https://www.rfc-editor.org/rfc/rfc7592)
-* [`RFC 8628` - OAuth 2.0 Device Authorization Grant](https://www.rfc-editor.org/rfc/rfc8628.html)
 * [`RFC 9126` - OAuth 2.0 Pushed Authorization Requests (PAR)](https://www.rfc-editor.org/rfc/rfc9126.html)
 * [`RFC 9101` - The OAuth 2.0 Authorization Framework: JWT-Secured Authorization Request (JAR)](https://www.rfc-editor.org/rfc/rfc9101.html)
 * [JWT Secured Authorization Response Mode for OAuth 2.0 (JARM)](https://openid.net/specs/oauth-v2-jarm.html)
@@ -496,12 +495,12 @@ Authorization requests (starting at `/authorize` by default) are handled by
 
 Each policy has two parts:
 
-1. `SetUp`: decides whether the policy applies to the current request and
+1. `Setup`: decides whether the policy applies to the current request and
    session.
 2. `Authenticate`: performs the user interaction and authentication work.
 
 When a request reaches the authorization endpoint, go-oidc creates or loads a
-`goidc.AuthnSession`, selects the first policy whose `SetUp` function returns
+`goidc.AuthnSession`, selects the first policy whose `Setup` function returns
 `true`, and then calls `Authenticate`.
 
 The authentication function returns one of:
@@ -855,7 +854,14 @@ rules, or applying default values.
 
 By default, the DCR endpoint is `/register` and the management endpoint is `/register/{client_id}`.
 
-To rotate the registration access token on each update request, add `provider.WithDCRTokenRotation()`.
+To rotate the registration access token on each successful read or update request, add `provider.WithDCRTokenRotation()`.
+
+To rotate client secrets on each successful read or update request for
+secret-based clients, add `provider.WithDCRSecretRotation()`.
+
+To set a client secret lifetime in seconds for dynamically registered
+secret-based clients, add `provider.WithDCRSecretLifetime(...)`.
+Use `0` to indicate that the issued client secret does not expire.
 
 ## [RP Metadata Choices](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 

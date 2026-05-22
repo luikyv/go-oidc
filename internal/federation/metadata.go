@@ -79,9 +79,6 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 	if sub.Name != "" {
 		merged.Name = sub.Name
 	}
-	if sub.SecretExpiresAt != nil {
-		merged.SecretExpiresAt = sub.SecretExpiresAt
-	}
 	if sub.ApplicationType != "" {
 		merged.ApplicationType = sub.ApplicationType
 	}

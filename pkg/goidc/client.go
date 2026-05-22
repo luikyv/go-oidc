@@ -1,11 +1,12 @@
 package goidc
 
 type Client struct {
-	ID     string `json:"id"`
-	Secret string `json:"secret,omitempty"`
+	ID              string `json:"id"`
+	Secret          string `json:"secret,omitempty"`
+	SecretExpiresAt int    `json:"secret_expires_at,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
-	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended to encrypt this value before storing it in a database.
 	RegistrationToken string `json:"registration_token,omitempty"`
 	CreatedAt         int    `json:"created_at,omitempty"`
 	ExpiresAt         int    `json:"expires_at,omitempty"`
@@ -31,7 +32,6 @@ func (c *Client) CacheJWKS(jwks *JSONWebKeySet) {
 
 type ClientMeta struct {
 	Name              string          `json:"client_name,omitempty"`
-	SecretExpiresAt   *int            `json:"client_secret_expires_at,omitempty"`
 	ApplicationType   ApplicationType `json:"application_type,omitempty"`
 	LogoURI           string          `json:"logo_uri,omitempty"`
 	Contacts          []string        `json:"contacts,omitempty"`

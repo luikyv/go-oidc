@@ -45,7 +45,7 @@ var (
 		goidc.ClaimPhoneNumberVerified, goidc.ClaimAddress,
 	}
 	ACRs          = []goidc.ACR{goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver}
-	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
+	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopup}
 )
 
 var (

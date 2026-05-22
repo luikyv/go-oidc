@@ -136,7 +136,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	for _, scopeID := range strings.Fields(c.ScopeIDs) {
+	for scopeID := range strings.FieldsSeq(c.ScopeIDs) {
 		if !slices.ContainsFunc(ctx.Scopes, func(s goidc.Scope) bool { return s.ID == scopeID }) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("scope %s is not allowed", scopeID))

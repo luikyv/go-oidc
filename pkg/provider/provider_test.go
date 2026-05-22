@@ -263,6 +263,40 @@ func TestNew_JARByReferenceUnregisteredURIsRequireJARByReference(t *testing.T) {
 	}
 }
 
+func TestValidate_DCRSecretLifetimeRequiresSecretClientAuth(t *testing.T) {
+	op := &Provider{
+		config: oidc.Configuration{
+			DCRSecretLifetimeSecs: 300,
+			TokenAuthnMethods:     []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
+		},
+	}
+
+	err := op.validate()
+	if err == nil {
+		t.Fatal("validate() error = nil, want non-nil")
+	}
+	if got, want := err.Error(), "dcr secret lifetime requires a secret-based token authentication method"; got != want {
+		t.Fatalf("validate() error = %q, want %q", got, want)
+	}
+}
+
+func TestValidate_DCRSecretRotationRequiresSecretClientAuth(t *testing.T) {
+	op := &Provider{
+		config: oidc.Configuration{
+			DCRSecretRotationIsEnabled: true,
+			TokenAuthnMethods:          []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
+		},
+	}
+
+	err := op.validate()
+	if err == nil {
+		t.Fatal("validate() error = nil, want non-nil")
+	}
+	if got, want := err.Error(), "dcr secret rotation requires a secret-based token authentication method"; got != want {
+		t.Fatalf("validate() error = %q, want %q", got, want)
+	}
+}
+
 func TestMakeToken(t *testing.T) {
 	// Given.
 	issuer := "https://example.com"

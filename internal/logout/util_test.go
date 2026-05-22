@@ -109,7 +109,7 @@ func TestInitLogout(t *testing.T) {
 				ctx.LogoutPolicies = []goidc.LogoutPolicy{
 					{
 						ID: "test_policy",
-						SetUp: func(_ *http.Request, _ *goidc.LogoutSession) bool {
+						Setup: func(_ *http.Request, _ *goidc.LogoutSession) bool {
 							return true
 						},
 						Logout: func(_ http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) (goidc.Status, error) {
@@ -133,7 +133,7 @@ func TestInitLogout(t *testing.T) {
 				ctx.LogoutPolicies = []goidc.LogoutPolicy{
 					{
 						ID: "test_policy",
-						SetUp: func(_ *http.Request, _ *goidc.LogoutSession) bool {
+						Setup: func(_ *http.Request, _ *goidc.LogoutSession) bool {
 							return true
 						},
 						Logout: func(_ http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) (goidc.Status, error) {
@@ -334,7 +334,7 @@ func TestInitLogout(t *testing.T) {
 				ctx.LogoutPolicies = []goidc.LogoutPolicy{
 					{
 						ID: "test_policy",
-						SetUp: func(_ *http.Request, _ *goidc.LogoutSession) bool {
+						Setup: func(_ *http.Request, _ *goidc.LogoutSession) bool {
 							return false
 						},
 						Logout: func(_ http.ResponseWriter, _ *http.Request, _ *goidc.LogoutSession) (goidc.Status, error) {
@@ -502,7 +502,7 @@ func setup(t *testing.T) (oidc.Context, *goidc.Client) {
 	ctx.LogoutPolicies = []goidc.LogoutPolicy{
 		{
 			ID: "test_policy",
-			SetUp: func(r *http.Request, ls *goidc.LogoutSession) bool {
+			Setup: func(r *http.Request, ls *goidc.LogoutSession) bool {
 				return true
 			},
 			Logout: func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) (goidc.Status, error) {
