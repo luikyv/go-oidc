@@ -102,7 +102,7 @@ func TestRevoke(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.
 				ctx, c := setup(t)
-				ctx.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
+				ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{

@@ -735,12 +735,11 @@ and must return whether that client is allowed to use the revocation endpoint.
 
 In this implementation, refresh token revocation is grant-based. If the
 refresh token is active and belongs to the authenticated client, the provider
-deletes the underlying `goidc.Grant` and all stored `goidc.Token` records
-associated with that grant.
+revokes the underlying `goidc.Grant`.
 
-Access token revocation deletes only the presented access token by default.
-Use `provider.WithTokenRevocationDeleteGrantOnAccessToken()` if you want
-access token revocation to also delete the underlying grant and related tokens.
+Access token revocation revokes only the presented access token by default.
+Use `provider.WithTokenRevocationRevokeGrantOnAccessToken()` if you want
+access token revocation to also revoke the underlying grant and related tokens.
 
 If the token does not exist, is already inactive, or cannot be found, the
 revocation request still succeeds without exposing token state.

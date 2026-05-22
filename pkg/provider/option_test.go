@@ -1830,22 +1830,22 @@ func TestWithTokenRevocation(t *testing.T) {
 	}
 }
 
-func TestWithTokenRevocationDeleteGrantOnAccessToken(t *testing.T) {
+func TestWithTokenRevocationRevokeGrantOnAccessToken(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithTokenRevocationDeleteGrantOnAccessToken()(p)
+	err := WithTokenRevocationRevokeGrantOnAccessToken()(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if !p.config.TokenRevocationDeleteGrantOnAccessTokenIsEnabled {
-		t.Error("TokenRevocationDeleteGrantOnAccessTokenIsEnabled should be true")
+	if !p.config.TokenRevocationRevokeGrantOnAccessTokenIsEnabled {
+		t.Error("TokenRevocationRevokeGrantOnAccessTokenIsEnabled should be true")
 	}
 }
 

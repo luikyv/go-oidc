@@ -32,7 +32,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the token belongs to a different client"))
 		}
 
-		if !ctx.TokenRevocationDeleteGrantOnAccessTokenIsEnabled {
+		if !ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled {
 			token.RevokedAt = timeutil.TimestampNow()
 			if err := ctx.SaveToken(token); err != nil {
 				return fmt.Errorf("could not revoke token: %w", err)
