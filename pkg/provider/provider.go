@@ -7,6 +7,7 @@ import (
 	"crypto/x509"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math/big"
 	"net/http"
 	"reflect"
@@ -70,59 +71,335 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	if err := op.validate(); err != nil {
-		return nil, err
-	}
-
-	op.setDefaults()
-
-	if !op.profileValidationIsEnabled {
-		return op, nil
-	}
-
-	if err := op.validateProfile(); err != nil {
-		return nil, err
-	}
-
-	return op, nil
-}
-
-func (op *Provider) validate() error {
 	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
-		return errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
+		return nil, errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
 	}
 
 	if op.config.MTLSTokenBindingIsEnabled && !op.config.MTLSIsEnabled {
-		return errors.New("mtls must be enabled if tls token binding is enabled")
+		return nil, errors.New("mtls must be enabled if tls token binding is enabled")
 	}
 
 	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
-		return errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
+		return nil, errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}
 
 	if op.config.PARIsEnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		return errors.New("par cannot be enabled without authorization code grant")
+		return nil, errors.New("par cannot be enabled without authorization code grant")
 	}
 
 	if op.config.JARByReferenceUnregisteredURIIsEnabled && !op.config.JARByReferenceIsEnabled {
-		return errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
+		return nil, errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
 	}
 
 	if op.config.DCRSecretLifetimeSecs != 0 && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
-		return errors.New("dcr secret lifetime requires a secret-based token authentication method")
+		return nil, errors.New("dcr secret lifetime requires a secret-based token authentication method")
 	}
 
 	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
-		return errors.New("dcr secret rotation requires a secret-based token authentication method")
+		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
 	}
 
-	return nil
+	if op.config.ConsumeJTIFunc == nil {
+		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithConsumeJTIFunc for production use.")
+	}
+
+	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
+
+	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(inmemoryManager))
+
+	op.config.Profile = nonZeroOrDefault(op.config.Profile, goidc.ProfileOpenID)
+
+	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
+
+	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+
+	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
+
+	op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
+
+	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
+	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
+
+	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
+	op.config.ConsumeJTIFunc = nonZeroOrDefault(op.config.ConsumeJTIFunc, goidc.ConsumeJTIFunc(defaultConsumeJTIFunc))
+	op.config.HandleErrorFunc = nonZeroOrDefault(op.config.HandleErrorFunc, goidc.HandleErrorFunc(defaultHandleErrorFunc))
+	op.config.HandleGrantFunc = nonZeroOrDefault(op.config.HandleGrantFunc, goidc.HandleGrantFunc(defaultHandleGrantFunc))
+	op.config.HandleTokenFunc = nonZeroOrDefault(op.config.HandleTokenFunc, goidc.HandleTokenFunc(defaultHandleTokenFunc))
+	op.config.IDTokenClaimsFunc = nonZeroOrDefault(op.config.IDTokenClaimsFunc, goidc.IDTokenClaimsFunc(defaultIDTokenClaimsFunc))
+	op.config.UserInfoClaimsFunc = nonZeroOrDefault(op.config.UserInfoClaimsFunc, goidc.UserInfoClaimsFunc(defaultUserInfoClaimsFunc))
+	op.config.TokenClaimsFunc = nonZeroOrDefault(op.config.TokenClaimsFunc, goidc.TokenClaimsFunc(defaultTokenClaimsFunc))
+
+	op.config.ResponseModes = appendIfNotIn(op.config.ResponseModes, goidc.ResponseModeQuery, goidc.ResponseModeFragment)
+
+	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
+	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
+	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
+		op.config.PairwiseSubjectFunc = nonZeroOrDefault(op.config.PairwiseSubjectFunc, goidc.PairwiseSubjectFunc(defaultPairwiseSubjectFunc))
+	}
+
+	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
+
+	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
+
+	op.config.WellKnownEndpoint = nonZeroOrDefault(op.config.WellKnownEndpoint, defaultEndpointWellKnown)
+
+	op.config.JWKSEndpoint = nonZeroOrDefault(op.config.JWKSEndpoint, defaultEndpointJSONWebKeySet)
+
+	op.config.TokenEndpoint = nonZeroOrDefault(op.config.TokenEndpoint, defaultEndpointToken)
+
+	op.config.AuthorizationEndpoint = nonZeroOrDefault(op.config.AuthorizationEndpoint, defaultEndpointAuthorize)
+
+	op.config.UserInfoEndpoint = nonZeroOrDefault(op.config.UserInfoEndpoint, defaultEndpointUserInfo)
+
+	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
+	op.config.GrantIDFunc = nonZeroOrDefault(op.config.GrantIDFunc, defaultGrantIDFunc)
+	op.config.JWTIDFunc = nonZeroOrDefault(op.config.JWTIDFunc, defaultJWTIDFunc)
+	op.config.AuthSessionIDFunc = nonZeroOrDefault(op.config.AuthSessionIDFunc, defaultSessionIDFunc)
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(inmemoryManager))
+		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
+		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
+		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
+		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
+		if slices.ContainsFunc(op.config.ResponseTypes, func(rt goidc.ResponseType) bool {
+			return rt.IsImplicit()
+		}) {
+			op.config.GrantTypes = append(op.config.GrantTypes, goidc.GrantImplicit)
+		}
+	}
+
+	op.config.TokenAuthnMethods = nonZeroOrDefault(op.config.TokenAuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
+	op.config.TokenAuthnMethodDefault = nonZeroOrDefault(op.config.TokenAuthnMethodDefault, goidc.AuthnMethodSecretPost)
+	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		op.config.TokenAuthnPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+	}
+	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
+		op.config.TokenAuthnSecretJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
+	}
+
+	if op.config.DCRIsEnabled {
+		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(inmemoryManager))
+		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
+		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
+		op.config.DCRHandleClientFunc = nonZeroOrDefault(op.config.DCRHandleClientFunc, goidc.DCRHandleClientFunc(defaultDCRHandleClientFunc))
+		op.config.DCRValidateInitialTokenFunc = nonZeroOrDefault(op.config.DCRValidateInitialTokenFunc, defaultDCRValidateInitialTokenFunc)
+		op.config.DCRRegistrationTokenFunc = nonZeroOrDefault(op.config.DCRRegistrationTokenFunc, goidc.RandomFunc(defaultDCRRegistrationTokenFunc))
+	}
+
+	if op.config.PARIsEnabled {
+		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(inmemoryManager))
+		op.config.PARHandleSessionFunc = nonZeroOrDefault(op.config.PARHandleSessionFunc, goidc.HandleSessionFunc(defaultPARHandleSessionFunc))
+		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
+		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
+		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
+	}
+
+	if op.config.JAREncIsEnabled {
+		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+	}
+
+	if op.config.JARMIsEnabled {
+		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
+		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
+		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
+			op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeFormPostJWT)
+		}
+	}
+
+	if op.config.JARMEncIsEnabled {
+		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
+		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
+			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+	}
+
+	if op.config.TokenIntrospectionIsEnabled {
+		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
+		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenIntrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
+	}
+
+	if op.config.TokenRevocationIsEnabled {
+		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
+		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
+	}
+
+	if op.config.IDTokenEncIsEnabled {
+		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
+		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+	}
+
+	if op.config.UserInfoEncIsEnabled {
+		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
+		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
+		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
+		op.config.CIBAManager = nonZeroOrDefault(op.config.CIBAManager, goidc.CIBAManager(inmemoryManager))
+		op.config.CIBATokenDeliveryModes = nonZeroOrDefault(op.config.CIBATokenDeliveryModes, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
+		op.config.CIBAIDFunc = nonZeroOrDefault(op.config.CIBAIDFunc, defaultCIBAIDFunc)
+		op.config.CIBAHandleSessionFunc = nonZeroOrDefault(op.config.CIBAHandleSessionFunc, goidc.HandleSessionFunc(defaultCIBAHandleSessionFunc))
+		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
+		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
+		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
+		op.config.RefreshTokenManager = nonZeroOrDefault(op.config.RefreshTokenManager, goidc.RefreshTokenManager(inmemoryManager))
+		op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
+		op.config.RefreshTokenShouldIssueFunc = nonZeroOrDefault(op.config.RefreshTokenShouldIssueFunc, goidc.RefreshTokenShouldIssueFunc(defaultRefreshTokenShouldIssueFunc))
+	}
+
+	if slices.Contains(op.config.GrantTypes, goidc.GrantDeviceCode) {
+		op.config.DeviceAuthManager = nonZeroOrDefault(op.config.DeviceAuthManager, goidc.DeviceAuthManager(inmemoryManager))
+		op.config.DeviceAuthEndpoint = nonZeroOrDefault(op.config.DeviceAuthEndpoint, defaultEndpointDeviceAuthorization)
+		op.config.DeviceAuthVerificationEndpoint = nonZeroOrDefault(op.config.DeviceAuthVerificationEndpoint, defaultEndpointDeviceVerification)
+		op.config.DeviceAuthLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthLifetimeSecs, defaultDeviceAuthLifetimeSecs)
+		op.config.DeviceAuthPollingIntervalSecs = nonZeroOrDefault(op.config.DeviceAuthPollingIntervalSecs, defaultDeviceAuthPollingIntervalSecs)
+		op.config.DeviceCodeFunc = nonZeroOrDefault(op.config.DeviceCodeFunc, defaultDeviceCodeFunc)
+		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
+	}
+
+	if op.config.OpenIDFedIsEnabled {
+		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(inmemoryManager))
+		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
+		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
+		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
+		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
+		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
+		op.config.OpenIDFedRequiredTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
+		op.config.OpenIDFedHandleClientFunc = nonZeroOrDefault(op.config.OpenIDFedHandleClientFunc, goidc.HandleClientFunc(defaultOpenIDFedHandleClientFunc))
+		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
+		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
+			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
+		}
+		if slices.Contains(op.config.OpenIDFedJWKSRepresentations, goidc.JWKSRepresentationSignedURI) {
+			op.config.OpenIDFedSignedJWKSEndpoint = nonZeroOrDefault(op.config.OpenIDFedSignedJWKSEndpoint, defaultEndpointOpenIDFederationSignedJWKS)
+		}
+	}
+
+	if op.config.LogoutIsEnabled {
+		op.config.LogoutManager = nonZeroOrDefault(op.config.LogoutManager, goidc.LogoutManager(inmemoryManager))
+		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
+		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
+		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
+	}
+
+	if op.config.SSFIsEnabled {
+		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
+		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
+		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
+		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
+		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
+		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
+		if op.config.SSFIsStatusManagementEnabled {
+			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
+			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		}
+		if op.config.SSFIsSubjectManagementEnabled {
+			op.config.SSFAddSubjectEndpoint = nonZeroOrDefault(op.config.SSFAddSubjectEndpoint, defaultEndpointSSFAddSubject)
+			op.config.SSFRemoveSubjectEndpoint = nonZeroOrDefault(op.config.SSFRemoveSubjectEndpoint, defaultEndpointSSFRemoveSubject)
+		}
+		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
+			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
+			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(ssfManager))
+		}
+		if op.config.SSFIsVerificationEnabled {
+			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
+			op.config.SSFScheduleVerificationEventFunc = nonZeroOrDefault(op.config.SSFScheduleVerificationEventFunc, ssfManager.ScheduleVerificationEvent)
+		}
+	}
+
+	if op.config.RARIsEnabled {
+		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
+		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
+	}
+
+	if op.config.MTLSIsEnabled {
+		op.config.ClientCertFunc = nonZeroOrDefault(op.config.ClientCertFunc, goidc.ClientCertFunc(defaultClientCertFunc))
+	}
+
+	if op.config.VCIsEnabled {
+		op.config.VCOfferIDFunc = nonZeroOrDefault(op.config.VCOfferIDFunc, defaultSessionIDFunc)
+		op.config.VCIssuerStateFunc = nonZeroOrDefault(op.config.VCIssuerStateFunc, defaultSessionIDFunc)
+		op.config.VCHandlePreAuthCodeFunc = nonZeroOrDefault(op.config.VCHandlePreAuthCodeFunc, goidc.VCHandlePreAuthCodeFunc(defaultVCHandlePreAuthCodeFunc))
+	}
+
+	if !op.profileValidationIsEnabled {
+		return op, nil
+	}
+
+	switch op.config.Profile {
+	case goidc.ProfileFAPI1:
+		for _, method := range op.config.TokenAuthnMethods {
+			if !slices.Contains([]goidc.AuthnMethod{
+				goidc.AuthnMethodPrivateKeyJWT,
+				goidc.AuthnMethodSecretJWT,
+				goidc.AuthnMethodTLS,
+				goidc.AuthnMethodNone,
+			}, method) {
+				return nil, fmt.Errorf("[FAPI 1.0 5.2.2] %s is not a valid authentication method", method)
+			}
+		}
+	case goidc.ProfileFAPI2:
+		if slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
+			return nil, errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
+		}
+
+		if !op.config.TokenBindingIsRequired && !op.config.DPoPIsRequired && !op.config.MTLSTokenBindingIsRequired {
+			return nil, errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
+		}
+
+		if !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) && !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodTLS) {
+			return nil, errors.New("[FAPI 2.0 5.3.1] only private_key_jwt or tls_client_auth are allowed")
+		}
+
+		for _, method := range op.config.TokenAuthnMethods {
+			if !slices.Contains([]goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS}, method) {
+				return nil, fmt.Errorf("[FAPI 2.0 5.3.1] %s is not a valid authentication method", method)
+			}
+		}
+
+		if op.config.AuthCodeLifetimeSecs > 60 {
+			return nil, errors.New("[FAPI 2.0 5.3.1] authorization code lifetime must be less than 60 seconds")
+		}
+
+		if !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+			return nil, errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
+		}
+
+		if !op.config.PARIsRequired {
+			return nil, errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
+		}
+
+		if !op.config.PKCEIsRequired {
+			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be required")
+		}
+
+		if slices.ContainsFunc(op.config.PKCEChallengeMethods, func(method goidc.CodeChallengeMethod) bool {
+			return method != goidc.CodeChallengeMethodSHA256
+		}) {
+			return nil, errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
+		}
+
+		if !op.config.IssuerRespParamIsEnabled {
+			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
+		}
+
+		if op.config.PARLifetimeSecs > 600 {
+			return nil, errors.New("[FAPI 2.0 5.3.1] par request_uri lifetime must be less than 600 seconds")
+		}
+	}
+
+	return op, nil
 }
 
 func (op *Provider) Issuer() string {
@@ -269,300 +546,6 @@ func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event g
 func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
 	return ssf.PublishEvent(oidcCtx, streamID, goidc.NewSSFVerificationEvent(streamID, opts))
-}
-
-func (op *Provider) setDefaults() {
-	manager := storage.NewManager(defaultStorageMaxSize)
-
-	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(manager))
-
-	op.config.Profile = nonZeroOrDefault(op.config.Profile, goidc.ProfileOpenID)
-
-	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
-
-	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
-
-	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
-
-	op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
-
-	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
-	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
-
-	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
-	op.config.ConsumeJTIFunc = nonZeroOrDefault(op.config.ConsumeJTIFunc, goidc.ConsumeJTIFunc(defaultConsumeJTIFunc))
-	op.config.HandleErrorFunc = nonZeroOrDefault(op.config.HandleErrorFunc, goidc.HandleErrorFunc(defaultHandleErrorFunc))
-	op.config.HandleGrantFunc = nonZeroOrDefault(op.config.HandleGrantFunc, goidc.HandleGrantFunc(defaultHandleGrantFunc))
-	op.config.HandleTokenFunc = nonZeroOrDefault(op.config.HandleTokenFunc, goidc.HandleTokenFunc(defaultHandleTokenFunc))
-	op.config.IDTokenClaimsFunc = nonZeroOrDefault(op.config.IDTokenClaimsFunc, goidc.IDTokenClaimsFunc(defaultIDTokenClaimsFunc))
-	op.config.UserInfoClaimsFunc = nonZeroOrDefault(op.config.UserInfoClaimsFunc, goidc.UserInfoClaimsFunc(defaultUserInfoClaimsFunc))
-	op.config.TokenClaimsFunc = nonZeroOrDefault(op.config.TokenClaimsFunc, goidc.TokenClaimsFunc(defaultTokenClaimsFunc))
-
-	op.config.ResponseModes = appendIfNotIn(op.config.ResponseModes, goidc.ResponseModeQuery, goidc.ResponseModeFragment)
-
-	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
-	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
-	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) {
-		op.config.PairwiseSubjectFunc = nonZeroOrDefault(op.config.PairwiseSubjectFunc, goidc.PairwiseSubjectFunc(defaultPairwiseSubjectFunc))
-	}
-
-	op.config.ClaimTypes = nonZeroOrDefault(op.config.ClaimTypes, []goidc.ClaimType{goidc.ClaimTypeNormal})
-
-	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
-
-	op.config.WellKnownEndpoint = nonZeroOrDefault(op.config.WellKnownEndpoint, defaultEndpointWellKnown)
-
-	op.config.JWKSEndpoint = nonZeroOrDefault(op.config.JWKSEndpoint, defaultEndpointJSONWebKeySet)
-
-	op.config.TokenEndpoint = nonZeroOrDefault(op.config.TokenEndpoint, defaultEndpointToken)
-
-	op.config.AuthorizationEndpoint = nonZeroOrDefault(op.config.AuthorizationEndpoint, defaultEndpointAuthorize)
-
-	op.config.UserInfoEndpoint = nonZeroOrDefault(op.config.UserInfoEndpoint, defaultEndpointUserInfo)
-
-	op.config.JWTLifetimeSecs = nonZeroOrDefault(op.config.JWTLifetimeSecs, defaultJWTLifetimeSecs)
-	op.config.GrantIDFunc = nonZeroOrDefault(op.config.GrantIDFunc, defaultGrantIDFunc)
-	op.config.JWTIDFunc = nonZeroOrDefault(op.config.JWTIDFunc, defaultJWTIDFunc)
-	op.config.AuthSessionIDFunc = nonZeroOrDefault(op.config.AuthSessionIDFunc, defaultSessionIDFunc)
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(manager))
-		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
-		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
-		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
-		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
-		if slices.ContainsFunc(op.config.ResponseTypes, func(rt goidc.ResponseType) bool {
-			return rt.IsImplicit()
-		}) {
-			op.config.GrantTypes = append(op.config.GrantTypes, goidc.GrantImplicit)
-		}
-	}
-
-	op.config.TokenAuthnMethods = nonZeroOrDefault(op.config.TokenAuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
-	op.config.TokenAuthnMethodDefault = nonZeroOrDefault(op.config.TokenAuthnMethodDefault, goidc.AuthnMethodSecretPost)
-	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
-		op.config.TokenAuthnPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
-	}
-	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
-		op.config.TokenAuthnSecretJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
-	}
-
-	if op.config.DCRIsEnabled {
-		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(manager))
-		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
-		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
-		op.config.DCRHandleClientFunc = nonZeroOrDefault(op.config.DCRHandleClientFunc, goidc.DCRHandleClientFunc(defaultDCRHandleClientFunc))
-		op.config.DCRValidateInitialTokenFunc = nonZeroOrDefault(op.config.DCRValidateInitialTokenFunc, defaultDCRValidateInitialTokenFunc)
-		op.config.DCRRegistrationTokenFunc = nonZeroOrDefault(op.config.DCRRegistrationTokenFunc, goidc.RandomFunc(defaultDCRRegistrationTokenFunc))
-	}
-
-	if op.config.PARIsEnabled {
-		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(manager))
-		op.config.PARHandleSessionFunc = nonZeroOrDefault(op.config.PARHandleSessionFunc, goidc.HandleSessionFunc(defaultPARHandleSessionFunc))
-		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
-		op.config.PAREndpoint = nonZeroOrDefault(op.config.PAREndpoint, defaultEndpointPushedAuthorizationRequest)
-		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
-	}
-
-	if op.config.JAREncIsEnabled {
-		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
-	if op.config.JARMIsEnabled {
-		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
-		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
-		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
-			op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeFormPostJWT)
-		}
-	}
-
-	if op.config.JARMEncIsEnabled {
-		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
-		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
-			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
-	if op.config.TokenIntrospectionIsEnabled {
-		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
-		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenIntrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
-	}
-
-	if op.config.TokenRevocationIsEnabled {
-		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
-		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
-	}
-
-	if op.config.IDTokenEncIsEnabled {
-		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
-		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
-	if op.config.UserInfoEncIsEnabled {
-		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
-		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
-		op.config.CIBAProfile = nonZeroOrDefault(op.config.CIBAProfile, goidc.CIBAProfileOpenID)
-		op.config.CIBAManager = nonZeroOrDefault(op.config.CIBAManager, goidc.CIBAManager(manager))
-		op.config.CIBATokenDeliveryModes = nonZeroOrDefault(op.config.CIBATokenDeliveryModes, []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll})
-		op.config.CIBAIDFunc = nonZeroOrDefault(op.config.CIBAIDFunc, defaultCIBAIDFunc)
-		op.config.CIBAHandleSessionFunc = nonZeroOrDefault(op.config.CIBAHandleSessionFunc, goidc.HandleSessionFunc(defaultCIBAHandleSessionFunc))
-		op.config.CIBAEndpoint = nonZeroOrDefault(op.config.CIBAEndpoint, defaultEndpointCIBA)
-		op.config.CIBADefaultSessionLifetimeSecs = nonZeroOrDefault(op.config.CIBADefaultSessionLifetimeSecs, defaultCIBADefaultSessionLifetimeSecs)
-		op.config.CIBAPollingIntervalSecs = nonZeroOrDefault(op.config.CIBAPollingIntervalSecs, defaultCIBAPollingIntervalSecs)
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
-		op.config.RefreshTokenManager = nonZeroOrDefault(op.config.RefreshTokenManager, goidc.RefreshTokenManager(manager))
-		op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
-		op.config.RefreshTokenShouldIssueFunc = nonZeroOrDefault(op.config.RefreshTokenShouldIssueFunc, goidc.RefreshTokenShouldIssueFunc(defaultRefreshTokenShouldIssueFunc))
-	}
-
-	if slices.Contains(op.config.GrantTypes, goidc.GrantDeviceCode) {
-		op.config.DeviceAuthManager = nonZeroOrDefault(op.config.DeviceAuthManager, goidc.DeviceAuthManager(manager))
-		op.config.DeviceAuthEndpoint = nonZeroOrDefault(op.config.DeviceAuthEndpoint, defaultEndpointDeviceAuthorization)
-		op.config.DeviceAuthVerificationEndpoint = nonZeroOrDefault(op.config.DeviceAuthVerificationEndpoint, defaultEndpointDeviceVerification)
-		op.config.DeviceAuthLifetimeSecs = nonZeroOrDefault(op.config.DeviceAuthLifetimeSecs, defaultDeviceAuthLifetimeSecs)
-		op.config.DeviceAuthPollingIntervalSecs = nonZeroOrDefault(op.config.DeviceAuthPollingIntervalSecs, defaultDeviceAuthPollingIntervalSecs)
-		op.config.DeviceCodeFunc = nonZeroOrDefault(op.config.DeviceCodeFunc, defaultDeviceCodeFunc)
-		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
-	}
-
-	if op.config.OpenIDFedIsEnabled {
-		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(manager))
-		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
-		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
-		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
-		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
-		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
-		op.config.OpenIDFedRequiredTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
-		op.config.OpenIDFedHandleClientFunc = nonZeroOrDefault(op.config.OpenIDFedHandleClientFunc, goidc.HandleClientFunc(defaultOpenIDFedHandleClientFunc))
-		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
-		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {
-			op.config.OpenIDFedRegistrationEndpoint = nonZeroOrDefault(op.config.OpenIDFedRegistrationEndpoint, defaultEndpointOpenIDFederationRegistration)
-		}
-		if slices.Contains(op.config.OpenIDFedJWKSRepresentations, goidc.JWKSRepresentationSignedURI) {
-			op.config.OpenIDFedSignedJWKSEndpoint = nonZeroOrDefault(op.config.OpenIDFedSignedJWKSEndpoint, defaultEndpointOpenIDFederationSignedJWKS)
-		}
-	}
-
-	if op.config.LogoutIsEnabled {
-		op.config.LogoutManager = nonZeroOrDefault(op.config.LogoutManager, goidc.LogoutManager(manager))
-		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
-		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
-		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
-	}
-
-	if op.config.SSFIsEnabled {
-		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
-		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
-		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
-		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
-		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
-		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
-		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
-		if op.config.SSFIsStatusManagementEnabled {
-			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
-			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
-		}
-		if op.config.SSFIsSubjectManagementEnabled {
-			op.config.SSFAddSubjectEndpoint = nonZeroOrDefault(op.config.SSFAddSubjectEndpoint, defaultEndpointSSFAddSubject)
-			op.config.SSFRemoveSubjectEndpoint = nonZeroOrDefault(op.config.SSFRemoveSubjectEndpoint, defaultEndpointSSFRemoveSubject)
-		}
-		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
-			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
-			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(ssfManager))
-		}
-		if op.config.SSFIsVerificationEnabled {
-			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
-			op.config.SSFScheduleVerificationEventFunc = nonZeroOrDefault(op.config.SSFScheduleVerificationEventFunc, ssfManager.ScheduleVerificationEvent)
-		}
-	}
-
-	if op.config.RARIsEnabled {
-		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
-		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
-	}
-
-	if op.config.MTLSIsEnabled {
-		op.config.ClientCertFunc = nonZeroOrDefault(op.config.ClientCertFunc, goidc.ClientCertFunc(defaultClientCertFunc))
-	}
-
-	if op.config.VCIsEnabled {
-		op.config.VCOfferIDFunc = nonZeroOrDefault(op.config.VCOfferIDFunc, defaultSessionIDFunc)
-		op.config.VCIssuerStateFunc = nonZeroOrDefault(op.config.VCIssuerStateFunc, defaultSessionIDFunc)
-		op.config.VCHandlePreAuthCodeFunc = nonZeroOrDefault(op.config.VCHandlePreAuthCodeFunc, goidc.VCHandlePreAuthCodeFunc(defaultVCHandlePreAuthCodeFunc))
-	}
-
-}
-
-func (op *Provider) validateProfile() error {
-	if op.config.Profile == goidc.ProfileFAPI1 {
-		for _, method := range op.config.TokenAuthnMethods {
-			if !slices.Contains([]goidc.AuthnMethod{
-				goidc.AuthnMethodPrivateKeyJWT,
-				goidc.AuthnMethodSecretJWT,
-				goidc.AuthnMethodTLS,
-				goidc.AuthnMethodNone,
-			}, method) {
-				return fmt.Errorf("[FAPI 1.0 5.2.2] %s is not a valid authentication method", method)
-			}
-		}
-	}
-
-	if op.config.Profile == goidc.ProfileFAPI2 {
-		if slices.Contains(op.config.GrantTypes, goidc.GrantImplicit) {
-			return errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
-		}
-
-		if !op.config.TokenBindingIsRequired && !op.config.DPoPIsRequired && !op.config.MTLSTokenBindingIsRequired {
-			return errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
-		}
-
-		if !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) && !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodTLS) {
-			return errors.New("[FAPI 2.0 5.3.1] only private_key_jwt or tls_client_auth are allowed")
-		}
-
-		for _, method := range op.config.TokenAuthnMethods {
-			if !slices.Contains([]goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS}, method) {
-				return fmt.Errorf("[FAPI 2.0 5.3.1] %s is not a valid authentication method", method)
-			}
-		}
-
-		if op.config.AuthCodeLifetimeSecs > 60 {
-			return errors.New("[FAPI 2.0 5.3.1] authorization code lifetime must be less than 60 seconds")
-		}
-
-		if !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-			return errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
-		}
-
-		if !op.config.PARIsRequired {
-			return errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
-		}
-
-		if !op.config.PKCEIsRequired {
-			return errors.New("[FAPI 2.0 5.3.1] pkce must be required")
-		}
-
-		if slices.ContainsFunc(op.config.PKCEChallengeMethods, func(method goidc.CodeChallengeMethod) bool {
-			return method != goidc.CodeChallengeMethodSHA256
-		}) {
-			return errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
-		}
-
-		if !op.config.IssuerRespParamIsEnabled {
-			return errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
-		}
-
-		if op.config.PARLifetimeSecs > 600 {
-			return errors.New("[FAPI 2.0 5.3.1] par request_uri lifetime must be less than 600 seconds")
-		}
-	}
-
-	return nil
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.
