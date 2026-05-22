@@ -842,7 +842,7 @@ func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.
 	}
 }
 
-// WithSecretJWTSignatureAlgs sets the signature algorithms for private key JWT
+// WithSecretJWTSignatureAlgs sets the signature algorithms for secret JWT
 // authentication.
 func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	algs = appendIfNotIn(algs, alg)

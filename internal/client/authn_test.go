@@ -558,7 +558,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "tls distinguished name",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c := setUpTLSAuthn(t)
-				c.TLSSubDistinguishedName = "CN=https://example.com"
+				c.TLSSubjectDistinguishedName = "CN=https://example.com"
 				ctx.Request.PostForm = map[string][]string{
 					"client_id": {c.ID},
 				}
@@ -570,7 +570,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "tls invalid distinguished name",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c := setUpTLSAuthn(t)
-				c.TLSSubDistinguishedName = "invalid"
+				c.TLSSubjectDistinguishedName = "invalid"
 				ctx.Request.PostForm = map[string][]string{
 					"client_id": {c.ID},
 				}
@@ -582,7 +582,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "tls alternative name",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c := setUpTLSAuthn(t)
-				c.TLSSubAlternativeName = "https://sub.example.com"
+				c.TLSSubjectAlternativeName = "https://sub.example.com"
 				ctx.Request.PostForm = map[string][]string{
 					"client_id": {c.ID},
 				}
@@ -594,7 +594,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "tls invalid alternative name",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c := setUpTLSAuthn(t)
-				c.TLSSubAlternativeName = "invalid"
+				c.TLSSubjectAlternativeName = "invalid"
 				ctx.Request.PostForm = map[string][]string{
 					"client_id": {c.ID},
 				}

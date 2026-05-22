@@ -336,13 +336,13 @@ func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	}
 
 	switch {
-	case c.TLSSubDistinguishedName != "":
-		if c.TLSSubDistinguishedName != cert.Subject.String() {
+	case c.TLSSubjectDistinguishedName != "":
+		if c.TLSSubjectDistinguishedName != cert.Subject.String() {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 				errors.New("the client certificate subject distinguished name does not match"))
 		}
-	case c.TLSSubAlternativeName != "":
-		if !slices.Contains(cert.DNSNames, c.TLSSubAlternativeName) {
+	case c.TLSSubjectAlternativeName != "":
+		if !slices.Contains(cert.DNSNames, c.TLSSubjectAlternativeName) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 				errors.New("the client certificate subject alternative name does not match"))
 		}

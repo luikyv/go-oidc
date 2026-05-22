@@ -184,14 +184,14 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 	if sub.DPoPTokenBindingIsRequired {
 		merged.DPoPTokenBindingIsRequired = sub.DPoPTokenBindingIsRequired
 	}
-	if sub.TLSSubDistinguishedName != "" {
-		merged.TLSSubDistinguishedName = sub.TLSSubDistinguishedName
+	if sub.TLSSubjectDistinguishedName != "" {
+		merged.TLSSubjectDistinguishedName = sub.TLSSubjectDistinguishedName
 	}
-	if sub.TLSSubAlternativeName != "" {
-		merged.TLSSubAlternativeName = sub.TLSSubAlternativeName
+	if sub.TLSSubjectAlternativeName != "" {
+		merged.TLSSubjectAlternativeName = sub.TLSSubjectAlternativeName
 	}
-	if sub.TLSSubAlternativeNameIP != "" {
-		merged.TLSSubAlternativeNameIP = sub.TLSSubAlternativeNameIP
+	if sub.TLSSubjectAlternativeNameIP != "" {
+		merged.TLSSubjectAlternativeNameIP = sub.TLSSubjectAlternativeNameIP
 	}
 	if sub.TLSTokenBindingIsRequired {
 		merged.TLSTokenBindingIsRequired = sub.TLSTokenBindingIsRequired

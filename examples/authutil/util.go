@@ -55,7 +55,7 @@ var (
 func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	client, jwks := Client(id)
 	client.TokenAuthnMethod = goidc.AuthnMethodTLS
-	client.TLSSubDistinguishedName = "CN=" + id
+	client.TLSSubjectDistinguishedName = "CN=" + id
 
 	return client, jwks
 }
