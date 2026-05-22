@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -136,7 +137,10 @@ func TestHandleUpdate(t *testing.T) {
 	}
 
 	c.Name = "Updated Name"
-	body, err := json.Marshal(c.ClientMeta)
+	body, err := json.Marshal(request{
+		ClientID: c.ID,
+		Meta:     &client.Meta{ClientMeta: c.ClientMeta},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}

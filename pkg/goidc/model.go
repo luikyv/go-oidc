@@ -303,14 +303,14 @@ type AMR string
 
 const (
 	AMRFacialRecognition            AMR = "face"
-	AMRFingerPrint                  AMR = "fpt"
+	AMRFingerprint                  AMR = "fpt"
 	AMRGeolocation                  AMR = "geo"
 	AMRHardwareSecuredKey           AMR = "hwk"
 	AMRIrisScan                     AMR = "iris"
 	AMRMultipleFactor               AMR = "mfa"
-	AMROneTimePassoword             AMR = "otp"
+	AMROneTimePassword              AMR = "otp"
 	AMRPassword                     AMR = "pwd"
-	AMRPersonalIDentificationNumber AMR = "pin"
+	AMRPersonalIdentificationNumber AMR = "pin"
 	AMRRiskBased                    AMR = "rba"
 	AMRSMS                          AMR = "sms"
 	AMRSoftwareSecuredKey           AMR = "swk"
@@ -320,7 +320,7 @@ type DisplayValue string
 
 const (
 	DisplayValuePage  DisplayValue = "page"
-	DisplayValuePopUp DisplayValue = "popup"
+	DisplayValuePopup DisplayValue = "popup"
 	DisplayValueTouch DisplayValue = "touch"
 	DisplayValueWAP   DisplayValue = "wap"
 )
@@ -498,32 +498,32 @@ func NewOpaqueTokenOptions(lifetimeSecs int) TokenOptions {
 // If it returns [StatusFailure] or an error the flow will end with failure and
 // the client will be denied access.
 //
-// If it return [StatusPending], the flow will be suspended so an interaction
+// If it returns [StatusPending], the flow will be suspended so an interaction
 // with the user via the user agent can happen, e.g. an HTML page is rendered to
 // to gather user credentials.
 // The flow can be resumed at the callback endpoint with the session callback ID.
 type AuthnFunc func(http.ResponseWriter, *http.Request, *AuthnSession, *Client) (Status, error)
 
-// SetUpAuthnFunc is responsible for initiating the authentication session.
+// SetupAuthnFunc is responsible for initiating the authentication session.
 // It returns true when the policy is ready to execute and false for when the
 // policy should be skipped.
-type SetUpAuthnFunc func(*http.Request, *AuthnSession, *Client) bool
+type SetupAuthnFunc func(*http.Request, *AuthnSession, *Client) bool
 
 // AuthnPolicy holds information on how to set up an authentication session and
 // authenticate users.
 type AuthnPolicy struct {
 	ID           string
-	SetUp        SetUpAuthnFunc
+	Setup        SetupAuthnFunc
 	Authenticate AuthnFunc
 }
 
 // NewPolicy creates an authentication policy that will be selected based on setUpFunc and that
 // authenticates users with authnFunc.
-func NewPolicy(id string, setUpFunc SetUpAuthnFunc, authnFunc AuthnFunc) AuthnPolicy {
+func NewPolicy(id string, setupFunc SetupAuthnFunc, authnFunc AuthnFunc) AuthnPolicy {
 	return AuthnPolicy{
 		ID:           id,
 		Authenticate: authnFunc,
-		SetUp:        setUpFunc,
+		Setup:        setupFunc,
 	}
 }
 
@@ -764,7 +764,7 @@ type LogoutParameters struct {
 
 type HandleDefaultPostLogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) error
 
-type SetUpLogoutFunc func(*http.Request, *LogoutSession) bool
+type SetupLogoutFunc func(*http.Request, *LogoutSession) bool
 
 type LogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) (Status, error)
 
@@ -772,14 +772,14 @@ type LogoutFunc func(http.ResponseWriter, *http.Request, *LogoutSession) (Status
 // validate a logout request.
 type LogoutPolicy struct {
 	ID     string
-	SetUp  SetUpLogoutFunc
+	Setup  SetupLogoutFunc
 	Logout LogoutFunc
 }
 
-func NewLogoutPolicy(id string, setUpFunc SetUpLogoutFunc, logoutFunc LogoutFunc) LogoutPolicy {
+func NewLogoutPolicy(id string, setupFunc SetupLogoutFunc, logoutFunc LogoutFunc) LogoutPolicy {
 	return LogoutPolicy{
 		ID:     id,
-		SetUp:  setUpFunc,
+		Setup:  setupFunc,
 		Logout: logoutFunc,
 	}
 }

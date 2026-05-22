@@ -45,7 +45,7 @@ var (
 		goidc.ClaimPhoneNumberVerified, goidc.ClaimAddress,
 	}
 	ACRs          = []goidc.ACR{goidc.ACRMaceIncommonIAPBronze, goidc.ACRMaceIncommonIAPSilver}
-	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopUp}
+	DisplayValues = []goidc.DisplayValue{goidc.DisplayValuePage, goidc.DisplayValuePopup}
 )
 
 var (
@@ -55,7 +55,7 @@ var (
 func ClientMTLS(id string) (*goidc.Client, goidc.JSONWebKeySet) {
 	client, jwks := Client(id)
 	client.TokenAuthnMethod = goidc.AuthnMethodTLS
-	client.TLSSubDistinguishedName = "CN=" + id
+	client.TLSSubjectDistinguishedName = "CN=" + id
 
 	return client, jwks
 }

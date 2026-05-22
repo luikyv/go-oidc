@@ -1,11 +1,12 @@
 package goidc
 
 type Client struct {
-	ID     string `json:"id"`
-	Secret string `json:"secret,omitempty"`
+	ID              string `json:"id"`
+	Secret          string `json:"secret,omitempty"`
+	SecretExpiresAt int    `json:"secret_expires_at,omitempty"`
 	// RegistrationToken is the plain text registration access token generated during
 	// dynamic client registration.
-	// Note: For security reasons, it is strongly recommended encrypt this value before storing it in a database.
+	// Note: For security reasons, it is strongly recommended to encrypt this value before storing it in a database.
 	RegistrationToken string `json:"registration_token,omitempty"`
 	CreatedAt         int    `json:"created_at,omitempty"`
 	ExpiresAt         int    `json:"expires_at,omitempty"`
@@ -31,7 +32,6 @@ func (c *Client) CacheJWKS(jwks *JSONWebKeySet) {
 
 type ClientMeta struct {
 	Name              string          `json:"client_name,omitempty"`
-	SecretExpiresAt   *int            `json:"client_secret_expires_at,omitempty"`
 	ApplicationType   ApplicationType `json:"application_type,omitempty"`
 	LogoURI           string          `json:"logo_uri,omitempty"`
 	Contacts          []string        `json:"contacts,omitempty"`
@@ -68,28 +68,28 @@ type ClientMeta struct {
 	TokenRevocationAuthnMethod    AuthnMethod                `json:"revocation_endpoint_auth_method,omitempty"`
 	TokenRevocationAuthnSigAlg    SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg,omitempty"`
 	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
-	TLSSubDistinguishedName       string                     `json:"tls_client_auth_subject_dn,omitempty"`
-	// TLSSubAlternativeName represents a DNS name.
-	TLSSubAlternativeName     string                   `json:"tls_client_auth_san_dns,omitempty"`
-	TLSSubAlternativeNameIp   string                   `json:"tls_client_auth_san_ip,omitempty"`
-	TLSTokenBindingIsRequired bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
-	AuthDetailTypes           []AuthDetailType         `json:"authorization_details_types,omitempty"`
-	DefaultMaxAgeSecs         *int                     `json:"default_max_age,omitempty"`
-	DefaultACRValues          string                   `json:"default_acr_values,omitempty"`
-	PARIsRequired             bool                     `json:"require_pushed_authorization_requests,omitempty"`
-	CIBATokenDeliveryMode     CIBATokenDeliveryMode    `json:"backchannel_token_delivery_mode,omitempty"`
-	CIBANotificationEndpoint  string                   `json:"backchannel_client_notification_endpoint,omitempty"`
-	CIBAJARSigAlg             SignatureAlgorithm       `json:"backchannel_authentication_request_signing_alg,omitempty"`
-	CIBAUserCodeIsEnabled     bool                     `json:"backchannel_user_code_parameter,omitempty"`
-	OrganizationName          string                   `json:"organization_name,omitempty"`
-	PostLogoutRedirectURIs    []string                 `json:"post_logout_redirect_uris,omitempty"`
-	ClientRegistrationTypes   []ClientRegistrationType `json:"client_registration_types,omitempty"`
-	DisplayName               string                   `json:"display_name,omitempty"`
-	Description               string                   `json:"description,omitempty"`
-	Keywords                  []string                 `json:"keywords,omitempty"`
-	InformationURI            string                   `json:"information_uri,omitempty"`
-	OrganizationURI           string                   `json:"organization_uri,omitempty"`
-	CredentialOfferEndpoint   string                   `json:"credential_offer_endpoint,omitempty"`
+	TLSSubjectDistinguishedName   string                     `json:"tls_client_auth_subject_dn,omitempty"`
+	// TLSSubjectAlternativeName represents a DNS name.
+	TLSSubjectAlternativeName   string                   `json:"tls_client_auth_san_dns,omitempty"`
+	TLSSubjectAlternativeNameIP string                   `json:"tls_client_auth_san_ip,omitempty"`
+	TLSTokenBindingIsRequired   bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	AuthDetailTypes             []AuthDetailType         `json:"authorization_details_types,omitempty"`
+	DefaultMaxAgeSecs           *int                     `json:"default_max_age,omitempty"`
+	DefaultACRValues            string                   `json:"default_acr_values,omitempty"`
+	PARIsRequired               bool                     `json:"require_pushed_authorization_requests,omitempty"`
+	CIBATokenDeliveryMode       CIBATokenDeliveryMode    `json:"backchannel_token_delivery_mode,omitempty"`
+	CIBANotificationEndpoint    string                   `json:"backchannel_client_notification_endpoint,omitempty"`
+	CIBAJARSigAlg               SignatureAlgorithm       `json:"backchannel_authentication_request_signing_alg,omitempty"`
+	CIBAUserCodeIsEnabled       bool                     `json:"backchannel_user_code_parameter,omitempty"`
+	OrganizationName            string                   `json:"organization_name,omitempty"`
+	PostLogoutRedirectURIs      []string                 `json:"post_logout_redirect_uris,omitempty"`
+	ClientRegistrationTypes     []ClientRegistrationType `json:"client_registration_types,omitempty"`
+	DisplayName                 string                   `json:"display_name,omitempty"`
+	Description                 string                   `json:"description,omitempty"`
+	Keywords                    []string                 `json:"keywords,omitempty"`
+	InformationURI              string                   `json:"information_uri,omitempty"`
+	OrganizationURI             string                   `json:"organization_uri,omitempty"`
+	CredentialOfferEndpoint     string                   `json:"credential_offer_endpoint,omitempty"`
 	// CustomAttributes holds any additional dynamic attributes a client may
 	// provide during registration.
 	// These attributes allow clients to extend their metadata beyond the

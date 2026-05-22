@@ -96,9 +96,15 @@ func authenticateSecretPost(ctx oidc.Context, c *goidc.Client) error {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 			errors.New("client_secret is required"))
 	}
+
 	if err := ctx.VerifyClientSecret(c.Secret, secret); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
 	}
+
+	if c.SecretExpiresAt != 0 && timeutil.TimestampNow() >= c.SecretExpiresAt {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("client_secret is expired"))
+	}
+
 	return nil
 }
 
@@ -117,6 +123,11 @@ func authenticateSecretBasic(ctx oidc.Context, c *goidc.Client) error {
 	if err := ctx.VerifyClientSecret(c.Secret, secret); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client secret", err)
 	}
+
+	if c.SecretExpiresAt != 0 && timeutil.TimestampNow() >= c.SecretExpiresAt {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("client_secret is expired"))
+	}
+
 	return nil
 }
 
@@ -188,7 +199,15 @@ func authenticateSecretJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnCont
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	return areClaimsValid(ctx, claims, c, authnCtx)
+	if c.SecretExpiresAt != 0 && timeutil.TimestampNow() >= c.SecretExpiresAt {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("client_secret is expired"))
+	}
+
+	if err := areClaimsValid(ctx, claims, c, authnCtx); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, algs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
@@ -317,13 +336,13 @@ func authenticateTLSCert(ctx oidc.Context, c *goidc.Client) error {
 	}
 
 	switch {
-	case c.TLSSubDistinguishedName != "":
-		if c.TLSSubDistinguishedName != cert.Subject.String() {
+	case c.TLSSubjectDistinguishedName != "":
+		if c.TLSSubjectDistinguishedName != cert.Subject.String() {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 				errors.New("the client certificate subject distinguished name does not match"))
 		}
-	case c.TLSSubAlternativeName != "":
-		if !slices.Contains(cert.DNSNames, c.TLSSubAlternativeName) {
+	case c.TLSSubjectAlternativeName != "":
+		if !slices.Contains(cert.DNSNames, c.TLSSubjectAlternativeName) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 				errors.New("the client certificate subject alternative name does not match"))
 		}

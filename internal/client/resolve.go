@@ -136,7 +136,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	for _, scopeID := range strings.Fields(c.ScopeIDs) {
+	for scopeID := range strings.FieldsSeq(c.ScopeIDs) {
 		if !slices.ContainsFunc(ctx.Scopes, func(s goidc.Scope) bool { return s.ID == scopeID }) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("scope %s is not allowed", scopeID))
@@ -189,13 +189,13 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.TokenAuthnSigAlg = ""
 	case goidc.AuthnMethodTLS:
 		numberOfIdentifiers := 0
-		if c.TLSSubDistinguishedName != "" {
+		if c.TLSSubjectDistinguishedName != "" {
 			numberOfIdentifiers++
 		}
-		if c.TLSSubAlternativeName != "" {
+		if c.TLSSubjectAlternativeName != "" {
 			numberOfIdentifiers++
 		}
-		if c.TLSSubAlternativeNameIp != "" {
+		if c.TLSSubjectAlternativeNameIP != "" {
 			numberOfIdentifiers++
 		}
 		if numberOfIdentifiers != 1 {
@@ -209,9 +209,9 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	}
 
 	if c.TokenAuthnMethod != goidc.AuthnMethodTLS {
-		c.TLSSubDistinguishedName = ""
-		c.TLSSubAlternativeName = ""
-		c.TLSSubAlternativeNameIp = ""
+		c.TLSSubjectDistinguishedName = ""
+		c.TLSSubjectAlternativeName = ""
+		c.TLSSubjectAlternativeNameIP = ""
 	}
 
 	if ctx.TokenIntrospectionIsEnabled {
@@ -548,9 +548,9 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	}
 
 	if !ctx.MTLSIsEnabled {
-		c.TLSSubDistinguishedName = ""
-		c.TLSSubAlternativeName = ""
-		c.TLSSubAlternativeNameIp = ""
+		c.TLSSubjectDistinguishedName = ""
+		c.TLSSubjectAlternativeName = ""
+		c.TLSSubjectAlternativeNameIP = ""
 		c.TLSTokenBindingIsRequired = false
 	}
 

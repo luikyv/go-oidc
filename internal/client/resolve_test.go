@@ -183,8 +183,8 @@ func TestResolve(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				c, _ := oidctest.NewClient(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodTLS
-				c.TLSSubDistinguishedName = "cn=example"
-				c.TLSSubAlternativeName = "example.com"
+				c.TLSSubjectDistinguishedName = "cn=example"
+				c.TLSSubjectAlternativeName = "example.com"
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			wantErr: true,
@@ -195,7 +195,7 @@ func TestResolve(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				c, _ := oidctest.NewClient(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodTLS
-				c.TLSSubDistinguishedName = "cn=example"
+				c.TLSSubjectDistinguishedName = "cn=example"
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 		},
@@ -205,12 +205,12 @@ func TestResolve(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				c, _ := oidctest.NewClient(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
-				c.TLSSubDistinguishedName = "cn=example"
+				c.TLSSubjectDistinguishedName = "cn=example"
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
-				if c.TLSSubDistinguishedName != "" {
-					t.Errorf("got %q, want empty", c.TLSSubDistinguishedName)
+				if c.TLSSubjectDistinguishedName != "" {
+					t.Errorf("got %q, want empty", c.TLSSubjectDistinguishedName)
 				}
 			},
 		},

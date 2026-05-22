@@ -87,7 +87,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 
-		if timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {
+		if grant.RefreshTokenExpiresAt != 0 && timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {
 			return goidc.TokenInfo{IsActive: false}, nil
 		}
 

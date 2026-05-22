@@ -109,6 +109,8 @@ type Configuration struct {
 	DCRRegistrationTokenFunc      goidc.RandomFunc
 	LocalhostRedirectURIIsEnabled bool
 	DCRClientIDFunc               goidc.ClientIDFunc
+	DCRSecretRotationIsEnabled    bool
+	DCRSecretLifetimeSecs         int
 
 	TokenIntrospectionIsEnabled           bool
 	TokenIntrospectionEndpoint            string

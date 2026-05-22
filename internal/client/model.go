@@ -3,6 +3,7 @@ package client
 import "github.com/luikyv/go-oidc/pkg/goidc"
 
 var JSONFields = []string{
+	"client_id",
 	"client_name",
 	"client_secret_expires_at",
 	"application_type",

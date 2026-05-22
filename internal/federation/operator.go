@@ -201,12 +201,19 @@ func (ops metadataOperators[T]) applyValue(value T) (T, error) { //nolint:unpara
 	return ops.Value.Value, nil
 }
 
-func (ops metadataOperators[T]) applyAdd(value T) (T, error) { //nolint:unparam
+func (ops metadataOperators[T]) applyAdd(value T) (T, error) {
+	var zero T
+
 	if !ops.isAddSet() {
 		return value, nil
 	}
 
-	return mergeSlices(value, ops.Add), nil
+	v, err := mergeSlices(value, ops.Add)
+	if err != nil {
+		return zero, fmt.Errorf("could not apply operator 'add': %w", err)
+	}
+
+	return v, nil
 }
 
 func (ops metadataOperators[T]) applyDefault(value T) (T, error) { //nolint:unparam
@@ -332,7 +339,9 @@ func (highOps metadataOperators[T]) mergeValue(lowOps metadataOperators[T]) (nul
 	return highOps.Value, nil
 }
 
-func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, error) { //nolint:unparam
+func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, error) {
+	var zero T
+
 	if !highOps.isAddSet() {
 		return lowOps.Add, nil
 	}
@@ -341,7 +350,12 @@ func (highOps metadataOperators[T]) mergeAdd(lowOps metadataOperators[T]) (T, er
 		return highOps.Add, nil
 	}
 
-	return mergeSlices(highOps.Add, lowOps.Add), nil
+	v, err := mergeSlices(highOps.Add, lowOps.Add)
+	if err != nil {
+		return zero, fmt.Errorf("could not merge operator 'add': %w", err)
+	}
+
+	return v, nil
 }
 
 func (highOps metadataOperators[T]) mergeDefault(lowOps metadataOperators[T]) (T, error) {
@@ -370,7 +384,11 @@ func (highOps metadataOperators[T]) mergeOneOf(lowOps metadataOperators[T]) ([]T
 		return highOps.OneOf, nil
 	}
 
-	oneOf := intersectSlices(highOps.OneOf, lowOps.OneOf)
+	oneOf, err := intersectSlices(highOps.OneOf, lowOps.OneOf)
+	if err != nil {
+		return nil, fmt.Errorf("cannot merge operator 'one_of' %v, %v: %w", highOps.OneOf, lowOps.OneOf, err)
+	}
+
 	if len(oneOf) == 0 {
 		return nil, fmt.Errorf("cannot merge operator 'one_of' %v, %v", highOps.OneOf, lowOps.OneOf)
 	}
@@ -379,6 +397,8 @@ func (highOps metadataOperators[T]) mergeOneOf(lowOps metadataOperators[T]) ([]T
 }
 
 func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (T, error) {
+	var zero T
+
 	if !highOps.isSubsetOfSet() {
 		return lowOps.SubsetOf, nil
 	}
@@ -387,8 +407,11 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 		return highOps.SubsetOf, nil
 	}
 
-	subsetOf := intersectSlices(highOps.SubsetOf, lowOps.SubsetOf)
-	var zero T
+	subsetOf, err := intersectSlices(highOps.SubsetOf, lowOps.SubsetOf)
+	if err != nil {
+		return zero, fmt.Errorf("cannot merge operator 'subset_of' %v, %v: %w", highOps.SubsetOf, lowOps.SubsetOf, err)
+	}
+
 	if reflect.DeepEqual(subsetOf, zero) {
 		return zero, fmt.Errorf("cannot merge operator 'subset_of' %v, %v", highOps.SubsetOf, lowOps.SubsetOf)
 	}
@@ -396,7 +419,9 @@ func (highOps metadataOperators[T]) mergeSubsetOf(lowOps metadataOperators[T]) (
 	return subsetOf, nil
 }
 
-func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T]) (T, error) { //nolint:unparam
+func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T]) (T, error) {
+	var zero T
+
 	if !highOps.isSupersetOfSet() {
 		return lowOps.SupersetOf, nil
 	}
@@ -405,7 +430,11 @@ func (highOps metadataOperators[T]) mergeSupersetOf(lowOps metadataOperators[T])
 		return highOps.SupersetOf, nil
 	}
 
-	return mergeSlices(highOps.SupersetOf, lowOps.SupersetOf), nil
+	v, err := mergeSlices(highOps.SupersetOf, lowOps.SupersetOf)
+	if err != nil {
+		return zero, fmt.Errorf("could not merge operator 'superset_of': %w", err)
+	}
+	return v, nil
 }
 
 func (highOps metadataOperators[T]) mergeEssential(lowOps metadataOperators[T]) (bool, error) {
@@ -446,18 +475,18 @@ type nullable[T any] struct {
 }
 
 // mergeSlices merges two slices and removes duplicates.
-func mergeSlices[T any](slice1, slice2 T) T {
+func mergeSlices[T any](slice1, slice2 T) (T, error) {
 
 	if !isSlice(slice1) || !isSlice(slice2) {
-		// TODO: Shouldn't panic.
-		panic("mergeSlices: both arguments must be slices")
+		var zero T
+		return zero, errors.New("mergeSlices: both arguments must be slices")
 	}
 
 	v1 := reflect.ValueOf(slice1)
 	v2 := reflect.ValueOf(slice2)
 	result := reflect.MakeSlice(v1.Type(), 0, v1.Len()+v2.Len())
 	// Use a map to track unique elements.
-	unique := make(map[interface{}]struct{})
+	unique := make(map[any]struct{})
 
 	for i := 0; i < v1.Len(); i++ {
 		elem := v1.Index(i).Interface()
@@ -475,14 +504,14 @@ func mergeSlices[T any](slice1, slice2 T) T {
 		}
 	}
 
-	return result.Interface().(T)
+	return result.Interface().(T), nil
 }
 
-func intersectSlices[T any](slice1, slice2 T) T {
+func intersectSlices[T any](slice1, slice2 T) (T, error) {
+	var zero T
 
 	if !isSlice(slice1) || !isSlice(slice2) {
-		// TODO: Shouldn't panic.
-		panic("intersectSlices: both arguments must be slices")
+		return zero, errors.New("intersectSlices: both arguments must be slices")
 	}
 
 	v1 := reflect.ValueOf(slice1)
@@ -507,11 +536,10 @@ func intersectSlices[T any](slice1, slice2 T) T {
 	}
 
 	if result.Len() == 0 {
-		var zero T
-		return zero
+		return zero, nil
 	}
 
-	return result.Interface().(T)
+	return result.Interface().(T), nil
 }
 
 func isSuperset[T any](superset, subset T) bool {
@@ -543,7 +571,8 @@ func isSubset[T any](subset, superset T) bool {
 }
 
 func isSlice(v any) bool {
-	return reflect.ValueOf(v).Kind() == reflect.Slice
+	rv := reflect.ValueOf(v)
+	return rv.IsValid() && rv.Kind() == reflect.Slice
 }
 
 func deepContains[T any](s []T, e T) bool {

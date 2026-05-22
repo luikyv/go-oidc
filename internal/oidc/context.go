@@ -188,7 +188,7 @@ func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
 
 func (ctx Context) AvailablePolicy(as *goidc.AuthnSession, c *goidc.Client) (policy goidc.AuthnPolicy, ok bool) {
 	for _, policy = range ctx.Policies {
-		if ok = policy.SetUp(ctx.Request, as, c); ok {
+		if ok = policy.Setup(ctx.Request, as, c); ok {
 			return policy, true
 		}
 	}
@@ -198,7 +198,7 @@ func (ctx Context) AvailablePolicy(as *goidc.AuthnSession, c *goidc.Client) (pol
 
 func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.LogoutPolicy, ok bool) {
 	for _, policy = range ctx.LogoutPolicies {
-		if ok = policy.SetUp(ctx.Request, ls); ok {
+		if ok = policy.Setup(ctx.Request, ls); ok {
 			return policy, true
 		}
 	}

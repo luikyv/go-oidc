@@ -213,8 +213,8 @@ type federationAuthority struct {
 	TrustMarkEndpoint            string              `json:"federation_trust_mark_endpoint,omitempty"`
 	TrustMarkEndpointAuthMethods []goidc.AuthnMethod `json:"federation_trust_mark_endpoint_auth_methods,omitempty"`
 	HistoricalKeysEndpoint       string              `json:"federation_historical_keys_endpoint,omitempty"`
-	// EndpointAuthSigAlgValuesSupported are the algorithmsfor signing the JWT used for private_key_jwt when
-	// authenticating to federation endpoints.
+	// EndpointAuthSigAlgValuesSupported are the algorithms for signing the JWT
+	// used for private_key_jwt when authenticating to federation endpoints.
 	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
 	OrganizationName                  string                     `json:"organization_name,omitempty"`
 }

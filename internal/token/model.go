@@ -66,7 +66,9 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 	if slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) && slices.Contains(c.GrantTypes, goidc.GrantRefreshToken) &&
 		ctx.RefreshTokenShouldIssue(c, grant) && opts.Subject != c.ID {
 		grant.RefreshToken = ctx.RefreshToken()
-		grant.RefreshTokenExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		if ctx.RefreshTokenLifetimeSecs != 0 {
+			grant.RefreshTokenExpiresAt = timeutil.TimestampNow() + ctx.RefreshTokenLifetimeSecs
+		}
 	}
 
 	if err := ctx.SaveGrant(grant); err != nil {

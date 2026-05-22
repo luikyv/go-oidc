@@ -620,6 +620,54 @@ func TestWithDCRTokenRotation(t *testing.T) {
 	}
 }
 
+func TestWithDCRSecretRotation(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithDCRSecretRotation()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			DCRSecretRotationIsEnabled: true,
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithDCRSecretLifetime(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithDCRSecretLifetime(300)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			DCRSecretLifetimeSecs: 300,
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithLocalhostRedirectURIs(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -1379,11 +1427,11 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 			expectedAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
 		},
 		{
-			name:          "invalid symetric algorithm HS256",
+			name:          "invalid symmetric algorithm HS256",
 			alg:           goidc.HS256,
 			algs:          []goidc.SignatureAlgorithm{},
 			shouldError:   true,
-			errorContains: "symetric algorithms are not allowed",
+			errorContains: "symmetric algorithms are not allowed",
 		},
 		{
 			name:          "invalid none algorithm",
@@ -1397,7 +1445,7 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 			alg:           goidc.RS256,
 			algs:          []goidc.SignatureAlgorithm{goidc.HS256},
 			shouldError:   true,
-			errorContains: "symetric algorithms are not allowed",
+			errorContains: "symmetric algorithms are not allowed",
 		},
 	}
 
@@ -2319,9 +2367,9 @@ func TestWithCIBAJARRequired(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
+			CIBAJARIsEnabled:  true,
 			CIBAJARIsRequired: true,
-			JARIsEnabled:      true,
-			JARSigAlgs:        []goidc.SignatureAlgorithm{goidc.PS256},
+			CIBAJARSigAlgs:    []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

@@ -17,6 +17,6 @@ type JWKSRepresentation string
 
 const (
 	JWKSRepresentationInline    JWKSRepresentation = "jwks"
-	JWKSRepresentationURI       JWKSRepresentation = "jwk_uri"
+	JWKSRepresentationURI       JWKSRepresentation = "jwks_uri"
 	JWKSRepresentationSignedURI JWKSRepresentation = "signed_jwks_uri"
 )

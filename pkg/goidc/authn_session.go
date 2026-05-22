@@ -29,7 +29,7 @@ type AuthnSession struct {
 	// UserCode is populated for device authorization flows when a user-facing
 	// verification code is issued for manual entry at the verification endpoint.
 	UserCode string `json:"user_code,omitempty"`
-	// PolicyID is the id of the autentication policy used to authenticate
+	// PolicyID is the id of the authentication policy used to authenticate
 	// the user.
 	PolicyID string `json:"policy_id,omitempty"`
 

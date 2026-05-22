@@ -1130,23 +1130,23 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 	}
 	c.DPoPTokenBindingIsRequired = dPoPTokenBindingIsRequired
 
-	tlsSubDistinguishedName, err := policy.TLSSubDistinguishedName.Apply(c.TLSSubDistinguishedName)
+	tlsSubDistinguishedName, err := policy.TLSSubDistinguishedName.Apply(c.TLSSubjectDistinguishedName)
 	if err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubDistinguishedName = tlsSubDistinguishedName
+	c.TLSSubjectDistinguishedName = tlsSubDistinguishedName
 
-	tlsSubAlternativeName, err := policy.TLSSubAlternativeName.Apply(c.TLSSubAlternativeName)
+	tlsSubAlternativeName, err := policy.TLSSubAlternativeName.Apply(c.TLSSubjectAlternativeName)
 	if err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubAlternativeName = tlsSubAlternativeName
+	c.TLSSubjectAlternativeName = tlsSubAlternativeName
 
-	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubAlternativeNameIp)
+	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubjectAlternativeNameIP)
 	if err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubAlternativeNameIp = tlsSubAlternativeNameIp
+	c.TLSSubjectAlternativeNameIP = tlsSubAlternativeNameIp
 
 	tlsTokenBindingIsRequired, err := policy.TLSTokenBindingIsRequired.Apply(c.TLSTokenBindingIsRequired)
 	if err != nil {

@@ -22,6 +22,7 @@ type Grant struct {
 	RefreshToken string `json:"refresh_token,omitempty"`
 	// RefreshTokenExpiresAt stores the expiry deadline of the refresh token
 	// issued for this grant.
+	// A value of 0 means the refresh token does not expire.
 	RefreshTokenExpiresAt int                     `json:"refresh_token_expires_at,omitempty"`
 	AuthParams            AuthorizationParameters `json:"auth_params,omitzero"`
 	// AuthCode is populated when the grant is issued from the authorization
