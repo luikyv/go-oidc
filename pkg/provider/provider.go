@@ -415,7 +415,6 @@ func (op *Provider) setDefaults() {
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantRefreshToken) {
 		op.config.RefreshTokenManager = nonZeroOrDefault(op.config.RefreshTokenManager, goidc.RefreshTokenManager(manager))
-		op.config.RefreshTokenLifetimeSecs = nonZeroOrDefault(op.config.RefreshTokenLifetimeSecs, defaultRefreshTokenLifetimeSecs)
 		op.config.RefreshTokenFunc = nonZeroOrDefault(op.config.RefreshTokenFunc, defaultRefreshTokenFunc)
 		op.config.RefreshTokenShouldIssueFunc = nonZeroOrDefault(op.config.RefreshTokenShouldIssueFunc, goidc.RefreshTokenShouldIssueFunc(defaultRefreshTokenShouldIssueFunc))
 	}
@@ -595,7 +594,6 @@ const (
 	defaultJWTLifetimeSecs                = 600
 	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
 	defaultPARLifetimeSecs                = 60   // 1 minute.
-	defaultRefreshTokenLifetimeSecs       = 600
 	defaultCIBADefaultSessionLifetimeSecs = 60
 	defaultCIBAPollingIntervalSecs        = 5
 	defaultDeviceAuthLifetimeSecs         = 300 // 5 minutes.

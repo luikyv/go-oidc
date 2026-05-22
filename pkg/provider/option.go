@@ -414,6 +414,8 @@ func WithDeviceCodeFunc(f goidc.RandomFunc) Option {
 	}
 }
 
+// WithRefreshTokenLifetime sets the refresh token lifetime in seconds.
+// A value of 0 means issued refresh tokens do not expire.
 func WithRefreshTokenLifetime(lifetimeSecs int) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenLifetimeSecs = lifetimeSecs

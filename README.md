@@ -312,12 +312,22 @@ provider loads that existing grant, validates the request, and issues a new
 This means the refresh token grant does not create a new authorization. It
 reuses an existing one.
 
-By default, the same refresh token remains associated with the grant until it
-expires. To rotate refresh tokens on each use, add
+By default, the same refresh token remains associated with the grant. To rotate
+refresh tokens on each use, add
 `provider.WithRefreshTokenRotation()`.
 
 You can also customize the refresh token lifetime with
 `provider.WithRefreshTokenLifetime(...)`.
+
+If `provider.WithRefreshTokenLifetime(...)` is not configured, refresh tokens
+do not expire.
+
+Passing `provider.WithRefreshTokenLifetime(0)` also makes refresh tokens
+non-expiring. In that case, `goidc.Grant.RefreshTokenExpiresAt` remains `0`.
+
+When refresh token rotation is enabled, the rotated refresh token follows the
+same lifetime rule. If the configured lifetime is `0`, the new refresh token
+also does not expire.
 
 ## Client Credentials Grant
 

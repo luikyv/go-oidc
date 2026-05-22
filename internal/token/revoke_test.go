@@ -172,6 +172,43 @@ func TestRevoke(t *testing.T) {
 			},
 		},
 		{
+			name: "non-expiring refresh token revocation deletes the grant and related access tokens",
+			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
+				// Given.
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				grant := &goidc.Grant{
+					ID:                    "grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: 0,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+				}
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("SaveGrant() error = %v", err)
+				}
+
+				saveAccessToken(t, ctx, "associated_access_token", grant.ID, c.ID, now+60)
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RevokedAt == 0 {
+					t.Fatal("expected grant to be revoked")
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+			},
+		},
+		{
 			name: "invalid token returns success and does not mutate state",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				// Given.

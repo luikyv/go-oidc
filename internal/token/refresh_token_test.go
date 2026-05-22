@@ -280,6 +280,34 @@ func TestGenerateRefreshToken(t *testing.T) {
 			},
 		},
 		{
+			name: "non-expiring refresh token",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				grant.RefreshTokenExpiresAt = 0
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RefreshTokenExpiresAt != 0 {
+					t.Fatalf("grant.RefreshTokenExpiresAt = %d, want 0", grants[0].RefreshTokenExpiresAt)
+				}
+
+				tokens := oidctest.Tokens(t, ctx)
+				if len(tokens) != 1 {
+					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				}
+				if resp.AccessToken == "" {
+					t.Fatal("expected access token to be issued")
+				}
+			},
+		},
+		{
 			name: "scope narrowing",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
@@ -336,6 +364,28 @@ func TestGenerateRefreshToken(t *testing.T) {
 				}
 				if grants[0].RefreshToken != resp.RefreshToken {
 					t.Errorf("grant.RefreshToken = %q, want %q", grants[0].RefreshToken, resp.RefreshToken)
+				}
+			},
+		},
+		{
+			name: "rotation enabled clears expiry when lifetime is zero",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.RefreshTokenRotationIsEnabled = true
+				ctx.RefreshTokenLifetimeSecs = 0
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				if resp.RefreshToken == "" {
+					t.Fatal("expected a new refresh token")
+				}
+
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].RefreshTokenExpiresAt != 0 {
+					t.Fatalf("grant.RefreshTokenExpiresAt = %d, want 0", grants[0].RefreshTokenExpiresAt)
 				}
 			},
 		},

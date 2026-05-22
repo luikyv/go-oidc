@@ -164,6 +164,46 @@ func TestIntrospect(t *testing.T) {
 			},
 		},
 		{
+			name: "refresh token without expiry",
+			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
+				ctx, c := setup(t)
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				grant := &goidc.Grant{
+					ID:                    "random_grant_id",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: 0,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+					Scopes:                goidc.ScopeOpenID.ID,
+				}
+				_ = ctx.SaveGrant(grant)
+
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			validate: func(t *testing.T, info goidc.TokenInfo, ctx oidc.Context, c *goidc.Client) {
+				if !info.IsActive {
+					t.Fatal("expected active token")
+				}
+
+				want := goidc.TokenInfo{
+					GrantID:   info.GrantID,
+					IsActive:  true,
+					ClientID:  c.ID,
+					Scopes:    goidc.ScopeOpenID.ID,
+					ExpiresAt: 0,
+					Type:      goidc.TokenTypeBearer,
+					Issuer:    ctx.Issuer(),
+					IssuedAt:  info.IssuedAt,
+					NotBefore: info.NotBefore,
+				}
+				if diff := cmp.Diff(info, want); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
 			name: "expired opaque token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
 				ctx, c := setup(t)
