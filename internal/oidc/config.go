@@ -119,7 +119,7 @@ type Configuration struct {
 	TokenRevocationIsEnabled                         bool
 	TokenRevocationEndpoint                          string
 	TokenRevocationIsClientAllowedFunc               goidc.IsClientAllowedFunc
-	TokenRevocationDeleteGrantOnAccessTokenIsEnabled bool
+	TokenRevocationRevokeGrantOnAccessTokenIsEnabled bool
 
 	RefreshTokenManager           goidc.RefreshTokenManager
 	RefreshTokenFunc              goidc.RandomFunc

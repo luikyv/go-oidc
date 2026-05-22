@@ -1040,8 +1040,8 @@ func WithTokenIntrospection(f goidc.IsClientAllowedTokenIntrospectionFunc) Optio
 // WithTokenRevocation allows clients to revoke tokens.
 //
 // Refresh token revocation always invalidates the underlying grant and related
-// access tokens. Access token revocation deletes only the presented access
-// token unless [WithTokenRevocationDeleteGrantOnAccessToken] is also enabled.
+// access tokens. Access token revocation revokes only the presented access
+// token unless [WithTokenRevocationRevokeGrantOnAccessToken] is also enabled.
 func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationIsEnabled = true
@@ -1050,14 +1050,20 @@ func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	}
 }
 
-// WithTokenRevocationDeleteGrantOnAccessToken makes access token revocation
-// invalidate the underlying grant and all related tokens instead of deleting
-// only the presented access token.
-func WithTokenRevocationDeleteGrantOnAccessToken() Option {
+// WithTokenRevocationRevokeGrantOnAccessToken makes access token revocation
+// revoke the underlying grant and all related tokens instead of revoking only
+// the presented access token.
+func WithTokenRevocationRevokeGrantOnAccessToken() Option {
 	return func(p *Provider) error {
-		p.config.TokenRevocationDeleteGrantOnAccessTokenIsEnabled = true
+		p.config.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
 		return nil
 	}
+}
+
+// WithTokenRevocationDeleteGrantOnAccessToken is deprecated: use
+// [WithTokenRevocationRevokeGrantOnAccessToken] instead.
+func WithTokenRevocationDeleteGrantOnAccessToken() Option {
+	return WithTokenRevocationRevokeGrantOnAccessToken()
 }
 
 // WithPKCE makes proof key for code exchange available to clients.
