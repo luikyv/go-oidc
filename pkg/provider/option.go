@@ -1060,12 +1060,6 @@ func WithTokenRevocationRevokeGrantOnAccessToken() Option {
 	}
 }
 
-// WithTokenRevocationDeleteGrantOnAccessToken is deprecated: use
-// [WithTokenRevocationRevokeGrantOnAccessToken] instead.
-func WithTokenRevocationDeleteGrantOnAccessToken() Option {
-	return WithTokenRevocationRevokeGrantOnAccessToken()
-}
-
 // WithPKCE makes proof key for code exchange available to clients.
 // The first code challenged informed is used as the default.
 func WithPKCE(defaultMethod goidc.CodeChallengeMethod, methods ...goidc.CodeChallengeMethod) Option {
