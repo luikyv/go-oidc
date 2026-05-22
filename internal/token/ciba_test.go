@@ -1035,3 +1035,67 @@ func TestDenyCIBARequest(t *testing.T) {
 		})
 	}
 }
+
+func TestGrantCIBARequestUsesDedicatedHTTPClient(t *testing.T) {
+	var gotBody map[string]any
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_ = json.NewDecoder(r.Body).Decode(&gotBody)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer server.Close()
+
+	ctx := oidctest.NewContext(t)
+	manager := oidctest.Manager(t, ctx)
+	ctx.CIBAManager = manager
+	ctx.CIBATokenDeliveryModes = []goidc.CIBATokenDeliveryMode{
+		goidc.CIBADeliveryModePush,
+	}
+	ctx.HTTPClientFunc = func(context.Context) *http.Client {
+		return &http.Client{
+			Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
+				return nil, errors.New("wrong client used")
+			}),
+		}
+	}
+	ctx.CIBAHTTPClientFunc = func(context.Context) *http.Client {
+		return http.DefaultClient
+	}
+
+	client, _ := oidctest.NewClient(t)
+	client.GrantTypes = append(client.GrantTypes, goidc.GrantCIBA)
+	client.CIBATokenDeliveryMode = goidc.CIBADeliveryModePush
+	client.CIBANotificationEndpoint = server.URL
+	ctx.StaticClients = append(ctx.StaticClients, client)
+
+	session := &goidc.AuthnSession{
+		ID:            "random_ciba_session_id",
+		AuthReqID:     "auth_req_id",
+		ClientID:      client.ID,
+		Subject:       "subject",
+		GrantedScopes: goidc.ScopeOpenID.ID,
+		AuthorizationParameters: goidc.AuthorizationParameters{
+			Nonce:                   "nonce",
+			ClientNotificationToken: "notification_token",
+		},
+		Store:     map[string]any{},
+		CreatedAt: timeutil.TimestampNow(),
+		ExpiresAt: timeutil.TimestampNow() + 60,
+	}
+	if err := ctx.CIBASaveSession(session); err != nil {
+		t.Fatalf("CIBASaveSession() error = %v", err)
+	}
+
+	if err := GrantCIBARequest(ctx, session.AuthReqID); err != nil {
+		t.Fatalf("GrantCIBARequest() error = %v", err)
+	}
+
+	if gotBody["access_token"] == "" {
+		t.Fatal("expected access_token in notification body")
+	}
+}
+
+type roundTripperFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripperFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}

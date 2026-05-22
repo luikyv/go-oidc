@@ -438,8 +438,8 @@ func NewDynamicScope(scope string, matchingFunc MatchScopeFunc) Scope {
 	}
 }
 
-// CheckJTIFunc defines a function to verify when a JTI is safe to use.
-type CheckJTIFunc func(context.Context, string) error
+// ConsumeJTIFunc defines a function to verify when a JTI is safe to use.
+type ConsumeJTIFunc func(context.Context, string) error
 
 // HTTPClientFunc defines a function that generates an HTTP client for performing
 // requests.
@@ -589,7 +589,7 @@ type AuthorizationParameters struct {
 	Resources               Resources           `json:"resource,omitempty"`
 	DPoPJKT                 string              `json:"dpop_jkt,omitempty"`
 	LoginHint               string              `json:"login_hint,omitempty"`
-	LoginTokenHint          string              `json:"login_hint_token,omitempty"`
+	LoginHintToken          string              `json:"login_hint_token,omitempty"`
 	IDTokenHint             string              `json:"id_token_hint,omitempty"`
 	ClientNotificationToken string              `json:"client_notification_token,omitempty"`
 	BindingMessage          string              `json:"binding_message,omitempty"`

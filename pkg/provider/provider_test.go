@@ -2,6 +2,8 @@ package provider
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -63,7 +65,7 @@ func TestNew(t *testing.T) {
 				"RefreshTokenFunc",
 				"HTTPClientFunc",
 				"ClientCertFunc",
-				"CheckJTIFunc",
+				"ConsumeJTIFunc",
 				"TokenIntrospectionIsClientAllowedFunc",
 				"TokenRevocationIsClientAllowedFunc",
 				"HandleErrorFunc",
@@ -202,7 +204,7 @@ func TestNew(t *testing.T) {
 				"HTTPClientFunc",
 				"ClientCertFunc",
 				"JWKSFunc",
-				"CheckJTIFunc",
+				"ConsumeJTIFunc",
 				"TokenIntrospectionIsClientAllowedFunc",
 				"TokenRevocationIsClientAllowedFunc",
 				"HandleErrorFunc",
@@ -240,6 +242,33 @@ func TestNew(t *testing.T) {
 				t.Error(diff)
 			}
 		})
+	}
+}
+
+func TestDefaultHTTPClientFuncDoesNotFollowRedirects(t *testing.T) {
+	redirected := false
+	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
+		redirected = true
+	}))
+	defer target.Close()
+
+	source := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Location", target.URL)
+		w.WriteHeader(http.StatusFound)
+	}))
+	defer source.Close()
+
+	resp, err := defaultHTTPClientFunc(context.Background()).Get(source.URL)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusFound {
+		t.Fatalf("status = %d, want %d", resp.StatusCode, http.StatusFound)
+	}
+	if redirected {
+		t.Fatal("default HTTP client followed redirect")
 	}
 }
 

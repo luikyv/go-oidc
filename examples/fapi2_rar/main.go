@@ -45,7 +45,7 @@ func main() {
 		provider.WithHandleErrorFunc(authutil.HandleError),
 		provider.WithStaticClients(clientOne, clientTwo),
 		provider.WithRenderErrorFunc(authutil.RenderError()),
-		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
+		provider.WithConsumeJTIFunc(authutil.ConsumeJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 		provider.WithRAR("customer_information"),
 		provider.WithRARCompareDetailsFunc(func(_ context.Context, requested, granted []goidc.AuthDetail) error {

@@ -290,7 +290,7 @@ func (op *Provider) setDefaults() {
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
 
 	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
-	op.config.CheckJTIFunc = nonZeroOrDefault(op.config.CheckJTIFunc, goidc.CheckJTIFunc(defaultCheckJTIFunc))
+	op.config.ConsumeJTIFunc = nonZeroOrDefault(op.config.ConsumeJTIFunc, goidc.ConsumeJTIFunc(defaultConsumeJTIFunc))
 	op.config.HandleErrorFunc = nonZeroOrDefault(op.config.HandleErrorFunc, goidc.HandleErrorFunc(defaultHandleErrorFunc))
 	op.config.HandleGrantFunc = nonZeroOrDefault(op.config.HandleGrantFunc, goidc.HandleGrantFunc(defaultHandleGrantFunc))
 	op.config.HandleTokenFunc = nonZeroOrDefault(op.config.HandleTokenFunc, goidc.HandleTokenFunc(defaultHandleTokenFunc))
@@ -649,6 +649,9 @@ func defaultHTTPClientFunc(_ context.Context) *http.Client {
 	return &http.Client{
 		Timeout:   10 * time.Second,
 		Transport: transport,
+		CheckRedirect: func(*http.Request, []*http.Request) error {
+			return http.ErrUseLastResponse
+		},
 	}
 }
 
@@ -712,7 +715,7 @@ func defaultDCRHandleClientFunc(context.Context, string, *goidc.ClientMeta) erro
 	return nil
 }
 
-func defaultCheckJTIFunc(context.Context, string) error {
+func defaultConsumeJTIFunc(context.Context, string) error {
 	return nil
 }
 

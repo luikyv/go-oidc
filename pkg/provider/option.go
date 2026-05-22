@@ -470,6 +470,16 @@ func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
 	}
 }
 
+// WithCIBAHTTPClientFunc sets a custom HTTP client function for outbound CIBA
+// client notifications in ping and push delivery modes. When unset, the
+// provider falls back to [WithHTTPClientFunc].
+func WithCIBAHTTPClientFunc(f goidc.HTTPClientFunc) Option {
+	return func(p *Provider) error {
+		p.config.CIBAHTTPClientFunc = f
+		return nil
+	}
+}
+
 func WithCIBAJAR(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
 	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
@@ -744,6 +754,8 @@ func WithJARByReference() Option {
 
 // WithJARByReferenceUnregisteredURIs allows request_uri values that were not
 // pre-registered by the client.
+// Avoid using this option when possible, as it expands the attack surface for
+// server-side request_uri fetches.
 // To enable request objects by reference, see [WithJARByReference].
 func WithJARByReferenceUnregisteredURIs() Option {
 	return func(p *Provider) error {
@@ -1164,13 +1176,13 @@ func WithVerifyClientSecretFunc(f goidc.VerifyClientSecretFunc) Option {
 	}
 }
 
-// WithCheckJTIFunc registers a function to validate JWT IDs (JTI) during JWT
+// WithConsumeJTIFunc registers a function to validate JWT IDs (JTI) during JWT
 // processing.
 // This function is used to prevent replay attacks by ensuring that each JTI is
 // unique and not reused.
-func WithCheckJTIFunc(f goidc.CheckJTIFunc) Option {
+func WithConsumeJTIFunc(f goidc.ConsumeJTIFunc) Option {
 	return func(p *Provider) error {
-		p.config.CheckJTIFunc = f
+		p.config.ConsumeJTIFunc = f
 		return nil
 	}
 }
@@ -1198,10 +1210,21 @@ func WithResourceIndicatorsRequired(resource string, resources ...string) Option
 // WithHTTPClientFunc defines how to generate the client used to make HTTP
 // requests to, for instance, a client's JWKS endpoint.
 // By default, the provider uses an HTTP client with request, response header,
-// and TLS handshake timeouts configured.
+// and TLS handshake timeouts configured. The default client also does not
+// follow redirects automatically.
 func WithHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.HTTPClientFunc = f
+		return nil
+	}
+}
+
+// WithJARHTTPClientFunc defines how to generate the client used to fetch JAR
+// request objects by reference via the "request_uri" authorization parameter.
+// When unset, the provider falls back to [WithHTTPClientFunc].
+func WithJARHTTPClientFunc(f goidc.HTTPClientFunc) Option {
+	return func(p *Provider) error {
+		p.config.JARHTTPClientFunc = f
 		return nil
 	}
 }

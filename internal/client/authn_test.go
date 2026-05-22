@@ -238,14 +238,14 @@ func TestAuthenticated(t *testing.T) {
 				ctx.Request.PostForm = secretJWTPostForm(t, ctx, c.ID, secret, "expired_secret_jti")
 
 				var called bool
-				ctx.CheckJTIFunc = func(context.Context, string) error {
+				ctx.ConsumeJTIFunc = func(context.Context, string) error {
 					called = true
 					return nil
 				}
 
 				return ctx, func(t *testing.T) {
 					if called {
-						t.Fatal("CheckJTIFunc was called for an expired client_secret_jwt")
+						t.Fatal("ConsumeJTIFunc was called for an expired client_secret_jwt")
 					}
 				}
 			},

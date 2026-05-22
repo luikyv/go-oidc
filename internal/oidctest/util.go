@@ -128,7 +128,7 @@ func NewContext(tb testing.TB) oidc.Context {
 		DCRRegistrationTokenFunc: func(context.Context) string {
 			return strutil.Random(50)
 		},
-		CheckJTIFunc: func(context.Context, string) error {
+		ConsumeJTIFunc: func(context.Context, string) error {
 			return nil
 		},
 		ClientCertFunc: func(context.Context) (*x509.Certificate, error) {

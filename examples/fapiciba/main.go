@@ -39,7 +39,7 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithHandleErrorFunc(authutil.HandleError),
-		provider.WithCheckJTIFunc(authutil.CheckJTIFunc()),
+		provider.WithConsumeJTIFunc(authutil.ConsumeJTIFunc()),
 		provider.WithDCR(nil),
 		provider.WithDCRHandleClientFunc(authutil.DCRFunc),
 	)

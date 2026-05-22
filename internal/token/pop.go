@@ -24,9 +24,12 @@ func ValidatePoP(ctx oidc.Context, token string, cnf goidc.TokenConfirmation) er
 // prove the client's possession of the access token with DPoP if applicable.
 // If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
 func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfirmation) error {
-
 	if confirmation.JWKThumbprint == "" {
 		return nil
+	}
+	if !ctx.DPoPIsEnabled {
+		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the token is bound to DPoP, but DPoP support is disabled"))
 	}
 
 	dpopJWT, ok := dpop.JWT(ctx)
@@ -46,8 +49,12 @@ func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfir
 // prove the client's possession of the access token with TLS binding if
 // applicable.
 func validateTLSPoP(ctx oidc.Context, confirmation goidc.TokenConfirmation) error {
-	if confirmation.CertThumbprint == "" || !ctx.MTLSTokenBindingIsEnabled {
+	if confirmation.CertThumbprint == "" {
 		return nil
+	}
+	if !ctx.MTLSTokenBindingIsEnabled {
+		return goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token",
+			errors.New("the token is bound to mutual TLS, but mutual TLS token binding support is disabled"))
 	}
 
 	clientCert, err := ctx.ClientCert()

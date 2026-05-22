@@ -29,8 +29,11 @@ func ValidateBinding(ctx oidc.Context, c *goidc.Client, opts *bindindValidationO
 }
 
 func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidationOptions) error {
-
 	if !ctx.DPoPIsEnabled {
+		if opts.dpopIsRequired || opts.dpopJWKThumbprint != "" {
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+				errors.New("the request requires DPoP token binding, but DPoP support is disabled"))
+		}
 		return nil
 	}
 
@@ -54,6 +57,10 @@ func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidati
 
 func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidationOptions) error {
 	if !ctx.MTLSTokenBindingIsEnabled {
+		if opts.tlsIsRequired || opts.tlsCertThumbprint != "" {
+			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
+				errors.New("the request requires mutual TLS token binding, but mutual TLS token binding support is disabled"))
+		}
 		return nil
 	}
 

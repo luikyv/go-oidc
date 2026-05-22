@@ -253,7 +253,7 @@ func PairwiseSubjectFunc() goidc.PairwiseSubjectFunc {
 	}
 }
 
-func CheckJTIFunc() goidc.CheckJTIFunc {
+func ConsumeJTIFunc() goidc.ConsumeJTIFunc {
 	jtiStore := make(map[string]struct{})
 	return func(ctx context.Context, jti string) error {
 		if _, ok := jtiStore[jti]; ok {

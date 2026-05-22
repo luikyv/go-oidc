@@ -2103,25 +2103,25 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 	}
 }
 
-func TestWithCheckJTIFunc(t *testing.T) {
+func TestWithConsumeJTIFunc(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var checkJTIFunc goidc.CheckJTIFunc = func(ctx context.Context, s string) error {
+	var consumeJTIFunc goidc.ConsumeJTIFunc = func(ctx context.Context, s string) error {
 		return nil
 	}
 
 	// When.
-	err := WithCheckJTIFunc(checkJTIFunc)(p)
+	err := WithConsumeJTIFunc(consumeJTIFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.CheckJTIFunc == nil {
-		t.Error("CheckJTIFunc cannot be nil")
+	if p.config.ConsumeJTIFunc == nil {
+		t.Error("ConsumeJTIFunc cannot be nil")
 	}
 }
 
@@ -2194,6 +2194,48 @@ func TestWithHTTPClientFunc(t *testing.T) {
 
 	if p.config.HTTPClientFunc == nil {
 		t.Error("HTTPClientFunc cannot be nil")
+	}
+}
+
+func TestWithJARHTTPClientFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithJARHTTPClientFunc(func(context.Context) *http.Client {
+		return &http.Client{}
+	})(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.JARHTTPClientFunc == nil {
+		t.Error("JARHTTPClientFunc cannot be nil")
+	}
+}
+
+func TestWithCIBAHTTPClientFunc(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithCIBAHTTPClientFunc(func(context.Context) *http.Client {
+		return &http.Client{}
+	})(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.CIBAHTTPClientFunc == nil {
+		t.Error("CIBAHTTPClientFunc cannot be nil")
 	}
 }
 

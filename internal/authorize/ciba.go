@@ -82,7 +82,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", errors.New("claim 'jti' is required in the request object"))
 			}
 
-			if err := ctx.CheckJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+			if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", fmt.Errorf("could not validate the request object jti: %w", err))
 			}
 
@@ -203,7 +203,7 @@ func validateCIBAHints(_ oidc.Context, req request, _ *goidc.Client) error {
 		numberOfHints++
 	}
 
-	if req.LoginTokenHint != "" {
+	if req.LoginHintToken != "" {
 		numberOfHints++
 	}
 

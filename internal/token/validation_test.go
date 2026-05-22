@@ -177,6 +177,61 @@ func TestValidateBindingRequirement(t *testing.T) {
 	}
 }
 
+func TestValidateBinding_DisabledFeatureForBoundGrant(t *testing.T) {
+	tests := []struct {
+		name    string
+		config  func(*oidc.Context, *goidc.Client) bindindValidationOptions
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name: "dpop bound grant with dpop disabled",
+			config: func(ctx *oidc.Context, c *goidc.Client) bindindValidationOptions {
+				ctx.DPoPIsEnabled = false
+				return bindindValidationOptions{
+					dpopIsRequired:    true,
+					dpopJWKThumbprint: "bound_thumbprint",
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "mtls bound grant with mtls disabled",
+			config: func(ctx *oidc.Context, c *goidc.Client) bindindValidationOptions {
+				ctx.MTLSTokenBindingIsEnabled = false
+				return bindindValidationOptions{
+					tlsIsRequired:     true,
+					tlsCertThumbprint: "bound_thumbprint",
+				}
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			client, _ := oidctest.NewClient(t)
+
+			err := ValidateBinding(ctx, client, func() *bindindValidationOptions {
+				opts := test.config(&ctx, client)
+				return &opts
+			}())
+
+			if err == nil {
+				t.Fatalf("expected error %q", test.wantErr)
+			}
+
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
+	}
+}
+
 func TestValidateScopes(t *testing.T) {
 	tests := []struct {
 		name    string
