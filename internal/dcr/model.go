@@ -10,30 +10,35 @@ import (
 )
 
 type request struct {
+	ClientID string `json:"client_id,omitempty"`
 	*client.Meta
 }
 
-func (r *request) UnmarshalJSON(data []byte) error {
+func (req *request) UnmarshalJSON(data []byte) error {
 	// Unmarshal into a map to capture all keys.
 	var allFields map[string]any
 	if err := json.Unmarshal(data, &allFields); err != nil {
 		return err
 	}
 
-	var c client.Meta
-	if err := json.Unmarshal(data, &c); err != nil {
+	type alias request
+	var reqAlias alias
+	if err := json.Unmarshal(data, &reqAlias); err != nil {
 		return err
 	}
 
-	c.CustomAttributes = make(map[string]any)
+	if reqAlias.Meta == nil {
+		reqAlias.Meta = &client.Meta{}
+	}
+	reqAlias.CustomAttributes = make(map[string]any)
 	for key, value := range allFields {
 		if !slices.Contains(client.JSONFields, key) {
-			c.CustomAttributes[key] = value
+			reqAlias.CustomAttributes[key] = value
 		}
 	}
 
-	r.Meta = &c
-
+	req.ClientID = reqAlias.ClientID
+	req.Meta = reqAlias.Meta
 	return nil
 }
 

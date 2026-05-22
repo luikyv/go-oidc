@@ -2,7 +2,6 @@ package dcr
 
 import (
 	"encoding/json"
-	"fmt"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -117,18 +116,20 @@ func TestResponseMarshalJSON_OmitsEmptySecret(t *testing.T) {
 func TestRequestUnmarshalJSON(t *testing.T) {
 	// Given.
 	testCases := []struct {
+		name    string
 		payload []byte
 		want    request
 	}{
 		{
-			[]byte(`{
+			name: "metadata and custom attributes",
+			payload: []byte(`{
 				"client_name": "Test Client",
 				"logo_uri": "https://example.com/logo.png",
 				"custom_field_1": "Value 1",
 				"custom_field_2": 123
 			}`),
-			request{
-				&client.Meta{
+			want: request{
+				Meta: &client.Meta{
 					ClientMeta: goidc.ClientMeta{
 						Name:    "Test Client",
 						LogoURI: "https://example.com/logo.png",
@@ -140,12 +141,46 @@ func TestRequestUnmarshalJSON(t *testing.T) {
 				},
 			},
 		},
+		{
+			name: "client id is decoded and excluded from custom attributes",
+			payload: []byte(`{
+				"client_id": "client_123",
+				"client_name": "Test Client",
+				"custom_field": "custom_value"
+			}`),
+			want: request{
+				ClientID: "client_123",
+				Meta: &client.Meta{
+					ClientMeta: goidc.ClientMeta{
+						Name: "Test Client",
+						CustomAttributes: map[string]any{
+							"custom_field": "custom_value",
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "custom-only payload allocates meta",
+			payload: []byte(`{
+				"custom_field": "custom_value"
+			}`),
+			want: request{
+				Meta: &client.Meta{
+					ClientMeta: goidc.ClientMeta{
+						CustomAttributes: map[string]any{
+							"custom_field": "custom_value",
+						},
+					},
+				},
+			},
+		},
 	}
 
 	// When.
-	for i, testCase := range testCases {
+	for _, testCase := range testCases {
 		t.Run(
-			fmt.Sprintf("case %d", i),
+			testCase.name,
 			func(t *testing.T) {
 				// Given.
 				var req request
@@ -160,6 +195,10 @@ func TestRequestUnmarshalJSON(t *testing.T) {
 
 				if diff := cmp.Diff(req, testCase.want); diff != "" {
 					t.Error(diff)
+				}
+
+				if _, ok := req.CustomAttributes["client_id"]; ok {
+					t.Fatal("client_id should not be stored as a custom attribute")
 				}
 			},
 		)

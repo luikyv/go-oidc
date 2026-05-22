@@ -2,6 +2,8 @@ package dcr
 
 import (
 	"crypto/subtle"
+	"errors"
+	"fmt"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -9,12 +11,16 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func create(ctx oidc.Context, initialToken string, req *client.Meta) (response, error) {
+func create(ctx oidc.Context, initialToken string, req request) (response, error) {
 	if err := ctx.ValidateInitalAccessToken(initialToken); err != nil {
-		return response{}, goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
 	}
 
-	if err := client.Resolve(ctx, req); err != nil {
+	if req.ClientID != "" {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", errors.New("client_id is not allowed"))
+	}
+
+	if err := client.Resolve(ctx, req.Meta); err != nil {
 		return response{}, err
 	}
 
@@ -58,13 +64,17 @@ func create(ctx oidc.Context, initialToken string, req *client.Meta) (response, 
 	}, nil
 }
 
-func update(ctx oidc.Context, id, tkn string, req *client.Meta) (response, error) {
+func update(ctx oidc.Context, id, tkn string, req request) (response, error) {
 	c, err := protected(ctx, id, tkn)
 	if err != nil {
 		return response{}, err
 	}
 
-	if err := client.Resolve(ctx, req); err != nil {
+	if c.ID != req.ClientID {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid metadata", errors.New("client id mismatch"))
+	}
+
+	if err := client.Resolve(ctx, req.Meta); err != nil {
 		return response{}, err
 	}
 
@@ -170,11 +180,14 @@ func remove(ctx oidc.Context, id, regToken string) error {
 func protected(ctx oidc.Context, id, regToken string) (*goidc.Client, error) {
 	c, err := ctx.DCRClient(id)
 	if err != nil {
-		return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "could not find the client", err)
+		if errors.Is(err, goidc.ErrNotFound) {
+			return nil, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", err)
+		}
+		return nil, fmt.Errorf("could not fetch the client: %w", err)
 	}
 
 	if subtle.ConstantTimeCompare([]byte(regToken), []byte(c.RegistrationToken)) != 1 {
-		return nil, goidc.NewError(goidc.ErrorCodeAccessDenied, "invalid access token")
+		return nil, goidc.NewError(goidc.ErrorCodeInvalidToken, "invalid token")
 	}
 
 	return c, nil

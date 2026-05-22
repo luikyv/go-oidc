@@ -15,16 +15,16 @@ import (
 func TestCreate(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*testing.T) (oidc.Context, string, *client.Meta)
+		setup    func(*testing.T) (oidc.Context, string, request)
 		wantErr  goidc.ErrorCode
 		validate func(*testing.T, oidc.Context, response)
 	}{
 		{
 			name: "happy path",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response) {
 				if resp.ID == "" {
@@ -43,23 +43,23 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "invalid initial token",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				ctx.DCRValidateInitialTokenFunc = func(_ context.Context, _ string) error {
 					return errors.New("invalid token")
 				}
-				return ctx, "bad_token", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "bad_token", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
-			wantErr: goidc.ErrorCodeAccessDenied,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 		{
 			name: "secret generated for secret basic",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response) {
 				if resp.Secret == "" {
@@ -72,13 +72,13 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "no secret for public client",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
 				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				c.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response) {
 				if resp.Secret != "" {
@@ -88,11 +88,11 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "secret generated for secret jwt",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response) {
 				if resp.Secret == "" {
@@ -102,11 +102,11 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "secret generated for secret post",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretPost
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response) {
 				if resp.Secret == "" {
@@ -116,13 +116,13 @@ func TestCreate(t *testing.T) {
 		},
 		{
 			name: "handle dynamic client error",
-			setup: func(t *testing.T) (oidc.Context, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, request) {
 				c, _ := oidctest.NewClient(t)
 				ctx := newDCRContext(t)
 				ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
 					return goidc.NewError(goidc.ErrorCodeInvalidClientMetadata, "handler error")
 				}
-				return ctx, "", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, "", request{Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			wantErr: goidc.ErrorCodeInvalidClientMetadata,
 		},
@@ -166,16 +166,16 @@ func TestCreate(t *testing.T) {
 func TestUpdate(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*testing.T) (oidc.Context, string, string, *client.Meta)
+		setup    func(*testing.T) (oidc.Context, string, string, request)
 		wantErr  goidc.ErrorCode
 		validate func(*testing.T, oidc.Context, response, string)
 	}{
 		{
 			name: "happy path",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				ctx.DCRTokenRotationIsEnabled = false
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response, clientID string) {
 				if resp.ID != clientID {
@@ -188,10 +188,10 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "token rotation",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				ctx.DCRTokenRotationIsEnabled = true
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response, clientID string) {
 				if resp.ID != clientID {
@@ -204,7 +204,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "secret generated for secret basic",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
 				c.Secret = ""
@@ -215,7 +215,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret == "" {
@@ -238,7 +238,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "secret generated for secret jwt",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
 				c.Secret = ""
@@ -249,7 +249,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.TokenAuthnMethod = goidc.AuthnMethodSecretJWT
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret == "" {
@@ -269,7 +269,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "secret generated for secret post",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
 				c.Secret = ""
@@ -280,7 +280,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.TokenAuthnMethod = goidc.AuthnMethodSecretPost
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret == "" {
@@ -300,7 +300,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "secret expiry set from lifetime",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				ctx.DCRSecretLifetimeSecs = 300
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
@@ -312,7 +312,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret == "" {
@@ -331,7 +331,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "keeps existing secret and expiry when secret rotation is disabled",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				expiresAt := 12345
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
@@ -343,7 +343,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.Name = "Updated Name"
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret != "" {
@@ -363,7 +363,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "rotates existing secret when secret rotation is enabled",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				ctx.DCRSecretRotationIsEnabled = true
 				ctx.DCRSecretLifetimeSecs = 300
@@ -377,7 +377,7 @@ func TestUpdate(t *testing.T) {
 
 				meta := c.ClientMeta
 				meta.Name = "Updated Name"
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret == "" {
@@ -402,7 +402,7 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "clears secret and secret expiry for public client",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				expiresAt := timeutil.TimestampNow() + 300
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
@@ -416,7 +416,7 @@ func TestUpdate(t *testing.T) {
 				meta.TokenAuthnMethod = goidc.AuthnMethodNone
 				meta.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				meta.ResponseTypes = []goidc.ResponseType{goidc.ResponseTypeCode}
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: meta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: meta}}
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
 				if resp.Secret != "" {
@@ -436,28 +436,28 @@ func TestUpdate(t *testing.T) {
 		},
 		{
 			name: "invalid token",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, _ := setUp(t)
-				return ctx, c.ID, "wrong_token", &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, c.ID, "wrong_token", request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
-			wantErr: goidc.ErrorCodeAccessDenied,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 		{
 			name: "client not found",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, _, regToken := setUp(t)
-				return ctx, "nonexistent_client", regToken, &client.Meta{}
+				return ctx, "nonexistent_client", regToken, request{ClientID: "nonexistent_client", Meta: &client.Meta{}}
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 		{
 			name: "handle dynamic client error",
-			setup: func(t *testing.T) (oidc.Context, string, string, *client.Meta) {
+			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
 				ctx.DCRHandleClientFunc = func(_ context.Context, _ string, _ *goidc.ClientMeta) error {
 					return errors.New("handler error")
 				}
-				return ctx, c.ID, regToken, &client.Meta{ClientMeta: c.ClientMeta}
+				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			wantErr: goidc.ErrorCodeInvalidClientMetadata,
 		},
@@ -640,7 +640,7 @@ func TestFetch(t *testing.T) {
 				ctx, c, _ := setUp(t)
 				return ctx, c.ID, "invalid_token"
 			},
-			wantErr: goidc.ErrorCodeAccessDenied,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 		{
 			name: "client not found",
@@ -648,7 +648,7 @@ func TestFetch(t *testing.T) {
 				ctx, _, regToken := setUp(t)
 				return ctx, "nonexistent_client", regToken
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 	}
 
@@ -713,7 +713,7 @@ func TestRemove(t *testing.T) {
 				ctx, c, _ := setUp(t)
 				return ctx, c.ID, "invalid_token"
 			},
-			wantErr: goidc.ErrorCodeAccessDenied,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 		{
 			name: "client not found",
@@ -723,7 +723,7 @@ func TestRemove(t *testing.T) {
 				ctx.DCRManager = oidctest.Manager(t, ctx)
 				return ctx, "nonexistent_client", "some_token"
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr: goidc.ErrorCodeInvalidToken,
 		},
 	}
 
