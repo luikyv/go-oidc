@@ -272,57 +272,50 @@ func TestDefaultHTTPClientFuncDoesNotFollowRedirects(t *testing.T) {
 	}
 }
 
-func TestNew_JARByReferenceUnregisteredURIsRequireJARByReference(t *testing.T) {
+func TestNew_ValidationErrors(t *testing.T) {
 	issuer := "https://example.com"
 	var jwksFunc goidc.JWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 		return goidc.JSONWebKeySet{}, nil
 	}
 
-	_, err := New(
-		issuer,
-		storage.NewManager(100),
-		jwksFunc,
-		WithJARByReferenceUnregisteredURIs(),
-	)
-	if err == nil {
-		t.Fatal("New() error = nil, want non-nil")
-	}
-	if got, want := err.Error(), "jar by-reference unregistered uris cannot be enabled without jar by-reference"; got != want {
-		t.Fatalf("New() error = %q, want %q", got, want)
-	}
-}
-
-func TestValidate_DCRSecretLifetimeRequiresSecretClientAuth(t *testing.T) {
-	op := &Provider{
-		config: oidc.Configuration{
-			DCRSecretLifetimeSecs: 300,
-			TokenAuthnMethods:     []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
+	tests := []struct {
+		name    string
+		opts    []Option
+		wantErr string
+	}{
+		{
+			name:    "jar by-reference unregistered uris require jar by-reference",
+			opts:    []Option{WithJARByReferenceUnregisteredURIs()},
+			wantErr: "jar by-reference unregistered uris cannot be enabled without jar by-reference",
+		},
+		{
+			name: "dcr secret lifetime requires secret client auth",
+			opts: []Option{
+				WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
+				WithDCRSecretLifetime(300),
+			},
+			wantErr: "dcr secret lifetime requires a secret-based token authentication method",
+		},
+		{
+			name: "dcr secret rotation requires secret client auth",
+			opts: []Option{
+				WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT),
+				WithDCRSecretRotation(),
+			},
+			wantErr: "dcr secret rotation requires a secret-based token authentication method",
 		},
 	}
 
-	err := op.validate()
-	if err == nil {
-		t.Fatal("validate() error = nil, want non-nil")
-	}
-	if got, want := err.Error(), "dcr secret lifetime requires a secret-based token authentication method"; got != want {
-		t.Fatalf("validate() error = %q, want %q", got, want)
-	}
-}
-
-func TestValidate_DCRSecretRotationRequiresSecretClientAuth(t *testing.T) {
-	op := &Provider{
-		config: oidc.Configuration{
-			DCRSecretRotationIsEnabled: true,
-			TokenAuthnMethods:          []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
-		},
-	}
-
-	err := op.validate()
-	if err == nil {
-		t.Fatal("validate() error = nil, want non-nil")
-	}
-	if got, want := err.Error(), "dcr secret rotation requires a secret-based token authentication method"; got != want {
-		t.Fatalf("validate() error = %q, want %q", got, want)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			_, err := New(issuer, storage.NewManager(100), jwksFunc, test.opts...)
+			if err == nil {
+				t.Fatal("New() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("New() error = %q, want %q", got, test.wantErr)
+			}
+		})
 	}
 }
 
