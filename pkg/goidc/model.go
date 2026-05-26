@@ -6,20 +6,17 @@ import (
 	"encoding/json"
 	"maps"
 	"net/http"
+	"reflect"
 	"slices"
 	"strings"
 )
 
-// GrantManager stores grants and access tokens.
+// GrantManager stores grants.
 type GrantManager interface {
 	SaveGrant(context.Context, *Grant) error
 	// Grant returns the grant identified by id.
 	// It must return [ErrNotFound] when the grant does not exist.
 	Grant(context.Context, string) (*Grant, error)
-	SaveToken(context.Context, *Token) error
-	// Token returns the token identified by id.
-	// It must return [ErrNotFound] when the token does not exist.
-	Token(context.Context, string) (*Token, error)
 }
 
 // AuthManager stores authorization sessions and resolves grants by
@@ -96,6 +93,15 @@ type DeviceAuthManager interface {
 	// GrantByDeviceCode returns the grant associated with the device code.
 	// It must return [ErrNotFound] when the grant does not exist.
 	GrantByDeviceCode(context.Context, string) (*Grant, error)
+}
+
+// OpaqueTokenManager stores and retrieves opaque access tokens.
+// It is only required when opaque tokens are enabled.
+type OpaqueTokenManager interface {
+	SaveToken(context.Context, *Token) error
+	// Token returns the token identified by id.
+	// It must return [ErrNotFound] when the token does not exist.
+	Token(context.Context, string) (*Token, error)
 }
 
 type JWKSFunc func(context.Context) (JSONWebKeySet, error)
@@ -243,6 +249,7 @@ const (
 	ClaimStateHash           string = "s_hash"
 	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash" //nolint:gosec
 	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
+	ClaimGrantID             string = "grant_id"
 )
 
 type KeyUsage string
@@ -534,7 +541,7 @@ type TokenConfirmation struct {
 
 type TokenInfo struct {
 	// GrantID is the ID of the grant associated to token.
-	GrantID           string       `json:"-"`
+	GrantID           string       `json:"grant_id,omitempty"`
 	IsActive          bool         `json:"active"`
 	Type              TokenType    `json:"token_type,omitempty"`
 	Scopes            string       `json:"scope,omitempty"`
@@ -552,7 +559,37 @@ type TokenInfo struct {
 	AdditionalClaims map[string]any     `json:"-"`
 }
 
+func (ti *TokenInfo) UnmarshalJSON(data []byte) error {
+	type tokenInfo TokenInfo
+	if err := json.Unmarshal(data, (*tokenInfo)(ti)); err != nil {
+		return err
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	t := reflect.TypeFor[tokenInfo]()
+	for i := range t.NumField() {
+		tag := t.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			delete(raw, name)
+		}
+	}
+
+	if len(raw) > 0 {
+		ti.AdditionalClaims = raw
+	}
+
+	return nil
+}
+
 func (ti TokenInfo) MarshalJSON() ([]byte, error) {
+	if !ti.IsActive {
+		return json.Marshal(map[string]any{"active": false})
+	}
+
 	type tokenInfo TokenInfo
 	attributesBytes, err := json.Marshal(tokenInfo(ti))
 	if err != nil {

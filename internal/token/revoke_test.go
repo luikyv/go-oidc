@@ -37,7 +37,7 @@ func TestRevoke(t *testing.T) {
 	saveAccessToken := func(tb testing.TB, ctx oidc.Context, id, grantID, clientID string, expiresAt int) {
 		tb.Helper()
 
-		if err := ctx.SaveToken(&goidc.Token{
+		if err := ctx.SaveOpaqueToken(&goidc.Token{
 			ID:        id,
 			GrantID:   grantID,
 			ClientID:  clientID,

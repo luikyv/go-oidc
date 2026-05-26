@@ -63,7 +63,7 @@ func TestIntrospect(t *testing.T) {
 					CreatedAt: now,
 					ClientID:  c.ID,
 				})
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},
@@ -113,7 +113,7 @@ func TestIntrospect(t *testing.T) {
 					ClientID:  c.ID,
 					Username:  "alice",
 				})
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},
@@ -217,7 +217,7 @@ func TestIntrospect(t *testing.T) {
 					ExpiresAt: now,
 					Scopes:    goidc.ScopeOpenID.ID,
 				}
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},
@@ -249,7 +249,7 @@ func TestIntrospect(t *testing.T) {
 					CreatedAt: now,
 					ClientID:  c.ID,
 				})
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},
@@ -288,7 +288,7 @@ func TestIntrospect(t *testing.T) {
 					CreatedAt: now,
 					ClientID:  c.ID,
 				})
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},
@@ -393,7 +393,7 @@ func TestIntrospect(t *testing.T) {
 					CreatedAt: now,
 					ClientID:  c.ID,
 				})
-				_ = ctx.SaveToken(token)
+				_ = ctx.SaveOpaqueToken(token)
 
 				return ctx, queryRequest{token: accessToken}, c
 			},

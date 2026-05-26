@@ -703,8 +703,8 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 				if got := ctx.DeviceCode(); got != "device" {
 					t.Fatalf("DeviceCode() = %q, want %q", got, "device")
 				}
-				if got := ctx.OpaqueToken(grant); got != "opaque_grant_id" {
-					t.Fatalf("OpaqueToken() = %q, want %q", got, "opaque_grant_id")
+				if got := ctx.OpaqueTokenValue(grant); got != "opaque_grant_id" {
+					t.Fatalf("OpaqueTokenValue() = %q, want %q", got, "opaque_grant_id")
 				}
 			},
 		},
@@ -935,11 +935,11 @@ func TestManagerDelegates(t *testing.T) {
 		}
 
 		token := &goidc.Token{ID: "token_id", GrantID: grant.ID}
-		if err := ctx.SaveToken(token); err != nil {
+		if err := ctx.SaveOpaqueToken(token); err != nil {
 			t.Fatalf("SaveToken() error = %v", err)
 		}
 
-		gotToken, err := ctx.Token(token.ID)
+		gotToken, err := ctx.OpaqueToken(token.ID)
 		if err != nil {
 			t.Fatalf("Token() error = %v", err)
 		}

@@ -72,12 +72,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 					t.Fatal("expected device code to be marked as consumed")
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
@@ -87,11 +81,11 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 					"sub":       grant.Subject,
 					"client_id": grant.ClientID,
 					"scope":     grant.Scopes,
-					"exp":       float64(token.ExpiresAt),
-					"iat":       float64(token.CreatedAt),
-					"jti":       token.ID,
+					"grant_id":  grant.ID,
 				}
-				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
 				}
 
@@ -112,10 +106,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeExpiredToken,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -137,10 +127,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -170,10 +156,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeAuthPending,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -200,10 +182,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeExpiredToken,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -248,10 +226,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -267,10 +241,6 @@ func TestGenerateDeviceCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))

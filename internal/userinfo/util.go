@@ -20,7 +20,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", errors.New("authorization bearer token is required"))
 	}
 
-	tokenInfo, err := token.Introspect(ctx, accessToken)
+	tokenInfo, grant, err := token.Introspect(ctx, accessToken)
 	if err != nil {
 		return response{}, fmt.Errorf("could not introspect the access token: %w", err)
 	}
@@ -42,11 +42,6 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	c, err := client.Client(ctx, tokenInfo.ClientID)
 	if err != nil {
 		return response{}, fmt.Errorf("could not load the client for the active token: %w", err)
-	}
-
-	grant, err := ctx.Grant(tokenInfo.GrantID)
-	if err != nil {
-		return response{}, fmt.Errorf("could not load the grant for the active token: %w", err)
 	}
 
 	subType := ctx.SubIdentifierTypeDefault

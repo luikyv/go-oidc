@@ -7,10 +7,8 @@ import (
 	"net/url"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/luikyv/go-oidc/internal/hashutil"
@@ -282,38 +280,26 @@ func TestMakeIDToken(t *testing.T) {
 	}
 }
 
-func TestMakeAccessToken(t *testing.T) {
+func TestIssue(t *testing.T) {
 	tests := []struct {
 		name     string
-		setup    func(*testing.T) (oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client)
+		setup    func(*testing.T) (oidc.Context, *goidc.Grant, *goidc.Client)
 		validate func(*testing.T, oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client, string)
 	}{
 		{
 			name: "jwt",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client) {
+			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
 				ctx.TokenClaimsFunc = func(_ context.Context, _ *goidc.Token, _ *goidc.Grant) map[string]any {
 					return map[string]any{"random_claim": "random_value"}
 				}
 				client, _ := oidctest.NewClient(t)
 				grant := &goidc.Grant{
+					ID:       "grant_id",
 					Subject:  "random_subject",
 					ClientID: client.ID,
 				}
-				opts := ctx.TokenOptions(grant, client)
-				now := timeutil.TimestampNow()
-				tkn := &goidc.Token{
-					ID:        ctx.JWTID(),
-					GrantID:   grant.ID,
-					Subject:   grant.Subject,
-					ClientID:  grant.ClientID,
-					Scopes:    grant.Scopes,
-					CreatedAt: now,
-					ExpiresAt: now + opts.LifetimeSecs,
-					Format:    opts.Format,
-					SigAlg:    opts.JWTSigAlg,
-				}
-				return ctx, tkn, grant, client
+				return ctx, grant, client
 			},
 			validate: func(t *testing.T, ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant, client *goidc.Client, tokenValue string) {
 				if tkn.Format != goidc.TokenFormatJWT {
@@ -331,6 +317,7 @@ func TestMakeAccessToken(t *testing.T) {
 					"sub":          grant.Subject,
 					"client_id":    client.ID,
 					"scope":        grant.Scopes,
+					"grant_id":     grant.ID,
 					"exp":          float64(tkn.ExpiresAt),
 					"iat":          float64(now),
 					"random_claim": "random_value",
@@ -347,25 +334,18 @@ func TestMakeAccessToken(t *testing.T) {
 		},
 		{
 			name: "opaque",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client) {
+			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
 				ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 					return goidc.NewOpaqueTokenOptions(60)
 				}
-				grant := &goidc.Grant{Subject: "random_subject"}
-				client := &goidc.Client{}
-				opts := ctx.TokenOptions(grant, client)
-				now := timeutil.TimestampNow()
-				tkn := &goidc.Token{
-					ID:        ctx.OpaqueToken(grant),
-					GrantID:   grant.ID,
-					Subject:   grant.Subject,
-					CreatedAt: now,
-					ExpiresAt: now + opts.LifetimeSecs,
-					Format:    opts.Format,
-					SigAlg:    opts.JWTSigAlg,
+				client, _ := oidctest.NewClient(t)
+				grant := &goidc.Grant{
+					ID:       "grant_id",
+					Subject:  "random_subject",
+					ClientID: client.ID,
 				}
-				return ctx, tkn, grant, client
+				return ctx, grant, client
 			},
 			validate: func(t *testing.T, _ oidc.Context, tkn *goidc.Token, _ *goidc.Grant, _ *goidc.Client, tokenValue string) {
 				if tkn.Format != goidc.TokenFormatOpaque {
@@ -378,31 +358,17 @@ func TestMakeAccessToken(t *testing.T) {
 		},
 		{
 			name: "jwt with confirmation",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client) {
+			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
 				client, _ := oidctest.NewClient(t)
 				grant := &goidc.Grant{
+					ID:             "grant_id",
 					Subject:        "random_subject",
 					ClientID:       client.ID,
 					JWKThumbprint:  "dpop_thumbprint",
 					CertThumbprint: "tls_thumbprint",
 				}
-				opts := ctx.TokenOptions(grant, client)
-				now := timeutil.TimestampNow()
-				tkn := &goidc.Token{
-					ID:             ctx.JWTID(),
-					GrantID:        grant.ID,
-					Subject:        grant.Subject,
-					ClientID:       grant.ClientID,
-					Scopes:         grant.Scopes,
-					JWKThumbprint:  grant.JWKThumbprint,
-					CertThumbprint: grant.CertThumbprint,
-					CreatedAt:      now,
-					ExpiresAt:      now + opts.LifetimeSecs,
-					Format:         opts.Format,
-					SigAlg:         opts.JWTSigAlg,
-				}
-				return ctx, tkn, grant, client
+				return ctx, grant, client
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ *goidc.Token, _ *goidc.Grant, _ *goidc.Client, tokenValue string) {
 				claims, err := oidctest.SafeClaims(tokenValue, oidctest.PrivateJWKS(t, ctx).Keys[0])
@@ -424,7 +390,7 @@ func TestMakeAccessToken(t *testing.T) {
 		},
 		{
 			name: "unsigned jwt",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Token, *goidc.Grant, *goidc.Client) {
+			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
 				ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 					return goidc.NewJWTTokenOptions(goidc.None, 60)
@@ -434,23 +400,11 @@ func TestMakeAccessToken(t *testing.T) {
 				}
 				client, _ := oidctest.NewClient(t)
 				grant := &goidc.Grant{
+					ID:       "grant_id",
 					Subject:  "random_subject",
 					ClientID: client.ID,
 				}
-				opts := ctx.TokenOptions(grant, client)
-				now := timeutil.TimestampNow()
-				tkn := &goidc.Token{
-					ID:        ctx.JWTID(),
-					GrantID:   grant.ID,
-					Subject:   grant.Subject,
-					ClientID:  grant.ClientID,
-					Scopes:    grant.Scopes,
-					CreatedAt: now,
-					ExpiresAt: now + opts.LifetimeSecs,
-					Format:    opts.Format,
-					SigAlg:    opts.JWTSigAlg,
-				}
-				return ctx, tkn, grant, client
+				return ctx, grant, client
 			},
 			validate: func(t *testing.T, _ oidc.Context, tkn *goidc.Token, _ *goidc.Grant, _ *goidc.Client, tokenValue string) {
 				if tkn.Format != goidc.TokenFormatJWT {
@@ -465,9 +419,9 @@ func TestMakeAccessToken(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, tkn, grant, client := test.setup(t)
+			ctx, grant, client := test.setup(t)
 
-			tokenValue, err := makeAccessToken(ctx, tkn, grant)
+			tkn, tokenValue, err := Issue(ctx, grant, client, nil)
 			if err != nil {
 				t.Fatalf("unexpected error: %v", err)
 			}
@@ -477,175 +431,6 @@ func TestMakeAccessToken(t *testing.T) {
 	}
 }
 
-func TestExtractID(t *testing.T) {
-	tests := []struct {
-		name    string
-		setup   func(*testing.T) (oidc.Context, string, string)
-		wantErr goidc.ErrorCode
-	}{
-		{
-			name: "opaque token",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				return ctx, "opaque_token_value", "opaque_token_value"
-			},
-		},
-		{
-			name: "jwt token",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				client, _ := oidctest.NewClient(t)
-				ctx.StaticClients = append(ctx.StaticClients, client)
-
-				grant := &goidc.Grant{
-					ID:       "grant_id",
-					ClientID: client.ID,
-					Subject:  "user",
-				}
-				tkn, tokenValue, err := Issue(ctx, grant, client, nil)
-				if err != nil {
-					t.Fatalf("error issuing token: %v", err)
-				}
-
-				return ctx, tokenValue, tkn.ID
-			},
-		},
-		{
-			name: "malformed jwt",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				return ctx, "not.a.jwt", ""
-			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
-		},
-		{
-			name: "jwt missing kid",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				jwk, err := ctx.JWKByAlg(goidc.PS256)
-				if err != nil {
-					t.Fatalf("JWKByAlg() error = %v", err)
-				}
-				jwk.KeyID = ""
-
-				tokenValue, err := joseutil.Sign(
-					jwt.Claims{
-						Issuer:   ctx.Issuer(),
-						IssuedAt: jwt.NewNumericDate(timeutil.Now()),
-						Expiry:   jwt.NewNumericDate(timeutil.Now().Add(time.Minute)),
-					},
-					jose.SigningKey{Algorithm: goidc.PS256, Key: jwk},
-					nil,
-				)
-				if err != nil {
-					t.Fatalf("Sign() error = %v", err)
-				}
-
-				return ctx, tokenValue, ""
-			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
-		},
-		{
-			name: "jwt with unknown kid",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				jwk, err := ctx.JWKByAlg(goidc.PS256)
-				if err != nil {
-					t.Fatalf("JWKByAlg() error = %v", err)
-				}
-				jwk.KeyID = "unknown_kid"
-
-				tokenValue, err := joseutil.Sign(
-					map[string]any{
-						"iss": ctx.Issuer(),
-						"exp": timeutil.TimestampNow() + 60,
-						"iat": timeutil.TimestampNow(),
-						"jti": "token_id",
-					},
-					jose.SigningKey{Algorithm: goidc.PS256, Key: jwk},
-					nil,
-				)
-				if err != nil {
-					t.Fatalf("Sign() error = %v", err)
-				}
-
-				return ctx, tokenValue, ""
-			},
-			wantErr: goidc.ErrorCodeAccessDenied,
-		},
-		{
-			name: "jwt not issued by server",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				tokenValue, err := ctx.Sign(
-					map[string]any{
-						"iss": "https://other.example.com",
-						"exp": timeutil.TimestampNow() + 60,
-						"iat": timeutil.TimestampNow(),
-						"jti": "token_id",
-					},
-					goidc.PS256,
-					nil,
-				)
-				if err != nil {
-					t.Fatalf("Sign() error = %v", err)
-				}
-
-				return ctx, tokenValue, ""
-			},
-			wantErr: goidc.ErrorCodeAccessDenied,
-		},
-		{
-			name: "jwt with no jti claim",
-			setup: func(t *testing.T) (oidc.Context, string, string) {
-				ctx := oidctest.NewContext(t)
-				tokenValue, err := ctx.Sign(
-					jwt.Claims{
-						Issuer:   ctx.Issuer(),
-						IssuedAt: jwt.NewNumericDate(timeutil.Now()),
-						Expiry:   jwt.NewNumericDate(timeutil.Now().Add(time.Minute)),
-					},
-					goidc.PS256,
-					nil,
-				)
-				if err != nil {
-					t.Fatalf("Sign() error = %v", err)
-				}
-
-				return ctx, tokenValue, ""
-			},
-			wantErr: goidc.ErrorCodeAccessDenied,
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx, tokenValue, want := test.setup(t)
-
-			id, err := ExtractID(ctx, tokenValue)
-			if test.wantErr != "" {
-				if err == nil {
-					t.Fatalf("expected error %s", test.wantErr)
-				}
-				var oidcErr goidc.Error
-				if !errors.As(err, &oidcErr) {
-					t.Fatalf("expected goidc.Error, got %v", err)
-				}
-				if oidcErr.Code != test.wantErr {
-					t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
-				}
-				return
-			}
-
-			if err != nil {
-				t.Fatalf("unexpected error: %v", err)
-			}
-			if id != want {
-				t.Fatalf("ID = %s, want %s", id, want)
-			}
-		})
-	}
-}
 
 func TestGenerateToken(t *testing.T) {
 	tests := []struct {
@@ -744,7 +529,7 @@ func TestGenerateToken(t *testing.T) {
 				if diff := cmp.Diff(
 					claims,
 					want,
-					cmpopts.IgnoreMapEntries(func(k string, _ any) bool { return k == "jti" }),
+					cmpopts.IgnoreMapEntries(func(k string, _ any) bool { return k == "jti" || k == "grant_id" }),
 					cmpopts.EquateApprox(0, 1),
 				); diff != "" {
 					t.Error(diff)

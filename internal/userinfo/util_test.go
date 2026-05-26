@@ -57,7 +57,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			Scopes:    goidc.ScopeOpenID.ID,
 		}
 
-		if err := ctx.SaveToken(tokenEntity); err != nil {
+		if err := ctx.SaveOpaqueToken(tokenEntity); err != nil {
 			t.Fatalf("error saving the token during setup: %v", err)
 		}
 		ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenID))
@@ -390,7 +390,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
 				ctx, client, tokenEntity := setup(t)
 				tokenEntity.ClientID = "missing_client"
-				if err := ctx.SaveToken(tokenEntity); err != nil {
+				if err := ctx.SaveOpaqueToken(tokenEntity); err != nil {
 					t.Fatalf("error saving the token during setup: %v", err)
 				}
 				return ctx, client, tokenEntity

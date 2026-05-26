@@ -52,10 +52,10 @@ type Provider struct {
 // needed, which can be retrieved using "jwksFunc".
 //
 // Default Settings:
-//   - ID tokens are signed using [defaultAsymmetricSigAlg]. Ensure a JWK supporting RS256 is
+//   - ID tokens are signed using [defaultAsymmetricSigAlg]. Ensure a JWK supporting [defaultAsymmetricSigAlg] is
 //     available in the server's JWKS.
 //     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
-//   - Access tokens are issued as opaque tokens.
+//   - Access tokens are issued as JWTs signed with the ID token default algorithm.
 func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opts ...Option) (*Provider, error) {
 	op := &Provider{
 		config: oidc.Configuration{
@@ -105,6 +105,10 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
 	}
 
+	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && !op.config.OpaqueTokenIsEnabled {
+		return nil, errors.New("opaque tokens must be enabled when using pairwise subject identifiers")
+	}
+
 	if op.config.ConsumeJTIFunc == nil {
 		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithConsumeJTIFunc for production use.")
 	}
@@ -112,6 +116,10 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
 
 	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(inmemoryManager))
+	if op.config.OpaqueTokenIsEnabled {
+		op.config.OpaqueTokenManager = nonZeroOrDefault(op.config.OpaqueTokenManager, goidc.OpaqueTokenManager(inmemoryManager))
+		op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
+	}
 
 	op.config.Profile = nonZeroOrDefault(op.config.Profile, goidc.ProfileOpenID)
 
@@ -121,10 +129,8 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
-	op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
-
 	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
-	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, goidc.TokenOptionsFunc(defaultTokenOptionsFunc))
+	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, defaultTokenOptionsFunc(op.config.IDTokenDefaultSigAlg))
 
 	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
 	op.config.ConsumeJTIFunc = nonZeroOrDefault(op.config.ConsumeJTIFunc, goidc.ConsumeJTIFunc(defaultConsumeJTIFunc))
@@ -445,7 +451,8 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 
 func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	return token.Introspect(oidcCtx, tkn)
+	info, _, err := token.Introspect(oidcCtx, tkn)
+	return info, err
 }
 
 // TokenInfoFromRequest processes a request to retrieve information about an access token.
@@ -461,7 +468,7 @@ func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenIn
 		return "", goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
 	}
 
-	info, err := token.Introspect(ctx, accessToken)
+	info, _, err := token.Introspect(ctx, accessToken)
 	if err != nil {
 		return "", goidc.TokenInfo{}, err
 	}
@@ -613,8 +620,10 @@ const (
 	defaultEndpointDeviceVerification           = "/device"
 )
 
-func defaultTokenOptionsFunc(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
-	return goidc.NewOpaqueTokenOptions(defaultTokenLifetimeSecs)
+func defaultTokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {
+	return func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
+		return goidc.NewJWTTokenOptions(alg, defaultTokenLifetimeSecs)
+	}
 }
 
 func defaultOpaqueTokenFunc(_ context.Context, _ *goidc.Grant) string {

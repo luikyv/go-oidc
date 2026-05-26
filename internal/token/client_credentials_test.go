@@ -61,12 +61,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					t.Errorf("grant.RefreshToken = %q, want empty", grant.RefreshToken)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
@@ -76,11 +70,11 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					"sub":       c.ID,
 					"client_id": c.ID,
 					"scope":     grant.Scopes,
-					"exp":       float64(token.ExpiresAt),
-					"iat":       float64(token.CreatedAt),
-					"jti":       token.ID,
+					"grant_id":  grant.ID,
 				}
-				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
 				}
 				if resp.RefreshToken != "" {
@@ -109,13 +103,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					t.Error(diff)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				if diff := cmp.Diff(tokens[0].Resources, goidc.Resources{"https://resource.com"}); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.Resources, goidc.Resources{"https://resource.com"}); diff != "" {
 					t.Error(diff)
 				}
@@ -170,13 +157,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					t.Error(diff)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				if diff := cmp.Diff(tokens[0].AuthDetails, wantAuthDetails); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.AuthorizationDetails, wantAuthDetails); diff != "" {
 					t.Error(diff)
 				}
@@ -216,13 +196,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					t.Errorf("grant.Scopes = %q, want %q", grants[0].Scopes, oidctest.Scope1.ID)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				if tokens[0].Scopes != oidctest.Scope1.ID {
-					t.Errorf("token.Scopes = %q, want %q", tokens[0].Scopes, oidctest.Scope1.ID)
-				}
 				if resp.Scopes != oidctest.Scope1.ID {
 					t.Errorf("resp.Scopes = %q, want %q", resp.Scopes, oidctest.Scope1.ID)
 				}
@@ -247,17 +220,12 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 					t.Fatal("expected certificate thumbprint to be set on grant")
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
 				}
 				wantConfirmation := map[string]any{
-					"x5t#S256": tokens[0].CertThumbprint,
+					"x5t#S256": grants[0].CertThumbprint,
 				}
 				if diff := cmp.Diff(claims["cnf"], wantConfirmation); diff != "" {
 					t.Error(diff)
@@ -276,10 +244,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -295,10 +259,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeUnauthorizedClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -314,10 +274,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidScope,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -335,10 +291,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidTarget,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -360,10 +312,6 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidAuthDetails,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))

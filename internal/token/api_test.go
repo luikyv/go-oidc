@@ -67,7 +67,7 @@ func TestRegisterHandlers(t *testing.T) {
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
-				if err := ctx.SaveToken(token); err != nil {
+				if err := ctx.SaveOpaqueToken(token); err != nil {
 					t.Fatalf("SaveToken() error = %v", err)
 				}
 

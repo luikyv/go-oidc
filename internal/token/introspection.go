@@ -4,40 +4,96 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"time"
 
+	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/client"
+	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
-	info, err := func() (goidc.TokenInfo, error) {
-		id, err := ExtractID(ctx, tkn)
+func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, error) {
+	if joseutil.IsJWS(tkn) {
+		algs, err := ctx.SigAlgs()
 		if err != nil {
-			return goidc.TokenInfo{IsActive: false}, nil //nolint:nilerr
+			return goidc.TokenInfo{}, nil, fmt.Errorf("could not fetch signature algorithms: %w", err)
 		}
 
-		token, err := ctx.Token(id)
+		parsedToken, err := jwt.ParseSigned(tkn, algs)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the token for introspection: %w", err)
+			return goidc.TokenInfo{IsActive: false}, nil, nil //nolint:nilerr
+		}
+
+		if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
+			return goidc.TokenInfo{IsActive: false}, nil, nil
+		}
+
+		keyID := parsedToken.Headers[0].KeyID
+		publicKey, err := ctx.PublicJWK(keyID)
+		if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
+			return goidc.TokenInfo{IsActive: false}, nil, nil //nolint:nilerr
+		}
+
+		var claims jwt.Claims
+		var info goidc.TokenInfo
+		if err := parsedToken.Claims(publicKey.Key, &claims, &info); err != nil {
+			return goidc.TokenInfo{IsActive: false}, nil, nil //nolint:nilerr
+		}
+
+		if err := claims.ValidateWithLeeway(jwt.Expected{
+			Issuer: ctx.Issuer(),
+		}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
+			return goidc.TokenInfo{IsActive: false}, nil, nil //nolint:nilerr
+		}
+
+		grant, err := ctx.Grant(info.GrantID)
+		if err != nil {
+			if errors.Is(err, goidc.ErrNotFound) {
+				return goidc.TokenInfo{IsActive: false}, nil, nil
+			}
+			return goidc.TokenInfo{}, nil, fmt.Errorf("could not fetch the grant for token introspection: %w", err)
+		}
+
+		if grant.RevokedAt != 0 {
+			return goidc.TokenInfo{IsActive: false}, nil, nil
+		}
+
+		info.IsActive = true
+		info.Username = grant.Username
+		info.Type = goidc.TokenTypeBearer
+		if info.Confirmation != nil && info.Confirmation.JWKThumbprint != "" {
+			info.Type = goidc.TokenTypeDPoP
+		}
+		return info, grant, nil
+	}
+
+	info, grant, err := func() (goidc.TokenInfo, *goidc.Grant, error) {
+		if !ctx.OpaqueTokenIsEnabled {
+			return goidc.TokenInfo{}, nil, goidc.ErrNotFound
+		}
+
+		token, err := ctx.OpaqueToken(tkn)
+		if err != nil {
+			return goidc.TokenInfo{}, nil, fmt.Errorf("could not fetch the token for introspection: %w", err)
 		}
 
 		if timeutil.TimestampNow() >= token.ExpiresAt {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
 
 		if token.RevokedAt != 0 {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
 
 		grant, err := ctx.Grant(token.GrantID)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the grant for token introspection: %w", err)
+			return goidc.TokenInfo{}, nil, fmt.Errorf("could not fetch the grant for token introspection: %w", err)
 		}
 
 		if grant.RevokedAt != 0 {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
 
 		var cnf *goidc.TokenConfirmation
@@ -64,31 +120,31 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			Confirmation:      cnf,
 			ResourceAudiences: token.Resources,
 			AdditionalClaims:  ctx.TokenClaims(token, grant),
-		}, nil
+		}, grant, nil
 	}()
 	if err == nil {
-		return info, nil
+		return info, grant, nil
 	}
 	if !errors.Is(err, goidc.ErrNotFound) {
-		return goidc.TokenInfo{}, err
+		return goidc.TokenInfo{}, nil, err
 	}
 	if !slices.Contains(ctx.GrantTypes, goidc.GrantRefreshToken) {
-		return goidc.TokenInfo{IsActive: false}, nil
+		return goidc.TokenInfo{IsActive: false}, nil, nil
 	}
 
 	// If the token is not found as an access token, try fetching it as a refresh token.
-	info, err = func() (goidc.TokenInfo, error) {
+	info, grant, err = func() (goidc.TokenInfo, *goidc.Grant, error) {
 		grant, err := ctx.RefreshGrantByRefreshToken(tkn)
 		if err != nil {
-			return goidc.TokenInfo{}, fmt.Errorf("could not fetch the refresh token grant for introspection: %w", err)
+			return goidc.TokenInfo{}, nil, fmt.Errorf("could not fetch the refresh token grant for introspection: %w", err)
 		}
 
 		if grant.RevokedAt != 0 {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
 
 		if grant.RefreshTokenExpiresAt != 0 && timeutil.TimestampNow() >= grant.RefreshTokenExpiresAt {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
 
 		var cnf *goidc.TokenConfirmation
@@ -113,16 +169,16 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, error) {
 			ExpiresAt:         grant.RefreshTokenExpiresAt,
 			Confirmation:      cnf,
 			ResourceAudiences: grant.Resources,
-		}, nil
+		}, grant, nil
 	}()
 	if err != nil {
 		if errors.Is(err, goidc.ErrNotFound) {
-			return goidc.TokenInfo{IsActive: false}, nil
+			return goidc.TokenInfo{IsActive: false}, nil, nil
 		}
-		return goidc.TokenInfo{}, err
+		return goidc.TokenInfo{}, nil, err
 	}
 
-	return info, nil
+	return info, grant, nil
 }
 
 func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
@@ -139,7 +195,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	// The information of an invalid token must not be sent as an error.
 	// It will be returned as the default value of [goidc.TokenInfo] with the
 	// field is_active as false.
-	info, err := Introspect(ctx, req.token)
+	info, _, err := Introspect(ctx, req.token)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}
