@@ -57,6 +57,7 @@ func TestNew(t *testing.T) {
 			},
 			ignores: []string{
 				"GrantManager",
+				"OpaqueTokenManager",
 				"JWKSFunc",
 				"AuthSessionIDFunc",
 				"GrantIDFunc",
@@ -197,6 +198,7 @@ func TestNew(t *testing.T) {
 				"CIBAHandleSessionFunc",
 				"CIBAManager",
 				"GrantManager",
+				"OpaqueTokenManager",
 				"GrantIDFunc",
 				"JWTIDFunc",
 				"OpaqueTokenFunc",
@@ -391,7 +393,7 @@ func TestMakeToken(t *testing.T) {
 		claims,
 		wantedClaims,
 		cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
-			return k == "jti"
+			return k == "jti" || k == "grant_id"
 		}),
 		cmpopts.EquateApprox(0, 1),
 	); diff != "" {

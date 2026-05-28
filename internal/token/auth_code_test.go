@@ -78,12 +78,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatal("expected auth code to be marked as consumed")
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
@@ -93,11 +87,11 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					"sub":       grant.Subject,
 					"client_id": grant.ClientID,
 					"scope":     grant.Scopes,
-					"exp":       float64(token.ExpiresAt),
-					"iat":       float64(token.CreatedAt),
-					"jti":       token.ID,
+					"grant_id":  grant.ID,
 				}
-				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
 				}
 				if resp.RefreshToken != grant.RefreshToken {
@@ -130,15 +124,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, g *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-				if diff := cmp.Diff(token.AuthDetails, g.AuthDetails); diff != "" {
-					t.Error(diff)
-				}
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
@@ -193,14 +178,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					},
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-				if diff := cmp.Diff(token.AuthDetails, wantAuthDetails); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.AuthorizationDetails, wantAuthDetails); diff != "" {
 					t.Error(diff)
 				}
@@ -219,14 +196,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
 				wantResources := goidc.Resources{"https://resource1.com", "https://resource2.com"}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-				if diff := cmp.Diff(token.Resources, wantResources); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.Resources, wantResources); diff != "" {
 					t.Error(diff)
 				}
@@ -252,10 +221,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "invalid grant",
 			wantWrappedErr:  "the authorization code has already been redeemed",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -278,10 +243,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -308,10 +269,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -338,10 +295,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -368,10 +321,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -398,10 +347,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -427,10 +372,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -452,10 +393,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -485,18 +422,12 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 					t.Fatal("expected certificate thumbprint to be set on grant")
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing claims: %v", err)
 				}
 				wantConfirmation := map[string]any{
-					"x5t#S256": token.CertThumbprint,
+					"x5t#S256": grant.CertThumbprint,
 				}
 				if diff := cmp.Diff(claims["cnf"], wantConfirmation); diff != "" {
 					t.Error(diff)
@@ -540,9 +471,12 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].AuthCodeConsumedAt == 0 {
+					t.Fatal("expected auth code to be marked as consumed")
 				}
 			},
 		},
@@ -589,10 +523,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidAuthDetails,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -613,10 +543,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "invalid request",
 			wantWrappedErr:  "code is required",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -635,10 +561,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -659,10 +581,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "invalid grant",
 			wantWrappedErr:  "the authorization code has expired",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -683,10 +601,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "invalid grant",
 			wantWrappedErr:  "the redirect_uri does not match the authorization code",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -710,10 +624,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "invalid grant",
 			wantWrappedErr:  "the authorization code belongs to a different client",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -734,10 +644,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			wantDescription: "unauthorized client",
 			wantWrappedErr:  "the client is not allowed to use the authorization_code grant type",
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
@@ -756,16 +662,8 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
 				if resp.Scopes != goidc.ScopeOpenID.ID {
 					t.Errorf("resp.Scopes = %q, want %q", resp.Scopes, goidc.ScopeOpenID.ID)
-				}
-				if token.Scopes != goidc.ScopeOpenID.ID {
-					t.Errorf("token.Scopes = %q, want %q", token.Scopes, goidc.ScopeOpenID.ID)
 				}
 			},
 		},
@@ -778,10 +676,6 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidScope,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))

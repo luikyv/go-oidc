@@ -66,12 +66,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					t.Errorf("grant.ClientID = %q, want %q", grant.ClientID, c.ID)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				tokenClaims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing access token claims: %v", err)
@@ -81,11 +75,10 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					"sub":       "random_subject",
 					"scope":     grant.Scopes,
 					"client_id": c.ID,
-					"exp":       float64(token.ExpiresAt),
-					"iat":       float64(token.CreatedAt),
-					"jti":       token.ID,
 				}
-				if diff := cmp.Diff(tokenClaims, wantTokenClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(tokenClaims, wantTokenClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat" || k == "grant_id"
+				})); diff != "" {
 					t.Error(diff)
 				}
 
@@ -100,10 +93,10 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					"iss": ctx.Issuer(),
 					"sub": "random_subject",
 					"aud": c.ID,
-					"exp": float64(token.CreatedAt + ctx.IDTokenLifetimeSecs),
-					"iat": float64(token.CreatedAt),
 				}
-				if diff := cmp.Diff(idTokenClaims, wantIDTokenClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(idTokenClaims, wantIDTokenClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
 				}
 			},
@@ -124,12 +117,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					t.Errorf("grant.ClientID = %q, want empty", grants[0].ClientID)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				token := tokens[0]
-
 				tokenClaims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing access token claims: %v", err)
@@ -138,11 +125,10 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					"iss":   ctx.Issuer(),
 					"sub":   "random_subject",
 					"scope": grants[0].Scopes,
-					"exp":   float64(token.ExpiresAt),
-					"iat":   float64(token.CreatedAt),
-					"jti":   token.ID,
 				}
-				if diff := cmp.Diff(tokenClaims, wantTokenClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(tokenClaims, wantTokenClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat" || k == "grant_id"
+				})); diff != "" {
 					t.Error(diff)
 				}
 
@@ -153,10 +139,10 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				wantIDTokenClaims := map[string]any{
 					"iss": ctx.Issuer(),
 					"sub": "random_subject",
-					"exp": float64(token.CreatedAt + ctx.IDTokenLifetimeSecs),
-					"iat": float64(token.CreatedAt),
 				}
-				if diff := cmp.Diff(idTokenClaims, wantIDTokenClaims, cmpopts.EquateApprox(0, 1)); diff != "" {
+				if diff := cmp.Diff(idTokenClaims, wantIDTokenClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
 				}
 			},
@@ -179,13 +165,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					t.Error(diff)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				if diff := cmp.Diff(tokens[0].Resources, goidc.Resources{"https://resource.com"}); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.Resources, goidc.Resources{"https://resource.com"}); diff != "" {
 					t.Error(diff)
 				}
@@ -237,13 +216,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					t.Error(diff)
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-				if diff := cmp.Diff(tokens[0].AuthDetails, wantAuthDetails); diff != "" {
-					t.Error(diff)
-				}
 				if diff := cmp.Diff(resp.AuthorizationDetails, wantAuthDetails); diff != "" {
 					t.Error(diff)
 				}
@@ -268,17 +240,12 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 					t.Fatal("expected certificate thumbprint to be set on grant")
 				}
 
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 1 {
-					t.Fatalf("len(tokens) = %d, want 1", len(tokens))
-				}
-
 				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
 				if err != nil {
 					t.Fatalf("error parsing access token claims: %v", err)
 				}
 				wantConfirmation := map[string]any{
-					"x5t#S256": tokens[0].CertThumbprint,
+					"x5t#S256": grants[0].CertThumbprint,
 				}
 				if diff := cmp.Diff(claims["cnf"], wantConfirmation); diff != "" {
 					t.Error(diff)
@@ -297,10 +264,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -326,10 +289,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -345,10 +304,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidScope,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -364,10 +319,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeUnsupportedGrantType,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -383,10 +334,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeUnauthorizedClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))
@@ -404,10 +351,6 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
-				tokens := oidctest.Tokens(t, ctx)
-				if len(tokens) != 0 {
-					t.Fatalf("len(tokens) = %d, want 0", len(tokens))
-				}
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
 					t.Fatalf("len(grants) = %d, want 0", len(grants))

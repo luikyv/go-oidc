@@ -20,7 +20,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidToken, "invalid token", errors.New("authorization bearer token is required"))
 	}
 
-	tokenInfo, err := token.Introspect(ctx, accessToken)
+	tokenInfo, grant, err := token.Introspect(ctx, accessToken, nil)
 	if err != nil {
 		return response{}, fmt.Errorf("could not introspect the access token: %w", err)
 	}
@@ -44,11 +44,6 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 		return response{}, fmt.Errorf("could not load the client for the active token: %w", err)
 	}
 
-	grant, err := ctx.Grant(tokenInfo.GrantID)
-	if err != nil {
-		return response{}, fmt.Errorf("could not load the grant for the active token: %w", err)
-	}
-
 	subType := ctx.SubIdentifierTypeDefault
 	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
 		subType = c.SubIdentifierType
@@ -66,9 +61,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 
 	// If the client doesn't require the user info to be signed, just return the claims as a JSON object.
 	if c.UserInfoSigAlg == "" {
-		return response{
-			claims: claims,
-		}, nil
+		return response{claims: claims}, nil
 	}
 
 	claims[goidc.ClaimIssuer] = ctx.Issuer()

@@ -329,7 +329,7 @@ func (ctx Context) DeviceAuthRenderConfirmation() error {
 	return ctx.DeviceAuthRenderConfirmationFunc(ctx.Response, ctx.Request)
 }
 
-func (ctx Context) OpaqueToken(grant *goidc.Grant) string {
+func (ctx Context) OpaqueTokenValue(grant *goidc.Grant) string {
 	return ctx.OpaqueTokenFunc(ctx, grant)
 }
 
@@ -337,12 +337,12 @@ func (ctx Context) SaveGrant(grant *goidc.Grant) error {
 	return ctx.GrantManager.SaveGrant(ctx, grant)
 }
 
-func (ctx Context) SaveToken(token *goidc.Token) error {
-	return ctx.GrantManager.SaveToken(ctx, token)
+func (ctx Context) SaveOpaqueToken(token *goidc.Token) error {
+	return ctx.OpaqueTokenManager.SaveToken(ctx, token)
 }
 
-func (ctx Context) Token(id string) (*goidc.Token, error) {
-	return ctx.GrantManager.Token(ctx, id)
+func (ctx Context) OpaqueToken(id string) (*goidc.Token, error) {
+	return ctx.OpaqueTokenManager.Token(ctx, id)
 }
 
 func (ctx Context) SaveLogoutSession(session *goidc.LogoutSession) error {

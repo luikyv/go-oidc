@@ -8,8 +8,7 @@ import (
 
 type Configuration struct {
 	GrantManager goidc.GrantManager
-
-	Profile goidc.Profile
+	Profile      goidc.Profile
 	// Host is the domain where the server runs. This value will be used as the
 	// authorization server issuer.
 	Host string
@@ -19,6 +18,9 @@ type Configuration struct {
 	AuthCodeFunc         goidc.RandomFunc
 	AuthCodeLifetimeSecs int
 	AuthSessionIDFunc    goidc.RandomFunc
+
+	OpaqueTokenIsEnabled bool
+	OpaqueTokenManager   goidc.OpaqueTokenManager
 
 	// JWKSFunc retrieves the server's JWKS.
 	// The returned JWKS must include private keys if SignFunc or DecryptFunc

@@ -151,7 +151,8 @@ A grant is created after the authorization step succeeds. For example:
 
 `goidc.Token` is derived from a grant. Tokens can narrow scopes, resources, or
 authorization details, but they always originate from one grant through
-`Token.GrantID`.
+`Token.GrantID`. For JWT access tokens, the `grant_id` claim links the token
+back to its grant.
 
 This means one grant can produce multiple tokens over time, especially when:
 
@@ -166,30 +167,38 @@ In practice, `goidc.Grant` is the long-lived authorization state, while
 
 `goidc.Token` represents one issued access token.
 
-Access tokens are opaque by default. If you configure JWT access tokens, the
-serialized token value may become self-contained, but go-oidc still creates and
-stores a `goidc.Token` record for it.
+Access tokens are JWTs by default. JWT access tokens are self-contained and
+are not persisted server-side. The token claims include a `grant_id` that
+links back to the originating `goidc.Grant`, allowing introspection and
+revocation to resolve the grant without storing individual token records.
+
+If you need opaque access tokens, enable them with
+`provider.WithOpaqueTokens(manager)`. When opaque tokens are enabled, go-oidc
+stores a `goidc.Token` record for each issued opaque token through the
+configured `goidc.OpaqueTokenManager`.
 
 The access token format and lifetime are controlled by
 `provider.WithTokenOptions(...)`. This option receives the current
 `goidc.Grant` and `goidc.Client` and returns a `goidc.TokenOptions` value for
 that issuance.
 
-For example, to issue JWT access tokens:
+For example, to issue opaque access tokens:
 
 ```go
 op, _ := provider.New(
   "http://localhost",
   manager,
   jwksFunc,
+  provider.WithOpaqueTokens(manager),
   provider.WithTokenOptions(func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
-    return goidc.NewJWTTokenOptions(goidc.RS256, 600)
+    return goidc.NewOpaqueTokenOptions(600)
   }),
 )
 ```
 
-Use `goidc.NewOpaqueTokenOptions(...)` to keep opaque access tokens, or
-`goidc.NewJWTTokenOptions(...)` to issue JWT access tokens.
+Use `goidc.NewJWTTokenOptions(...)` for JWT access tokens or
+`goidc.NewOpaqueTokenOptions(...)` for opaque access tokens. Opaque tokens
+require `provider.WithOpaqueTokens(...)` to be enabled.
 
 Additional access token claims can be added with
 `provider.WithTokenClaims(...)`. The function receives the issued
@@ -209,8 +218,9 @@ op, _ := provider.New(
 )
 ```
 
-It is created from a `goidc.Grant` and captures the exact authorization state
-attached to that token at issuance time. A token may therefore contain:
+`goidc.Token` is created from a `goidc.Grant` and captures the exact
+authorization state attached to that token at issuance time. A token may
+therefore contain:
 
 - its own ID
 - the associated `GrantID`
@@ -232,9 +242,9 @@ Each token has its own lifetime. When a new token is issued from the same
 grant, the previous token is not implicitly the same logical credential; it is
 a distinct `goidc.Token` with its own ID, timestamps, and confirmation data.
 
-This is true for both opaque and JWT access tokens: the runtime token value may
-be different, but the server-side token metadata is always persisted through the
-configured token manager.
+For JWT access tokens, the token value is self-contained and not stored
+server-side. For opaque access tokens, the `goidc.Token` record is persisted
+through the configured `goidc.OpaqueTokenManager`.
 
 ## Authorization Code and Implicit Grants
 
@@ -702,10 +712,12 @@ the function passed to `WithTokenIntrospection(...)` is called with the
 authenticated client and the resolved token and must return whether that client
 is allowed to introspect it.
 
-In this implementation, access token introspection is backed by the persisted
-`goidc.Token` record, even when the access token itself is issued as a JWT.
-Refresh token introspection resolves the corresponding `goidc.Grant`, so the
-server can report whether that refresh token is still active.
+For JWT access tokens, introspection validates the token signature and claims
+directly and resolves the associated `goidc.Grant` via the `grant_id` claim.
+For opaque access tokens, introspection looks up the persisted `goidc.Token`
+record and then loads the grant. Refresh token introspection resolves the
+corresponding `goidc.Grant`, so the server can report whether that refresh
+token is still active.
 
 If the token does not exist, is expired, or is otherwise inactive, the endpoint
 returns an inactive introspection response instead of an OAuth error.
@@ -737,9 +749,15 @@ In this implementation, refresh token revocation is grant-based. If the
 refresh token is active and belongs to the authenticated client, the provider
 revokes the underlying `goidc.Grant`.
 
-Access token revocation revokes only the presented access token by default.
-Use `provider.WithTokenRevocationRevokeGrantOnAccessToken()` if you want
-access token revocation to also revoke the underlying grant and related tokens.
+For JWT access tokens, revocation is only effective when
+`provider.WithTokenRevocationRevokeGrantOnAccessToken()` is enabled, in which
+case the provider validates the JWT, resolves the grant via the `grant_id`
+claim, and revokes it. Without that option, JWT access token revocation is a
+no-op since JWTs are not stored server-side.
+
+For opaque access tokens, revocation revokes only the presented token by
+default. Use `provider.WithTokenRevocationRevokeGrantOnAccessToken()` if you
+want access token revocation to also revoke the underlying grant.
 
 If the token does not exist, is already inactive, or cannot be found, the
 revocation request still succeeds without exposing token state.
@@ -799,7 +817,8 @@ Similarly, if server-side decryption is needed (e.g., for encrypted JARs), confi
 
 ID tokens are signed using **RS256** by default. Use `provider.WithIDTokenSignatureAlgs` to change the default or add additional algorithms.
 
-Access tokens are **opaque** by default. To customize this, provide a `goidc.TokenOptionsFunc`:
+Access tokens are **JWTs** by default, signed with the same algorithm used for
+ID tokens. To customize this, provide a `goidc.TokenOptionsFunc`:
 ```go
 op, _ := provider.New(
   ...,
@@ -811,6 +830,7 @@ op, _ := provider.New(
 ```
 
 Use `goidc.NewJWTTokenOptions` for JWT access tokens or `goidc.NewOpaqueTokenOptions` for opaque ones.
+Opaque tokens require `provider.WithOpaqueTokens(...)` to be enabled.
 
 Refresh tokens are always opaque.
 

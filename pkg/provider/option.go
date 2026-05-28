@@ -80,6 +80,16 @@ func WithOpaqueTokenFunc(f goidc.OpaqueTokenFunc) Option {
 	}
 }
 
+// WithOpaqueTokens enables opaque access token storage and retrieval.
+// If manager is nil, the default in-memory storage is used.
+func WithOpaqueTokens(manager goidc.OpaqueTokenManager) Option {
+	return func(p *Provider) error {
+		p.config.OpaqueTokenIsEnabled = true
+		p.config.OpaqueTokenManager = manager
+		return nil
+	}
+}
+
 // WithPathPrefix defines a shared prefix for all endpoints.
 // When using the provider http handler directly, the path prefix must be added
 // to the router.
@@ -532,8 +542,8 @@ func WithOpenIDScopeRequired() Option {
 // (opaque or JWT) and token lifetime based on the grant and client.
 //
 // If pairwise subject identifiers are enabled and applicable to the subject,
-// the token will be issued as an opaque token, even when the token option is set
-// to issue a JWT token.
+// the token will be issued as an opaque token even when the token option is set
+// to issue a JWT token. Opaque tokens require [WithOpaqueTokens] to be enabled.
 func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenOptionsFunc = tokenOpts
@@ -1027,7 +1037,9 @@ func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.Aut
 // allowed to introspect it.
 //
 // If the function allows the request, the provider returns the introspection
-// response derived from the stored token state. If the token is unknown,
+// response. For JWT access tokens, the provider validates the token signature
+// and resolves the grant via the grant_id claim. For opaque access tokens,
+// the provider looks up the stored token record. If the token is unknown,
 // expired, or otherwise inactive, the endpoint returns an inactive response.
 func WithTokenIntrospection(f goidc.IsClientAllowedTokenIntrospectionFunc) Option {
 	return func(p *Provider) error {
@@ -1040,8 +1052,11 @@ func WithTokenIntrospection(f goidc.IsClientAllowedTokenIntrospectionFunc) Optio
 // WithTokenRevocation allows clients to revoke tokens.
 //
 // Refresh token revocation always invalidates the underlying grant and related
-// access tokens. Access token revocation revokes only the presented access
-// token unless [WithTokenRevocationRevokeGrantOnAccessToken] is also enabled.
+// access tokens. For opaque access tokens, revocation revokes only the
+// presented token unless [WithTokenRevocationRevokeGrantOnAccessToken] is also
+// enabled. For JWT access tokens, revocation is only effective when
+// [WithTokenRevocationRevokeGrantOnAccessToken] is enabled, since JWTs are not
+// stored server-side.
 func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationIsEnabled = true
@@ -1051,8 +1066,9 @@ func WithTokenRevocation(f goidc.IsClientAllowedFunc) Option {
 }
 
 // WithTokenRevocationRevokeGrantOnAccessToken makes access token revocation
-// revoke the underlying grant and all related tokens instead of revoking only
-// the presented access token.
+// revoke the underlying grant instead of revoking only the presented access
+// token. For JWT access tokens, this is required for revocation to have any
+// effect, since JWTs are not stored server-side.
 func WithTokenRevocationRevokeGrantOnAccessToken() Option {
 	return func(p *Provider) error {
 		p.config.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
@@ -1238,13 +1254,11 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 	}
 }
 
-// WithSubIdentifierTypes sets de subject identifier types available for clients.
+// WithSubIdentifierTypes sets the subject identifier types available for clients.
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
 // generating pairwise subjects is to keep the value as is.
 // This can be overridden with [WithPairwiseSubjectFunc].
-// Also, only opaque tokens are issued when pairwise IDs are applied to avoid
-// information leakage since the sub value is part of the token payload.
 func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.SubIdentifierType) Option {
 	types = appendIfNotIn(types, defaultType)
 	return func(p *Provider) error {

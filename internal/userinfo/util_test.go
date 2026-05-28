@@ -15,7 +15,13 @@ import (
 )
 
 func TestHandleUserInfoRequest(t *testing.T) {
-	setup := func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
+	signToken := func(t *testing.T, ctx oidc.Context, claims map[string]any) string {
+		t.Helper()
+		jwks := oidctest.PrivateJWKS(t, ctx)
+		return oidctest.Sign(t, claims, jwks.Keys[0])
+	}
+
+	setup := func(t *testing.T) (oidc.Context, *goidc.Client) {
 		t.Helper()
 
 		ctx := oidctest.NewContext(t)
@@ -23,7 +29,6 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		c, _ := oidctest.NewClient(t)
 		ctx.StaticClients = append(ctx.StaticClients, c)
 
-		tokenID := "opaque_token"
 		grantID := "random_grant_id"
 		now := timeutil.TimestampNow()
 
@@ -47,34 +52,31 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			return claims
 		}
 
-		tokenEntity := &goidc.Token{
-			ID:        tokenID,
-			GrantID:   grantID,
-			ClientID:  c.ID,
-			Subject:   "random_subject",
-			CreatedAt: now,
-			ExpiresAt: now + 60,
-			Scopes:    goidc.ScopeOpenID.ID,
-		}
+		tknValue := signToken(t, ctx, map[string]any{
+			"jti":       "token_id",
+			"grant_id":  grantID,
+			"iss":       ctx.Issuer(),
+			"sub":       "random_subject",
+			"client_id": c.ID,
+			"scope":     goidc.ScopeOpenID.ID,
+			"iat":       now,
+			"exp":       now + 60,
+		})
+		ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
 
-		if err := ctx.SaveToken(tokenEntity); err != nil {
-			t.Fatalf("error saving the token during setup: %v", err)
-		}
-		ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tokenID))
-
-		return ctx, c, tokenEntity
+		return ctx, c
 	}
 
 	tests := []struct {
 		name         string
-		setup        func(*testing.T) (oidc.Context, *goidc.Client, *goidc.Token)
+		setup        func(*testing.T) (oidc.Context, *goidc.Client)
 		wantErr      bool
 		validateResp func(*testing.T, oidc.Context, *goidc.Client, response)
 		validateErr  func(*testing.T, error)
 	}{
 		{
 			name: "plain response",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
 				return setup(t)
 			},
 			validateResp: func(t *testing.T, _ oidc.Context, _ *goidc.Client, resp response) {
@@ -91,10 +93,10 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "signed response",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				client.UserInfoSigAlg = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, ctx oidc.Context, client *goidc.Client, resp response) {
 				wantResp := response{jwtClaims: resp.jwtClaims}
@@ -123,11 +125,11 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "unsigned response",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				ctx.UserInfoSigAlgs = append(ctx.UserInfoSigAlgs, goidc.None)
 				client.UserInfoSigAlg = goidc.None
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, ctx oidc.Context, client *goidc.Client, resp response) {
 				wantResp := response{jwtClaims: resp.jwtClaims}
@@ -156,8 +158,8 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "pairwise subject",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
 				ctx.PairwiseSubjectFunc = func(_ context.Context, sub string, client *goidc.Client) string {
 					parsedURL, _ := url.Parse(client.SectorIdentifierURI)
@@ -166,7 +168,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 
 				client.SubIdentifierType = goidc.SubIdentifierPairwise
 				client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, _ oidc.Context, _ *goidc.Client, resp response) {
 				want := response{
@@ -182,12 +184,12 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "no claims",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				ctx.UserInfoClaimsFunc = func(context.Context, *goidc.Grant) map[string]any {
 					return nil
 				}
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, _ oidc.Context, _ *goidc.Client, resp response) {
 				want := response{
@@ -202,13 +204,13 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "sig alg falls back to default",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				client.UserInfoSigAlg = "RS384"
 				serverAlg := goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 				ctx.UserInfoDefaultSigAlg = serverAlg
 				ctx.UserInfoSigAlgs = []goidc.SignatureAlgorithm{serverAlg}
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, ctx oidc.Context, _ *goidc.Client, resp response) {
 				if resp.jwtClaims == "" {
@@ -226,8 +228,8 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "encrypted response",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 
 				encJWK := oidctest.PrivateRSAOAEPJWK(t, "enc-key")
 				client.UserInfoSigAlg = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
@@ -239,7 +241,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 				ctx.UserInfoKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP}
 				ctx.UserInfoDefaultContentEncAlg = goidc.A128CBC_HS256
 				ctx.UserInfoContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			validateResp: func(t *testing.T, _ oidc.Context, _ *goidc.Client, resp response) {
 				if resp.jwtClaims == "" {
@@ -252,10 +254,23 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "invalid pop",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
-				tokenEntity.JWKThumbprint = "random_jkt"
-				return ctx, client, tokenEntity
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, c := setup(t)
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID: "pop_grant", ClientID: c.ID, Subject: "random_subject",
+					CreatedAt: now, JWKThumbprint: "random_jkt",
+				}
+				_ = ctx.SaveGrant(grant)
+				tknValue := signToken(t, ctx, map[string]any{
+					"jti": "pop_token", "grant_id": grant.ID,
+					"iss": ctx.Issuer(), "sub": "random_subject",
+					"client_id": c.ID, "scope": goidc.ScopeOpenID.ID,
+					"iat": now, "exp": now + 60,
+					"cnf": map[string]string{"jkt": "random_jkt"},
+				})
+				ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
+				return ctx, c
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -267,11 +282,24 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "tls bound token without cert",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, c := setup(t)
 				ctx.MTLSTokenBindingIsEnabled = true
-				tokenEntity.CertThumbprint = "random_thumbprint"
-				return ctx, client, tokenEntity
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID: "tls_grant", ClientID: c.ID, Subject: "random_subject",
+					CreatedAt: now, CertThumbprint: "random_thumbprint",
+				}
+				_ = ctx.SaveGrant(grant)
+				tknValue := signToken(t, ctx, map[string]any{
+					"jti": "tls_token", "grant_id": grant.ID,
+					"iss": ctx.Issuer(), "sub": "random_subject",
+					"client_id": c.ID, "scope": goidc.ScopeOpenID.ID,
+					"iat": now, "exp": now + 60,
+					"cnf": map[string]string{"x5t#S256": "random_thumbprint"},
+				})
+				ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
+				return ctx, c
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -287,10 +315,22 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "expired token",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
-				tokenEntity.ExpiresAt = timeutil.TimestampNow() - 10
-				return ctx, client, tokenEntity
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, c := setup(t)
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID: "expired_grant", ClientID: c.ID, Subject: "random_subject",
+					CreatedAt: now,
+				}
+				_ = ctx.SaveGrant(grant)
+				tknValue := signToken(t, ctx, map[string]any{
+					"jti": "expired_token", "grant_id": grant.ID,
+					"iss": ctx.Issuer(), "sub": "random_subject",
+					"client_id": c.ID, "scope": goidc.ScopeOpenID.ID,
+					"iat": now - 70, "exp": now - 10,
+				})
+				ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
+				return ctx, c
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -312,10 +352,22 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "missing openid scope",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
-				tokenEntity.Scopes = "scope1"
-				return ctx, client, tokenEntity
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, c := setup(t)
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID: "noscope_grant", ClientID: c.ID, Subject: "random_subject",
+					CreatedAt: now,
+				}
+				_ = ctx.SaveGrant(grant)
+				tknValue := signToken(t, ctx, map[string]any{
+					"jti": "noscope_token", "grant_id": grant.ID,
+					"iss": ctx.Issuer(), "sub": "random_subject",
+					"client_id": c.ID, "scope": "scope1",
+					"iat": now, "exp": now + 60,
+				})
+				ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
+				return ctx, c
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -337,10 +389,10 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "no token",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				ctx.Request.Header.Del("Authorization")
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -362,10 +414,10 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "token not found",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, client := setup(t)
 				ctx.Request.Header.Set("Authorization", "Bearer nonexistent_token")
-				return ctx, client, tokenEntity
+				return ctx, client
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -387,13 +439,22 @@ func TestHandleUserInfoRequest(t *testing.T) {
 		},
 		{
 			name: "client not found for active token",
-			setup: func(t *testing.T) (oidc.Context, *goidc.Client, *goidc.Token) {
-				ctx, client, tokenEntity := setup(t)
-				tokenEntity.ClientID = "missing_client"
-				if err := ctx.SaveToken(tokenEntity); err != nil {
-					t.Fatalf("error saving the token during setup: %v", err)
+			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
+				ctx, c := setup(t)
+				now := timeutil.TimestampNow()
+				grant := &goidc.Grant{
+					ID: "missing_client_grant", ClientID: "missing_client", Subject: "random_subject",
+					CreatedAt: now,
 				}
-				return ctx, client, tokenEntity
+				_ = ctx.SaveGrant(grant)
+				tknValue := signToken(t, ctx, map[string]any{
+					"jti": "missing_client_token", "grant_id": grant.ID,
+					"iss": ctx.Issuer(), "sub": "random_subject",
+					"client_id": "missing_client", "scope": goidc.ScopeOpenID.ID,
+					"iat": now, "exp": now + 60,
+				})
+				ctx.Request.Header.Set("Authorization", fmt.Sprintf("Bearer %s", tknValue))
+				return ctx, c
 			},
 			wantErr: true,
 			validateErr: func(t *testing.T, err error) {
@@ -411,7 +472,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			ctx, client, _ := test.setup(t)
+			ctx, client := test.setup(t)
 
 			resp, err := handleUserInfoRequest(ctx)
 			if test.wantErr {

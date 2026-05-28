@@ -66,7 +66,8 @@ func main() {
 				return
 			}
 
-			_, tokenInfo, err := op.TokenInfoFromRequest(r)
+			tkn := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
+			tokenInfo, err := op.Introspect(r.Context(), tkn)
 			if err != nil {
 				log.Printf("error getting token info: %v", err)
 				http.Error(w, err.Error(), http.StatusUnauthorized)

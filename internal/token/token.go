@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"maps"
 	"slices"
-	"time"
 
 	"github.com/go-jose/go-jose/v4"
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/joseutil"
@@ -16,59 +14,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
-
-// ExtractID returns the ID of an access token.
-// If it's a JWT, the ID is the the "jti" claim. Otherwise, the token is
-// considered opaque and its ID is the thumbprint of the token.
-func ExtractID(ctx oidc.Context, tkn string) (string, error) {
-	if !joseutil.IsJWS(tkn) {
-		return tkn, nil
-	}
-
-	algs, err := ctx.SigAlgs()
-	if err != nil {
-		return "", err
-	}
-
-	parsedToken, err := jwt.ParseSigned(tkn, algs)
-	if err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
-	}
-
-	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
-		return "", goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
-			errors.New("the token header must contain exactly one entry with a kid"))
-	}
-
-	keyID := parsedToken.Headers[0].KeyID
-	publicKey, err := ctx.PublicJWK(keyID)
-	if err != nil || publicKey.Use != string(goidc.KeyUsageSignature) {
-		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
-	}
-
-	var jwtClaims jwt.Claims
-	var claims map[string]any
-	if err := parsedToken.Claims(publicKey.Key, &jwtClaims, &claims); err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
-	}
-
-	if err := jwtClaims.ValidateWithLeeway(jwt.Expected{
-		Issuer: ctx.Issuer(),
-	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", err)
-	}
-
-	tokenID := claims[goidc.ClaimTokenID]
-	if tokenID == nil {
-		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", errors.New("token id was not found in the claims"))
-	}
-
-	if _, ok := tokenID.(string); !ok {
-		return "", goidc.WrapError(goidc.ErrorCodeAccessDenied, "invalid token", errors.New("token id is not a string"))
-	}
-
-	return tokenID.(string), nil
-}
 
 type IssuanceOptions struct {
 	Scopes      string
@@ -84,14 +29,13 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 	}
 
 	tknOpts := ctx.TokenOptions(grant, c)
-	// Use an opaque token format if the subject identifier type is pairwise.
-	// This prevents potential information leakage that could occur if the JWT token was decoded by clients.
 	subType := ctx.SubIdentifierTypeDefault
 	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
 		subType = c.SubIdentifierType
 	}
-	if tknOpts.Format == goidc.TokenFormatJWT && subType == goidc.SubIdentifierPairwise && grant.Subject != grant.ClientID {
-		tknOpts = goidc.NewOpaqueTokenOptions(tknOpts.LifetimeSecs)
+
+	if !ctx.OpaqueTokenIsEnabled && tknOpts.Format == goidc.TokenFormatOpaque {
+		return nil, "", errors.New("opaque tokens are not enabled")
 	}
 
 	now := timeutil.TimestampNow()
@@ -109,11 +53,6 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 		Format:         tknOpts.Format,
 		SigAlg:         tknOpts.JWTSigAlg,
 	}
-	if tknOpts.Format == goidc.TokenFormatOpaque {
-		tkn.ID = ctx.OpaqueToken(grant)
-	} else {
-		tkn.ID = ctx.JWTID()
-	}
 	if tkn.JWKThumbprint != "" {
 		tkn.Type = goidc.TokenTypeDPoP
 	} else {
@@ -129,15 +68,69 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 		tkn.Resources = opts.Resources
 	}
 
-	tokenValue, err := makeAccessToken(ctx, tkn, grant)
-	if err != nil {
-		return nil, "", err
+	var tokenValue string
+	switch tknOpts.Format {
+	case goidc.TokenFormatOpaque:
+		tkn.ID = ctx.OpaqueTokenValue(grant)
+		tokenValue = tkn.ID
+	case goidc.TokenFormatJWT:
+		tkn.ID = ctx.JWTID()
+
+		sub := tkn.Subject
+		if subType == goidc.SubIdentifierPairwise && grant.Subject != grant.ClientID {
+			sub = ctx.PairwiseSubject(grant.Subject, c)
+		}
+
+		claims := map[string]any{
+			goidc.ClaimTokenID:  tkn.ID,
+			goidc.ClaimGrantID:  grant.ID,
+			goidc.ClaimIssuer:   ctx.Issuer(),
+			goidc.ClaimSubject:  sub,
+			goidc.ClaimScope:    tkn.Scopes,
+			goidc.ClaimIssuedAt: now,
+			goidc.ClaimExpiry:   tkn.ExpiresAt,
+		}
+
+		if tkn.ClientID != "" {
+			claims[goidc.ClaimClientID] = tkn.ClientID
+		}
+
+		if tkn.AuthDetails != nil {
+			claims[goidc.ClaimAuthDetails] = tkn.AuthDetails
+		}
+
+		if tkn.Resources != nil {
+			claims[goidc.ClaimAudience] = tkn.Resources
+		}
+
+		confirmation := make(map[string]string)
+		if tkn.JWKThumbprint != "" {
+			confirmation["jkt"] = tkn.JWKThumbprint
+		}
+		if tkn.CertThumbprint != "" {
+			confirmation["x5t#S256"] = tkn.CertThumbprint
+		}
+		if len(confirmation) != 0 {
+			claims["cnf"] = confirmation
+		}
+
+		maps.Copy(claims, ctx.TokenClaims(tkn, grant))
+
+		signed, err := ctx.Sign(claims, tkn.SigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
+		if err != nil {
+			return nil, "", fmt.Errorf("could not sign the access token: %w", err)
+		}
+
+		tokenValue = signed
 	}
+
 	if err := ctx.HandleToken(tkn, grant); err != nil {
 		return nil, "", err
 	}
-	if err := ctx.SaveToken(tkn); err != nil {
-		return nil, "", err
+	if tkn.Format == goidc.TokenFormatOpaque {
+		if err := ctx.SaveOpaqueToken(tkn); err != nil {
+			return nil, "", err
+		}
 	}
 
 	return tkn, tokenValue, nil
@@ -225,55 +218,6 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 		return "", fmt.Errorf("could not encrypt the id token: %w", err)
 	}
 	return encIDToken, nil
-}
-
-// makeAccessToken generates an access token value. It returns the JWT or opaque string.
-func makeAccessToken(ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant) (string, error) {
-	if tkn.Format == goidc.TokenFormatOpaque {
-		return tkn.ID, nil
-	}
-
-	now := timeutil.TimestampNow()
-	claims := map[string]any{
-		goidc.ClaimTokenID:  tkn.ID,
-		goidc.ClaimIssuer:   ctx.Issuer(),
-		goidc.ClaimSubject:  tkn.Subject,
-		goidc.ClaimScope:    tkn.Scopes,
-		goidc.ClaimIssuedAt: now,
-		goidc.ClaimExpiry:   tkn.ExpiresAt,
-	}
-
-	if tkn.ClientID != "" {
-		claims[goidc.ClaimClientID] = tkn.ClientID
-	}
-
-	if tkn.AuthDetails != nil {
-		claims[goidc.ClaimAuthDetails] = tkn.AuthDetails
-	}
-
-	if tkn.Resources != nil {
-		claims[goidc.ClaimAudience] = tkn.Resources
-	}
-
-	confirmation := make(map[string]string)
-	if tkn.JWKThumbprint != "" {
-		confirmation["jkt"] = tkn.JWKThumbprint
-	}
-	if tkn.CertThumbprint != "" {
-		confirmation["x5t#S256"] = tkn.CertThumbprint
-	}
-	if len(confirmation) != 0 {
-		claims["cnf"] = confirmation
-	}
-
-	maps.Copy(claims, ctx.TokenClaims(tkn, grant))
-
-	accessToken, err := ctx.Sign(claims, tkn.SigAlg, (&jose.SignerOptions{}).WithType("at+jwt"))
-	if err != nil {
-		return "", fmt.Errorf("could not sign the access token: %w", err)
-	}
-
-	return accessToken, nil
 }
 
 func generateToken(ctx oidc.Context, req request) (response, error) {
