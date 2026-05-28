@@ -908,6 +908,7 @@ func TestManagerDelegates(t *testing.T) {
 		manager := storage.NewManager(100)
 		ctx.GrantManager = manager
 		ctx.RefreshTokenManager = manager
+		ctx.OpaqueTokenManager = manager
 
 		grant := &goidc.Grant{
 			ID:           "grant_id",

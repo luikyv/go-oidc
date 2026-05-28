@@ -57,22 +57,22 @@ func TestRegisterHandlers(t *testing.T) {
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{ID: "grant_id", ClientID: client.ID, CreatedAt: now}
-				token := &goidc.Token{
-					ID:        "opaque_token",
-					GrantID:   grant.ID,
-					ClientID:  client.ID,
-					CreatedAt: now,
-					ExpiresAt: now + 60,
-				}
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("SaveGrant() error = %v", err)
 				}
-				if err := ctx.SaveOpaqueToken(token); err != nil {
-					t.Fatalf("SaveToken() error = %v", err)
-				}
+
+				jwks := oidctest.PrivateJWKS(t, ctx)
+				tknValue := oidctest.Sign(t, map[string]any{
+					"jti":       "token_id",
+					"grant_id":  grant.ID,
+					"iss":       ctx.Issuer(),
+					"client_id": client.ID,
+					"iat":       now,
+					"exp":       now + 60,
+				}, jwks.Keys[0])
 
 				form := url.Values{
-					"token":           {token.ID},
+					"token":           {tknValue},
 					"token_type_hint": {string(goidc.TokenHintAccess)},
 					"client_id":       {client.ID},
 					"client_secret":   {secret},

@@ -14,7 +14,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, error) {
+func Introspect(ctx oidc.Context, tkn string, c *goidc.Client) (goidc.TokenInfo, *goidc.Grant, error) {
 	if joseutil.IsJWS(tkn) {
 		algs, err := ctx.SigAlgs()
 		if err != nil {
@@ -61,6 +61,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 		}
 
 		info.IsActive = true
+		info.Subject = subject(ctx, grant, c)
 		info.Username = grant.Username
 		info.Type = goidc.TokenTypeBearer
 		if info.Confirmation != nil && info.Confirmation.JWKThumbprint != "" {
@@ -108,7 +109,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 			GrantID:           token.GrantID,
 			IsActive:          true,
 			Issuer:            ctx.Issuer(),
-			Subject:           subject(ctx, grant),
+			Subject:           subject(ctx, grant, c),
 			Username:          grant.Username,
 			Type:              token.Type,
 			Scopes:            token.Scopes,
@@ -159,7 +160,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 			GrantID:           grant.ID,
 			IsActive:          true,
 			Issuer:            ctx.Issuer(),
-			Subject:           subject(ctx, grant),
+			Subject:           subject(ctx, grant, c),
 			Type:              goidc.TokenTypeBearer,
 			Scopes:            grant.Scopes,
 			AuthDetails:       grant.AuthDetails,
@@ -183,14 +184,9 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 
 // subject returns the pairwise subject for the given client if the
 // client uses pairwise subject identifiers. Otherwise, it returns sub as is.
-func subject(ctx oidc.Context, grant *goidc.Grant) string {
+func subject(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client) string {
 	sub := grant.Subject
-	if sub == grant.ClientID {
-		return sub
-	}
-
-	c, err := client.Client(ctx, grant.ClientID)
-	if err != nil {
+	if sub == grant.ClientID || c == nil {
 		return sub
 	}
 
@@ -220,7 +216,7 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	// The information of an invalid token must not be sent as an error.
 	// It will be returned as the default value of [goidc.TokenInfo] with the
 	// field is_active as false.
-	info, _, err := Introspect(ctx, req.token)
+	info, _, err := Introspect(ctx, req.token, c)
 	if err != nil {
 		return goidc.TokenInfo{}, err
 	}

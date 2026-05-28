@@ -489,6 +489,63 @@ func TestIntrospect(t *testing.T) {
 			},
 		},
 		{
+			name: "opaque token with pairwise subject for different introspecting client",
+			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
+				ctx, c := setup(t)
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+				ctx.PairwiseSubjectFunc = func(_ context.Context, sub string, client *goidc.Client) string {
+					parsedURL, _ := url.Parse(client.SectorIdentifierURI)
+					return parsedURL.Hostname() + "_" + sub
+				}
+
+				// The RP that owns the grant.
+				rp := &goidc.Client{
+					ID: "rp_client",
+					ClientMeta: goidc.ClientMeta{
+						SubIdentifierType:   goidc.SubIdentifierPairwise,
+						SectorIdentifierURI: "https://rp.example.com/redirect_uris.json",
+					},
+				}
+				ctx.StaticClients = append(ctx.StaticClients, rp)
+
+				// The introspecting client (RS) has a different sector.
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.SectorIdentifierURI = "https://rs.example.com/redirect_uris.json"
+
+				accessToken := "opaque_token"
+				now := timeutil.TimestampNow()
+				token := &goidc.Token{
+					ID:        accessToken,
+					GrantID:   "random_grant_id",
+					Subject:   "real_subject",
+					ClientID:  rp.ID,
+					CreatedAt: now,
+					ExpiresAt: now + 60,
+					Scopes:    goidc.ScopeOpenID.ID,
+					Type:      goidc.TokenTypeBearer,
+				}
+				_ = ctx.SaveGrant(&goidc.Grant{
+					ID:        token.GrantID,
+					Subject:   "real_subject",
+					CreatedAt: now,
+					ClientID:  rp.ID,
+				})
+				_ = ctx.SaveOpaqueToken(token)
+
+				return ctx, queryRequest{token: accessToken}, c
+			},
+			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
+				if !info.IsActive {
+					t.Fatal("expected active token")
+				}
+				// The sub should be pairwise for the RS, not the RP.
+				wantSub := "rs.example.com_real_subject"
+				if info.Subject != wantSub {
+					t.Errorf("Subject = %q, want %q", info.Subject, wantSub)
+				}
+			},
+		},
+		{
 			name: "client not allowed unknown token",
 			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
 				ctx, c := setup(t)

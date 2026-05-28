@@ -336,6 +336,8 @@ func TestIssue(t *testing.T) {
 			name: "opaque",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
+				ctx.OpaqueTokenIsEnabled = true
+				ctx.OpaqueTokenManager = oidctest.Manager(t, ctx)
 				ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 					return goidc.NewOpaqueTokenOptions(60)
 				}

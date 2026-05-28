@@ -6,7 +6,6 @@ import (
 	"encoding/base64"
 
 	"github.com/luikyv/go-oidc/pkg/goidc"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // Thumbprint generates a base64 URL-encoded SHA-256 hash (thumbprint) of a
@@ -15,14 +14,6 @@ func Thumbprint(s string) string {
 	hash := sha256.New()
 	hash.Write([]byte(s))
 	return base64.RawURLEncoding.EncodeToString(hash.Sum(nil))
-}
-
-func BCryptHash(s string) string {
-	hashedS, err := bcrypt.GenerateFromPassword([]byte(s), bcrypt.DefaultCost)
-	if err != nil {
-		panic(err)
-	}
-	return string(hashedS)
 }
 
 // HalfHash generates a half-hash of a given claim using the given algorithm.

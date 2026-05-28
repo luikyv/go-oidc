@@ -445,38 +445,10 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 	return client.Client(oidc.NewContext(ctx, &op.config), id)
 }
 
-func (op *Provider) TokenInfo(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
+func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	info, _, err := token.Introspect(oidcCtx, tkn)
+	info, _, err := token.Introspect(oidcCtx, tkn, nil)
 	return info, err
-}
-
-// TokenInfoFromRequest processes a request to retrieve information about an access token.
-// It extracts the access token from the request, performs introspection to validate
-// and gather information about the token, and checks for Proof of Possession (PoP) if required.
-// If the token is valid and PoP validation (if any) is successful, the function
-// returns token information; otherwise, it returns an appropriate error.
-func (op *Provider) TokenInfoFromRequest(r *http.Request) (string, goidc.TokenInfo, error) {
-	ctx := oidc.NewHTTPContext(nil, r, &op.config)
-
-	accessToken, _, ok := ctx.AuthorizationToken()
-	if !ok {
-		return "", goidc.TokenInfo{}, goidc.NewError(goidc.ErrorCodeInvalidToken, "no token found")
-	}
-
-	info, _, err := token.Introspect(ctx, accessToken)
-	if err != nil {
-		return "", goidc.TokenInfo{}, err
-	}
-
-	if info.Confirmation == nil {
-		return accessToken, info, nil
-	}
-
-	if err := token.ValidatePoP(ctx, accessToken, *info.Confirmation); err != nil {
-		return "", goidc.TokenInfo{}, err
-	}
-	return accessToken, info, nil
 }
 
 // GrantCIBARequest resolves an approved CIBA request into a grant and notifies
