@@ -600,6 +600,7 @@ func (ti TokenInfo) MarshalJSON() ([]byte, error) {
 	if err := json.Unmarshal(attributesBytes, &rawValues); err != nil {
 		return nil, err
 	}
+	delete(rawValues, "grant_id")
 	// Inline the additional claims.
 	maps.Copy(rawValues, ti.AdditionalClaims)
 
