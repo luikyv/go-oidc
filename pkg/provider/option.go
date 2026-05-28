@@ -1254,15 +1254,11 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 	}
 }
 
-// WithSubIdentifierTypes sets de subject identifier types available for clients.
+// WithSubIdentifierTypes sets the subject identifier types available for clients.
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
 // generating pairwise subjects is to keep the value as is.
 // This can be overridden with [WithPairwiseSubjectFunc].
-// Also, only opaque tokens are issued when pairwise IDs are applied to avoid
-// information leakage since the sub value is part of the token payload.
-// This means [WithOpaqueTokens] must be enabled when pairwise subject
-// identifiers are used.
 func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.SubIdentifierType) Option {
 	types = appendIfNotIn(types, defaultType)
 	return func(p *Provider) error {

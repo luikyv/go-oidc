@@ -108,7 +108,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 			GrantID:           token.GrantID,
 			IsActive:          true,
 			Issuer:            ctx.Issuer(),
-			Subject:           token.Subject,
+			Subject:           subject(ctx, grant),
 			Username:          grant.Username,
 			Type:              token.Type,
 			Scopes:            token.Scopes,
@@ -159,7 +159,7 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 			GrantID:           grant.ID,
 			IsActive:          true,
 			Issuer:            ctx.Issuer(),
-			Subject:           grant.Subject,
+			Subject:           subject(ctx, grant),
 			Type:              goidc.TokenTypeBearer,
 			Scopes:            grant.Scopes,
 			AuthDetails:       grant.AuthDetails,
@@ -179,6 +179,31 @@ func Introspect(ctx oidc.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, er
 	}
 
 	return info, grant, nil
+}
+
+// subject returns the pairwise subject for the given client if the
+// client uses pairwise subject identifiers. Otherwise, it returns sub as is.
+func subject(ctx oidc.Context, grant *goidc.Grant) string {
+	sub := grant.Subject
+	if sub == grant.ClientID {
+		return sub
+	}
+
+	c, err := client.Client(ctx, grant.ClientID)
+	if err != nil {
+		return sub
+	}
+
+	subType := ctx.SubIdentifierTypeDefault
+	if c.SubIdentifierType != "" && slices.Contains(ctx.SubIdentifierTypes, c.SubIdentifierType) {
+		subType = c.SubIdentifierType
+	}
+
+	if subType != goidc.SubIdentifierPairwise {
+		return sub
+	}
+
+	return ctx.PairwiseSubject(sub, c)
 }
 
 func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {

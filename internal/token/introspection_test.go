@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"net/url"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -20,7 +21,10 @@ func TestIntrospect(t *testing.T) {
 
 		ctx := oidctest.NewContext(tb)
 		ctx.TokenIntrospectionIsEnabled = true
-		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
+		manager := oidctest.Manager(tb, ctx)
+		ctx.RefreshTokenManager = manager
+		ctx.OpaqueTokenIsEnabled = true
+		ctx.OpaqueTokenManager = manager
 		ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 			return true
 		}
@@ -400,6 +404,87 @@ func TestIntrospect(t *testing.T) {
 			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
 				if info.Type != goidc.TokenTypeDPoP {
 					t.Errorf("Type = %q, want %q", info.Type, goidc.TokenTypeDPoP)
+				}
+			},
+		},
+		{
+			name: "opaque token with pairwise subject",
+			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
+				ctx, c := setup(t)
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+				ctx.PairwiseSubjectFunc = func(_ context.Context, sub string, client *goidc.Client) string {
+					parsedURL, _ := url.Parse(client.SectorIdentifierURI)
+					return parsedURL.Hostname() + "_" + sub
+				}
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.SectorIdentifierURI = "https://example.com/redirect_uris.json"
+
+				accessToken := "opaque_token"
+				now := timeutil.TimestampNow()
+				token := &goidc.Token{
+					ID:        accessToken,
+					GrantID:   "random_grant_id",
+					Subject:   "real_subject",
+					ClientID:  c.ID,
+					CreatedAt: now,
+					ExpiresAt: now + 60,
+					Scopes:    goidc.ScopeOpenID.ID,
+					Type:      goidc.TokenTypeBearer,
+				}
+				_ = ctx.SaveGrant(&goidc.Grant{
+					ID:        token.GrantID,
+					Subject:   "real_subject",
+					CreatedAt: now,
+					ClientID:  c.ID,
+				})
+				_ = ctx.SaveOpaqueToken(token)
+
+				return ctx, queryRequest{token: accessToken}, c
+			},
+			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
+				if !info.IsActive {
+					t.Fatal("expected active token")
+				}
+				wantSub := "example.com_real_subject"
+				if info.Subject != wantSub {
+					t.Errorf("Subject = %q, want %q", info.Subject, wantSub)
+				}
+			},
+		},
+		{
+			name: "refresh token with pairwise subject",
+			setup: func() (oidc.Context, queryRequest, *goidc.Client) {
+				ctx, c := setup(t)
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+				ctx.PairwiseSubjectFunc = func(_ context.Context, sub string, client *goidc.Client) string {
+					parsedURL, _ := url.Parse(client.SectorIdentifierURI)
+					return parsedURL.Hostname() + "_" + sub
+				}
+				c.SubIdentifierType = goidc.SubIdentifierPairwise
+				c.SectorIdentifierURI = "https://example.com/redirect_uris.json"
+
+				now := timeutil.TimestampNow()
+				refreshToken := strutil.Random(100)
+				grant := &goidc.Grant{
+					ID:                    "random_grant_id",
+					Subject:               "real_subject",
+					RefreshToken:          refreshToken,
+					RefreshTokenExpiresAt: now + 60,
+					CreatedAt:             now,
+					ClientID:              c.ID,
+					Scopes:                goidc.ScopeOpenID.ID,
+				}
+				_ = ctx.SaveGrant(grant)
+
+				return ctx, queryRequest{token: refreshToken}, c
+			},
+			validate: func(t *testing.T, info goidc.TokenInfo, _ oidc.Context, _ *goidc.Client) {
+				if !info.IsActive {
+					t.Fatal("expected active token")
+				}
+				wantSub := "example.com_real_subject"
+				if info.Subject != wantSub {
+					t.Errorf("Subject = %q, want %q", info.Subject, wantSub)
 				}
 			},
 		},

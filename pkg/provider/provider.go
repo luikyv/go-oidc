@@ -105,10 +105,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
 	}
 
-	if slices.Contains(op.config.SubIdentifierTypes, goidc.SubIdentifierPairwise) && !op.config.OpaqueTokenIsEnabled {
-		return nil, errors.New("opaque tokens must be enabled when using pairwise subject identifiers")
-	}
-
 	if op.config.ConsumeJTIFunc == nil {
 		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithConsumeJTIFunc for production use.")
 	}

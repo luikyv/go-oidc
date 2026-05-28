@@ -321,7 +321,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 				req.scopes = "not_granted_scope"
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidScope,
+			wantErr:  goidc.ErrorCodeInvalidScope,
 			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
 		},
 		{
@@ -428,7 +428,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			},
 			wantErr:         goidc.ErrorCodeInvalidRequest,
 			wantDescription: "invalid request",
-			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
+			validate:        func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
 		},
 		{
 			name: "invalid refresh token",
@@ -439,7 +439,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			},
 			wantErr:         goidc.ErrorCodeInvalidGrant,
 			wantDescription: "invalid grant",
-			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
+			validate:        func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
 		},
 		{
 			name: "mtls binding",
@@ -487,7 +487,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErr:  goidc.ErrorCodeInvalidRequest,
 			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
 		},
 		{
@@ -505,7 +505,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 				}
 				return ctx, req, c, grant
 			},
-			wantErr: goidc.ErrorCodeInvalidToken,
+			wantErr:  goidc.ErrorCodeInvalidToken,
 			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client, _ *goidc.Grant) {},
 		},
 	}

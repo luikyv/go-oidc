@@ -389,6 +389,46 @@ func TestIssue(t *testing.T) {
 			},
 		},
 		{
+			name: "jwt with pairwise subject",
+			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
+				ctx := oidctest.NewContext(t)
+				ctx.SubIdentifierTypes = []goidc.SubIdentifierType{goidc.SubIdentifierPairwise}
+				ctx.PairwiseSubjectFunc = func(_ context.Context, sub string, client *goidc.Client) string {
+					parsedURL, _ := url.Parse(client.SectorIdentifierURI)
+					return parsedURL.Hostname() + "_" + sub
+				}
+
+				client, _ := oidctest.NewClient(t)
+				client.SubIdentifierType = goidc.SubIdentifierPairwise
+				client.SectorIdentifierURI = "https://example.com/redirect_uris.json"
+
+				grant := &goidc.Grant{
+					ID:       "grant_id",
+					Subject:  "random_subject",
+					ClientID: client.ID,
+				}
+				return ctx, grant, client
+			},
+			validate: func(t *testing.T, ctx oidc.Context, tkn *goidc.Token, grant *goidc.Grant, client *goidc.Client, tokenValue string) {
+				if tkn.Format != goidc.TokenFormatJWT {
+					t.Fatalf("Format = %s, want %s", tkn.Format, goidc.TokenFormatJWT)
+				}
+				if tkn.Subject != grant.Subject {
+					t.Fatalf("Token.Subject = %s, want %s", tkn.Subject, grant.Subject)
+				}
+
+				claims, err := oidctest.SafeClaims(tokenValue, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+
+				wantSub := "example.com_random_subject"
+				if claims[goidc.ClaimSubject] != wantSub {
+					t.Fatalf("JWT sub = %v, want %s", claims[goidc.ClaimSubject], wantSub)
+				}
+			},
+		},
+		{
 			name: "unsigned jwt",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
@@ -430,7 +470,6 @@ func TestIssue(t *testing.T) {
 		})
 	}
 }
-
 
 func TestGenerateToken(t *testing.T) {
 	tests := []struct {
