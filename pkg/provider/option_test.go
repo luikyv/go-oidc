@@ -1320,7 +1320,6 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	}
 }
 
-
 func TestWithAssertionLifetime(t *testing.T) {
 	// Given.
 	p := &Provider{

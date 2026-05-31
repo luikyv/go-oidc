@@ -842,7 +842,6 @@ func WithJARMContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, 
 	}
 }
 
-
 // WithJWTLifetime defines a maximum threshold for lifetime of JWTs.
 func WithJWTLifetime(secs int) Option {
 	return func(p *Provider) error {
