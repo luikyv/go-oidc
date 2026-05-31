@@ -993,6 +993,166 @@ func TestAuthenticated(t *testing.T) {
 			wantErr: goidc.ErrorCodeInvalidClient,
 		},
 		{
+			name: "unsupported authn method",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx := oidctest.NewContext(t)
+				ctx.AuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodSecretPost}
+				c := &goidc.Client{
+					ID: "random_client_id",
+					ClientMeta: goidc.ClientMeta{
+						TokenAuthnMethod: goidc.AuthnMethodPrivateKeyJWT,
+					},
+				}
+				ctx.StaticClients = append(ctx.StaticClients, c)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {c.ID},
+				}
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation jwt invalid typ header",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop invalid typ header",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+					goidc.ClaimTokenID: "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop stale iat",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60,
+					goidc.ClaimIssuedAt: timeutil.TimestampNow() - ctx.JWTLifetimeSecs - 10,
+					goidc.ClaimTokenID:  "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name:     "attestation combined mode at par success",
+			authnCtx: client.AuthnContextPAR,
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/par"
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+					Method: http.MethodPost, URI: ctx.Host + "/par", Key: clientKey,
+				})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name:     "attestation combined mode at ciba rejected",
+			authnCtx: client.AuthnContextCIBA,
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+					Method: http.MethodPost, URI: ctx.Host + "/ciba", Key: clientKey,
+				})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name:     "private key jwt at par uses token authn sig alg",
+			authnCtx: client.AuthnContextPAR,
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, jwk := setUpPrivateKeyJWTAuthn(t)
+				c.TokenAuthnSigAlg = goidc.RS256
+				now := timeutil.TimestampNow()
+				claims := map[string]any{
+					goidc.ClaimIssuer:   c.ID,
+					goidc.ClaimSubject:  c.ID,
+					goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: now,
+					goidc.ClaimExpiry:   now + ctx.JWTLifetimeSecs - 10,
+					goidc.ClaimTokenID:  "par_jti",
+				}
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {oidctest.Sign(t, claims, jwk)},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name:     "secret jwt at introspection uses introspection sig alg",
+			authnCtx: client.AuthnContextTokenIntrospection,
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, secret := setUpClientSecretJWTAuthn(t)
+				c.TokenIntrospectionAuthnSigAlg = goidc.HS256
+				ctx.Request.PostForm = secretJWTPostForm(t, ctx, c.ID, secret, "introspection_jti")
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
 			name: "attestation multiple pop headers",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
@@ -1052,6 +1212,154 @@ func TestAuthenticated(t *testing.T) {
 
 			if validate != nil {
 				validate(t)
+			}
+		})
+	}
+}
+
+func TestExtractID(t *testing.T) {
+	tests := []struct {
+		name    string
+		setup   func(*testing.T) oidc.Context
+		wantID  string
+		wantErr bool
+	}{
+		{
+			name: "from post form",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {"my_client"},
+				}
+				return ctx
+			},
+			wantID: "my_client",
+		},
+		{
+			name: "from basic auth",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				ctx.Request.SetBasicAuth("my_client", "secret")
+				return ctx
+			},
+			wantID: "my_client",
+		},
+		{
+			name: "from assertion",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				ctx.AuthnMethodPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
+				jwk := oidctest.PrivateRS256JWK(t, "key1", goidc.KeyUsageSignature)
+				assertion := oidctest.Sign(t, map[string]any{
+					goidc.ClaimIssuer:  "my_client",
+					goidc.ClaimSubject: "my_client",
+				}, jwk)
+				ctx.Request.PostForm = map[string][]string{
+					"client_assertion":      {assertion},
+					"client_assertion_type": {string(goidc.AssertionTypeJWTBearer)},
+				}
+				return ctx
+			},
+			wantID: "my_client",
+		},
+		{
+			name: "from attestation header",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				issuerKey := oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer:  "https://attester.example.com",
+					goidc.ClaimSubject: "my_client",
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx
+			},
+			wantID: "my_client",
+		},
+		{
+			name: "attestation header missing sub",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				issuerKey := oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com",
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx
+			},
+			wantErr: true,
+		},
+		{
+			name: "conflicting ids",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {"client_a"},
+				}
+				ctx.Request.SetBasicAuth("client_b", "secret")
+				return ctx
+			},
+			wantErr: true,
+		},
+		{
+			name: "no client id",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				return ctx
+			},
+			wantErr: true,
+		},
+		{
+			name: "post form and attestation consistent",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				issuerKey := oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer:  "https://attester.example.com",
+					goidc.ClaimSubject: "my_client",
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {"my_client"},
+				}
+				return ctx
+			},
+			wantID: "my_client",
+		},
+		{
+			name: "post form and attestation conflicting",
+			setup: func(t *testing.T) oidc.Context {
+				ctx := oidctest.NewContext(t)
+				issuerKey := oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer:  "https://attester.example.com",
+					goidc.ClaimSubject: "different_client",
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				ctx.Request.PostForm = map[string][]string{
+					"client_id": {"my_client"},
+				}
+				return ctx
+			},
+			wantErr: true,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := test.setup(t)
+			id, err := client.ExtractID(ctx)
+			if test.wantErr {
+				if err == nil {
+					t.Fatal("expected error")
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("unexpected error: %v", err)
+			}
+			if id != test.wantID {
+				t.Fatalf("id = %q, want %q", id, test.wantID)
 			}
 		})
 	}
