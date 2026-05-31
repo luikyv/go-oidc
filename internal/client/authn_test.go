@@ -2,10 +2,16 @@ package client_test
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
+	"encoding/json"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -20,6 +26,7 @@ import (
 func TestAuthenticated(t *testing.T) {
 	tests := []struct {
 		name         string
+		authnCtx     client.AuthnContext
 		setup        func(*testing.T) (oidc.Context, func(*testing.T))
 		wantClientID string
 		wantErr      goidc.ErrorCode
@@ -439,7 +446,7 @@ func TestAuthenticated(t *testing.T) {
 				}
 				ctx := oidctest.NewContext(t)
 				ctx.StaticClients = append(ctx.StaticClients, c)
-				ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
+				ctx.AuthnMethodPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
 				ctx.Request.PostForm = map[string][]string{
 					"client_id":             {c.ID},
 					"client_assertion":      {"eyJhbGciOiJQUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJpbnZhbGlkX2NsaWVudF9pZCIsInN1YiI6ImludmFsaWRfY2xpZW50X2lkIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyfQ.Nog3Y_jeWO0dugsTKCxLx_vGcCbE6kRHzo7wAvfnKe7_uCW9UB1f-WhX4fMKXvJ8v-bScuyx2pTgy4C6ie0ZAcOn_XESblpr_0epoUF2ibdR5DGPKcrPs-S8jp8yvBOxbUmq0jyU9V5H33052h5gBsEAcYXnM150S-ch_1ISL1EgDiZrOm9lYhisp7Jp_mqUZx3OXjfWruz4d6oLe5FeCg7NsB5PpT_N26VZ6Qxt9x6OKUvphRHN1niETkf3_1uTr8CltHesfFl4NnaXSP5f7QStg9JKIpjgJnl-LeQe2C4tM8yHCTENxgHX4oTzrfiEfdN3TwoHDFNszcXnnAUQCg"},
@@ -684,13 +691,341 @@ func TestAuthenticated(t *testing.T) {
 			},
 			wantErr: goidc.ErrorCodeInvalidClient,
 		},
+		{
+			name: "attestation jwt success",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+					goidc.ClaimTokenID: "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "attestation jwt combined mode success",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/token"
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+					Method: http.MethodPost, URI: ctx.Host + "/token", Key: clientKey,
+				})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				return ctx, nil
+			},
+			wantClientID: "random_client_id",
+		},
+		{
+			name: "attestation jwt unknown issuer",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, _, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				unknownKey := oidctest.PrivateRS256JWK(t, "unknown_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://unknown-issuer.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, unknownKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation jwt invalid signature",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, _, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				wrongKey := oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, wrongKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation jwt missing exp",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					"cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation jwt expired",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() - 10, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation jwt sub mismatch",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, _, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: "wrong_client_id",
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop invalid signature",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				// Sign PoP with a different key than cnf.jwk.
+				wrongKey, _ := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+				wrongJWK := goidc.JSONWebKey{Key: wrongKey, Algorithm: string(goidc.ES256)}
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+					goidc.ClaimTokenID: "pop_jti",
+				}, wrongJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop missing exp",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimIssuedAt: timeutil.TimestampNow(), goidc.ClaimTokenID: "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop missing jti",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation pop invalid issuer",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "wrong_client_id", goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+					goidc.ClaimTokenID: "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name:     "attestation combined mode at device auth rejected",
+			authnCtx: client.AuthnContextDeviceAuth,
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+					Method: http.MethodPost, URI: ctx.Host + "/device_authorization", Key: clientKey,
+				})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation combined mode dpop key mismatch",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/token"
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				// DPoP proof signed with a different key.
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+					Method: http.MethodPost, URI: ctx.Host + "/token",
+				})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation no pop and no dpop header",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation dpop disabled no pop header",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation multiple attestation headers",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Add("Oauth-Client-Attestation", attestation)
+				ctx.Request.Header.Add("Oauth-Client-Attestation", attestation)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
+		{
+			name: "attestation multiple pop headers",
+			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
+				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
+				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
+				clientJWK := goidc.JSONWebKey{Key: clientKey, Algorithm: string(goidc.ES256)}
+				attestation := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: "https://attester.example.com", goidc.ClaimSubject: c.ID,
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 300, "cnf": map[string]any{"jwk": cnfJWK},
+				}, issuerKey, (&jose.SignerOptions{}).WithType("oauth-client-attestation+jwt"))
+				ctx.Request.Header.Set("Oauth-Client-Attestation", attestation)
+
+				pop := oidctest.SignWithOptions(t, map[string]any{
+					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
+					goidc.ClaimExpiry: timeutil.TimestampNow() + 60, goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+					goidc.ClaimTokenID: "pop_jti",
+				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
+				ctx.Request.Header.Add("Oauth-Client-Attestation-Pop", pop)
+				ctx.Request.Header.Add("Oauth-Client-Attestation-Pop", pop)
+				return ctx, nil
+			},
+			wantErr: goidc.ErrorCodeInvalidClient,
+		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx, validate := test.setup(t)
 
-			got, err := client.Authenticated(ctx, client.AuthnContextToken)
+			authnCtx := test.authnCtx
+			if authnCtx == "" {
+				authnCtx = client.AuthnContextToken
+			}
+			got, err := client.Authenticated(ctx, authnCtx)
 
 			if test.wantErr != "" {
 				if err == nil {
@@ -742,7 +1077,7 @@ func setUpPrivateKeyJWTAuthn(t *testing.T) (ctx oidc.Context, c *goidc.Client, j
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.TokenAuthnPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
+	ctx.AuthnMethodPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
 	ctx.JWTLifetimeSecs = 60
 
 	jwk = oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -768,7 +1103,7 @@ func setUpClientSecretJWTAuthn(t *testing.T) (
 	t.Helper()
 
 	ctx = oidctest.NewContext(t)
-	ctx.TokenAuthnSecretJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.HS256}
+	ctx.AuthnMethodSecretJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.HS256}
 	ctx.JWTLifetimeSecs = 60
 
 	secret = "random_password12345678910111213"
@@ -866,4 +1201,54 @@ func setUpSelfSignedTLSAuthn(t *testing.T) (oidc.Context, *goidc.Client, *x509.C
 	ctx.StaticClients = append(ctx.StaticClients, c)
 
 	return ctx, c, cert
+}
+
+func setUpAttestationAuthn(t *testing.T) (
+	ctx oidc.Context,
+	c *goidc.Client,
+	issuerKey goidc.JSONWebKey,
+	clientKey *ecdsa.PrivateKey,
+) {
+	t.Helper()
+
+	ctx = oidctest.NewContext(t)
+	ctx.AuthnMethods = []goidc.AuthnMethod{goidc.AuthnMethodAttestationJWT}
+	ctx.JWTLifetimeSecs = 600
+
+	issuerKey = oidctest.PrivateRS256JWK(t, "issuer_key", goidc.KeyUsageSignature)
+
+	var err error
+	clientKey, err = ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+	if err != nil {
+		t.Fatalf("could not generate ES256 key: %v", err)
+	}
+
+	// Serve the issuer's JWKS via httptest.
+	issuerJWKS := goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{issuerKey.Public()}}
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(issuerJWKS)
+	}))
+	t.Cleanup(srv.Close)
+
+	ctx.HTTPClientFunc = func(context.Context) *http.Client {
+		return srv.Client()
+	}
+
+	ctx.AuthnMethodAttestationJWTIssuers = []goidc.AttestationIssuer{
+		{
+			Issuer:  "https://attester.example.com",
+			JWKSURI: srv.URL + "/jwks",
+		},
+	}
+
+	c = &goidc.Client{
+		ID: "random_client_id",
+		ClientMeta: goidc.ClientMeta{
+			TokenAuthnMethod: goidc.AuthnMethodAttestationJWT,
+		},
+	}
+	ctx.StaticClients = append(ctx.StaticClients, c)
+
+	return ctx, c, issuerKey, clientKey
 }

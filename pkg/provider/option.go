@@ -859,7 +859,7 @@ func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.
 			}
 		}
 
-		p.config.TokenAuthnPrivateKeyJWTSigAlgs = algs
+		p.config.AuthnMethodPrivateKeyJWTSigAlgs = algs
 		return nil
 	}
 }
@@ -880,7 +880,7 @@ func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.Sign
 			}
 		}
 
-		p.config.TokenAuthnSecretJWTSigAlgs = algs
+		p.config.AuthnMethodSecretJWTSigAlgs = algs
 		return nil
 	}
 }
@@ -1020,11 +1020,74 @@ func WithTokenBindingRequired() Option {
 	}
 }
 
-func WithTokenAuthnMethods(defaultMethod goidc.AuthnMethod, methods ...goidc.AuthnMethod) Option {
-	methods = appendIfNotIn(methods, defaultMethod)
+// WithAuthnMethodNone enables the "none" client authentication method.
+func WithAuthnMethodNone() Option {
 	return func(p *Provider) error {
-		p.config.TokenAuthnMethodDefault = defaultMethod
-		p.config.TokenAuthnMethods = methods
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodNone)
+		return nil
+	}
+}
+
+// WithAuthnMethodSecretPost enables the "client_secret_post" client
+// authentication method.
+func WithAuthnMethodSecretPost() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretPost)
+		return nil
+	}
+}
+
+// WithAuthnMethodSecretBasic enables the "client_secret_basic" client
+// authentication method.
+func WithAuthnMethodSecretBasic() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretBasic)
+		return nil
+	}
+}
+
+// WithAuthnMethodPrivateKeyJWT enables the "private_key_jwt" client
+// authentication method.
+func WithAuthnMethodPrivateKeyJWT() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT)
+		return nil
+	}
+}
+
+// WithAuthnMethodSecretJWT enables the "client_secret_jwt" client
+// authentication method.
+func WithAuthnMethodSecretJWT() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretJWT)
+		return nil
+	}
+}
+
+// WithAuthnMethodTLS enables the "tls_client_auth" client authentication
+// method.
+func WithAuthnMethodTLS() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodTLS)
+		return nil
+	}
+}
+
+// WithAuthnMethodSelfSignedTLS enables the "self_signed_tls_client_auth" client
+// authentication method.
+func WithAuthnMethodSelfSignedTLS() Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSelfSignedTLS)
+		return nil
+	}
+}
+
+// WithAuthnMethodAttestationJWT enables the "attest_jwt_client_auth" client
+// authentication method with the given trusted attestation issuers.
+func WithAuthnMethodAttestationJWT(issuer goidc.AttestationIssuer, issuers ...goidc.AttestationIssuer) Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodAttestationJWT)
+		p.config.AuthnMethodAttestationJWTIssuers = append([]goidc.AttestationIssuer{issuer}, issuers...)
 		return nil
 	}
 }

@@ -188,13 +188,14 @@ func (rm ResponseMode) IsJSON() bool {
 type AuthnMethod string
 
 const (
-	AuthnMethodNone          AuthnMethod = "none"
-	AuthnMethodSecretBasic   AuthnMethod = "client_secret_basic"
-	AuthnMethodSecretPost    AuthnMethod = "client_secret_post"
-	AuthnMethodSecretJWT     AuthnMethod = "client_secret_jwt"
-	AuthnMethodPrivateKeyJWT AuthnMethod = "private_key_jwt"
-	AuthnMethodTLS           AuthnMethod = "tls_client_auth"
-	AuthnMethodSelfSignedTLS AuthnMethod = "self_signed_tls_client_auth"
+	AuthnMethodNone           AuthnMethod = "none"
+	AuthnMethodSecretBasic    AuthnMethod = "client_secret_basic"
+	AuthnMethodSecretPost     AuthnMethod = "client_secret_post"
+	AuthnMethodSecretJWT      AuthnMethod = "client_secret_jwt"
+	AuthnMethodPrivateKeyJWT  AuthnMethod = "private_key_jwt"
+	AuthnMethodTLS            AuthnMethod = "tls_client_auth"
+	AuthnMethodSelfSignedTLS  AuthnMethod = "self_signed_tls_client_auth"
+	AuthnMethodAttestationJWT AuthnMethod = "attest_jwt_client_auth"
 )
 
 type ClientAssertionType string
@@ -827,3 +828,9 @@ type RandomFunc func(context.Context) string
 type HandleClientFunc func(context.Context, *Client) error
 
 type RenderFunc func(http.ResponseWriter, *http.Request) error
+
+type AttestationIssuer struct {
+	Issuer  string
+	JWKSURI string
+	SigAlgs []SignatureAlgorithm
+}

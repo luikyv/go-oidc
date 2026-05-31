@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/x509"
 	"errors"
+	"net/http"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/hashutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -403,7 +405,257 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			},
 		},
 		{
-			name: "mtls binding",
+			name: "no binding",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				return setup(t)
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.JWKThumbprint != "" {
+					t.Errorf("JWKThumbprint = %q, want empty", grant.JWKThumbprint)
+				}
+				if grant.CertThumbprint != "" {
+					t.Errorf("CertThumbprint = %q, want empty", grant.CertThumbprint)
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				if _, ok := claims["cnf"]; ok {
+					t.Error("expected no cnf claim in unbound token")
+				}
+			},
+		},
+		{
+			name: "dpop binding",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/token"
+
+				dpopJWT, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				grant.JWKThumbprint = thumbprint
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.JWKThumbprint == "" {
+					t.Fatal("expected JWK thumbprint to be set on grant")
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				cnf, ok := claims["cnf"].(map[string]any)
+				if !ok {
+					t.Fatal("expected cnf claim in token")
+				}
+				if cnf["jkt"] != grant.JWKThumbprint {
+					t.Errorf("cnf.jkt = %v, want %v", cnf["jkt"], grant.JWKThumbprint)
+				}
+			},
+		},
+		{
+			name: "dpop binding key mismatch",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/token"
+
+				// Use one key for the grant thumbprint, another for the DPoP header.
+				_, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
+				dpopJWT, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				grant.JWKThumbprint = thumbprint
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "dpop binding missing header",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+
+				_, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
+				grant.JWKThumbprint = thumbprint
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "tls binding",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				certRaw := []byte("test_client_cert")
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return &x509.Certificate{Raw: certRaw}, nil
+				}
+				grant.CertThumbprint = hashutil.Thumbprint(string(certRaw))
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.CertThumbprint == "" {
+					t.Fatal("expected certificate thumbprint to be set on grant")
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				cnf, ok := claims["cnf"].(map[string]any)
+				if !ok {
+					t.Fatal("expected cnf claim in token")
+				}
+				if cnf["x5t#S256"] != grant.CertThumbprint {
+					t.Errorf("cnf.x5t#S256 = %v, want %v", cnf["x5t#S256"], grant.CertThumbprint)
+				}
+			},
+		},
+		{
+			name: "tls binding cert mismatch",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return &x509.Certificate{Raw: []byte("different_cert")}, nil
+				}
+				grant.CertThumbprint = hashutil.Thumbprint(string([]byte("original_cert")))
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "tls binding missing cert",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return nil, errors.New("no client certificate")
+				}
+				grant.CertThumbprint = hashutil.Thumbprint(string([]byte("original_cert")))
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "dpop and tls binding",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				ctx.Request.Method = http.MethodPost
+				ctx.Request.RequestURI = "/token"
+
+				dpopJWT, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
+				ctx.Request.Header.Set(goidc.HeaderDPoP, dpopJWT)
+				grant.JWKThumbprint = thumbprint
+
+				certRaw := []byte("test_client_cert")
+				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
+					return &x509.Certificate{Raw: certRaw}, nil
+				}
+				grant.CertThumbprint = hashutil.Thumbprint(string(certRaw))
+
+				if err := ctx.SaveGrant(grant); err != nil {
+					t.Fatalf("error while updating the grant: %v", err)
+				}
+				return ctx, req, c, grant
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.JWKThumbprint == "" {
+					t.Fatal("expected JWK thumbprint to be set on grant")
+				}
+				if grant.CertThumbprint == "" {
+					t.Fatal("expected certificate thumbprint to be set on grant")
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				cnf, ok := claims["cnf"].(map[string]any)
+				if !ok {
+					t.Fatal("expected cnf claim in token")
+				}
+				if cnf["jkt"] != grant.JWKThumbprint {
+					t.Errorf("cnf.jkt = %v, want %v", cnf["jkt"], grant.JWKThumbprint)
+				}
+				if cnf["x5t#S256"] != grant.CertThumbprint {
+					t.Errorf("cnf.x5t#S256 = %v, want %v", cnf["x5t#S256"], grant.CertThumbprint)
+				}
+			},
+		},
+		{
+			name: "dpop required by config but not sent",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPIsRequired = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "dpop required by client but not sent",
+			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
+				ctx, req, c, grant := setup(t)
+				ctx.DPoPIsEnabled = true
+				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
+				c.DPoPTokenBindingIsRequired = true
+				return ctx, req, c, grant
+			},
+			wantErr: goidc.ErrorCodeInvalidRequest,
+		},
+		{
+			name: "mtls binding no grant thumbprint",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
 				ctx.MTLSTokenBindingIsEnabled = true

@@ -26,7 +26,7 @@ func main() {
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
 		provider.WithPARRequired(nil),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
-		provider.WithTokenAuthnMethods(goidc.AuthnMethodTLS),
+		provider.WithAuthnMethodTLS(),
 		provider.WithPrivateKeyJWTSignatureAlgs(goidc.PS256),
 		provider.WithIssuerResponseParameter(),
 		provider.WithClaimsParameter(),

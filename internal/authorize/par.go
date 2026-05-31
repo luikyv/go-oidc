@@ -19,11 +19,11 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	var shouldRegisterFedClient bool
 	c, err := func() (*goidc.Client, error) {
 		if !ctx.OpenIDFedIsEnabled {
-			return client.Authenticated(ctx, client.AuthnContextToken)
+			return client.Authenticated(ctx, client.AuthnContextPAR)
 		}
 
 		if !slices.Contains(ctx.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeAutomatic) {
-			return client.Authenticated(ctx, client.AuthnContextToken)
+			return client.Authenticated(ctx, client.AuthnContextPAR)
 		}
 
 		id, err := client.ExtractID(ctx)
@@ -32,10 +32,10 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 		}
 
 		if !strutil.IsURL(id) {
-			return client.Authenticated(ctx, client.AuthnContextToken)
+			return client.Authenticated(ctx, client.AuthnContextPAR)
 		}
 
-		c, err := client.Authenticated(ctx, client.AuthnContextToken)
+		c, err := client.Authenticated(ctx, client.AuthnContextPAR)
 		if err != nil {
 			if !errors.Is(err, goidc.ErrNotFound) {
 				return nil, err
@@ -130,11 +130,13 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	}, nil
 }
 
+// dpopThumbprintForPAR extracts the DPoP JWK thumbprint from the request.
+// The DPoP proof is expected to have been validated before this point.
 func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
 	if !ctx.DPoPIsEnabled {
 		return ""
 	}
-	if dpopJWT, ok := dpop.JWT(ctx); ctx.DPoPIsEnabled && ok {
+	if dpopJWT, ok := dpop.JWT(ctx); ok {
 		return dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 	}
 	return req.DPoPJKT
@@ -177,7 +179,7 @@ func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Cl
 			errors.New("the client is not registered for automatic federation registration"))
 	}
 
-	if err := client.Authenticate(ctx, c, client.AuthnContextToken); err != nil {
+	if err := client.Authenticate(ctx, c, client.AuthnContextPAR); err != nil {
 		return nil, err
 	}
 

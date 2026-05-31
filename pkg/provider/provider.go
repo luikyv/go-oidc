@@ -71,7 +71,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
 		return nil, errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
@@ -93,13 +93,13 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		return nil, errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
 	}
 
-	if op.config.DCRSecretLifetimeSecs != 0 && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+	if op.config.DCRSecretLifetimeSecs != 0 && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		return nil, errors.New("dcr secret lifetime requires a secret-based token authentication method")
 	}
 
-	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.TokenAuthnMethods, func(method goidc.AuthnMethod) bool {
+	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
@@ -177,13 +177,12 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	op.config.TokenAuthnMethods = nonZeroOrDefault(op.config.TokenAuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
-	op.config.TokenAuthnMethodDefault = nonZeroOrDefault(op.config.TokenAuthnMethodDefault, goidc.AuthnMethodSecretPost)
-	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
-		op.config.TokenAuthnPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+	op.config.AuthnMethods = nonZeroOrDefault(op.config.AuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
+	if slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		op.config.AuthnMethodPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.AuthnMethodPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 	}
-	if slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
-		op.config.TokenAuthnSecretJWTSigAlgs = nonZeroOrDefault(op.config.TokenAuthnSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
+	if slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodSecretJWT) {
+		op.config.AuthnMethodSecretJWTSigAlgs = nonZeroOrDefault(op.config.AuthnMethodSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
 	}
 
 	if op.config.DCRIsEnabled {
@@ -341,7 +340,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 
 	switch op.config.Profile {
 	case goidc.ProfileFAPI1:
-		for _, method := range op.config.TokenAuthnMethods {
+		for _, method := range op.config.AuthnMethods {
 			if !slices.Contains([]goidc.AuthnMethod{
 				goidc.AuthnMethodPrivateKeyJWT,
 				goidc.AuthnMethodSecretJWT,
@@ -360,11 +359,11 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 			return nil, errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
 		}
 
-		if !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) && !slices.Contains(op.config.TokenAuthnMethods, goidc.AuthnMethodTLS) {
+		if !slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT) && !slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodTLS) {
 			return nil, errors.New("[FAPI 2.0 5.3.1] only private_key_jwt or tls_client_auth are allowed")
 		}
 
-		for _, method := range op.config.TokenAuthnMethods {
+		for _, method := range op.config.AuthnMethods {
 			if !slices.Contains([]goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodTLS}, method) {
 				return nil, fmt.Errorf("[FAPI 2.0 5.3.1] %s is not a valid authentication method", method)
 			}

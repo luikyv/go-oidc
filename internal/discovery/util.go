@@ -28,7 +28,7 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 		IDTokenSigAlgs:               ctx.IDTokenSigAlgs,
 		UserInfoSigAlgs:              ctx.UserInfoSigAlgs,
 		Scopes:                       scopes,
-		TokenAuthnMethods:            ctx.TokenAuthnMethods,
+		TokenAuthnMethods:            ctx.AuthnMethods,
 		TokenAuthnSigAlgs:            ctx.TokenAuthnSigAlgs(),
 		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
 		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
@@ -75,13 +75,13 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 
 	if ctx.TokenIntrospectionIsEnabled {
 		config.TokenIntrospectionEndpoint = ctx.BaseURL() + ctx.TokenIntrospectionEndpoint
-		config.TokenIntrospectionAuthnMethods = ctx.TokenAuthnMethods
+		config.TokenIntrospectionAuthnMethods = ctx.AuthnMethods
 		config.TokenIntrospectionAuthnSigAlgs = ctx.TokenAuthnSigAlgs()
 	}
 
 	if ctx.TokenRevocationIsEnabled {
 		config.TokenRevocationEndpoint = ctx.BaseURL() + ctx.TokenRevocationEndpoint
-		config.TokenRevocationAuthnMethods = ctx.TokenAuthnMethods
+		config.TokenRevocationAuthnMethods = ctx.AuthnMethods
 		config.TokenRevocationAuthnSigAlgs = ctx.TokenAuthnSigAlgs()
 	}
 

@@ -2,17 +2,22 @@ package oidctest
 
 import (
 	"context"
+	"crypto"
+	"crypto/ecdsa"
+	"crypto/elliptic"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/subtle"
 	"crypto/tls"
 	"crypto/x509"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -193,7 +198,7 @@ func NewContext(tb testing.TB) oidc.Context {
 			return uuid.NewString()
 		},
 		AuthTimeoutSecs: 60,
-		TokenAuthnMethods: []goidc.AuthnMethod{
+		AuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodSecretPost,
 			goidc.AuthnMethodSecretBasic,
@@ -405,6 +410,81 @@ func UnsafeClaims(jws string, algs ...goidc.SignatureAlgorithm) (map[string]any,
 func Sign(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
 	tb.Helper()
 	return SignWithOptions(tb, claims, jwk, nil)
+}
+
+// DPoPProofOptions configures DPoP proof generation.
+type DPoPProofOptions struct {
+	Method string
+	URI    string
+	// Key is the private key used to sign the proof. If nil, a fresh ES256 key
+	// is generated.
+	Key crypto.PrivateKey
+}
+
+// DPoPProof generates a DPoP proof JWT.
+// It returns the serialized JWT and the JWK thumbprint of the signing key.
+func DPoPProof(tb testing.TB, opts DPoPProofOptions) (dpopJWT string, thumbprint string) {
+	tb.Helper()
+
+	key := opts.Key
+	if key == nil {
+		k, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+		if err != nil {
+			tb.Fatalf("could not generate EC key: %v", err)
+		}
+		key = k
+	}
+
+	var pubKey crypto.PublicKey
+	var alg jose.SignatureAlgorithm
+	switch k := key.(type) {
+	case *ecdsa.PrivateKey:
+		pubKey = k.Public()
+		alg = jose.ES256
+	case *rsa.PrivateKey:
+		pubKey = k.Public()
+		alg = jose.PS256
+	default:
+		tb.Fatalf("unsupported DPoP key type: %T", key)
+	}
+
+	jwk := jose.JSONWebKey{Key: pubKey, Algorithm: string(alg)}
+	jkt, err := jwk.Thumbprint(crypto.SHA256)
+	if err != nil {
+		tb.Fatalf("could not compute JWK thumbprint: %v", err)
+	}
+	thumbprint = base64.RawURLEncoding.EncodeToString(jkt)
+
+	signerOpts := (&jose.SignerOptions{}).
+		WithType("dpop+jwt").
+		WithHeader("jwk", jwk)
+	signer, err := jose.NewSigner(jose.SigningKey{Algorithm: alg, Key: key}, signerOpts)
+	if err != nil {
+		tb.Fatalf("could not create DPoP signer: %v", err)
+	}
+
+	claims := map[string]any{
+		"jti": uuid.NewString(),
+		"htm": opts.Method,
+		"htu": opts.URI,
+		"iat": time.Now().Unix(),
+	}
+	payload, err := json.Marshal(claims)
+	if err != nil {
+		tb.Fatalf("could not marshal DPoP claims: %v", err)
+	}
+
+	jws, err := signer.Sign(payload)
+	if err != nil {
+		tb.Fatalf("could not sign DPoP proof: %v", err)
+	}
+
+	dpopJWT, err = jws.CompactSerialize()
+	if err != nil {
+		tb.Fatalf("could not serialize DPoP proof: %v", err)
+	}
+
+	return dpopJWT, thumbprint
 }
 
 func SignWithOptions(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey, opts *jose.SignerOptions) string {

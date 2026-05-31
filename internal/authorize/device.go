@@ -23,7 +23,7 @@ type deviceResponse struct {
 }
 
 func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
-	c, err := client.Authenticated(ctx, client.AuthnContextToken)
+	c, err := client.Authenticated(ctx, client.AuthnContextDeviceAuth)
 	if err != nil {
 		return deviceResponse{}, err
 	}

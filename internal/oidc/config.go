@@ -62,14 +62,15 @@ type Configuration struct {
 	RenderErrorFunc      goidc.RenderErrorFunc
 	HandleErrorFunc      goidc.HandleErrorFunc
 
-	TokenAuthnMethodDefault        goidc.AuthnMethod
-	TokenAuthnMethods              []goidc.AuthnMethod
-	TokenAuthnPrivateKeyJWTSigAlgs []goidc.SignatureAlgorithm
-	TokenAuthnSecretJWTSigAlgs     []goidc.SignatureAlgorithm
-	TokenEndpoint                  string
-	OpaqueTokenFunc                goidc.OpaqueTokenFunc
-	TokenOptionsFunc               goidc.TokenOptionsFunc
-	VerifyClientSecretFunc         goidc.VerifyClientSecretFunc
+	AuthnMethods                     []goidc.AuthnMethod
+	AuthnMethodPrivateKeyJWTSigAlgs  []goidc.SignatureAlgorithm
+	AuthnMethodSecretJWTSigAlgs      []goidc.SignatureAlgorithm
+	AuthnMethodAttestationJWTIssuers []goidc.AttestationIssuer
+
+	TokenEndpoint          string
+	OpaqueTokenFunc        goidc.OpaqueTokenFunc
+	TokenOptionsFunc       goidc.TokenOptionsFunc
+	VerifyClientSecretFunc goidc.VerifyClientSecretFunc
 	// TokenBindingIsRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingIsRequired bool

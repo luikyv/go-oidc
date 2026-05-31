@@ -29,7 +29,7 @@ func main() {
 		provider.WithTLSTokenBindingRequired(),
 		provider.WithJARRequired(goidc.PS256),
 		provider.WithPARRequired(nil),
-		provider.WithTokenAuthnMethods(goidc.AuthnMethodTLS),
+		provider.WithAuthnMethodTLS(),
 		provider.WithClaimsParameter(),
 		provider.WithPKCE(goidc.CodeChallengeMethodSHA256),
 		provider.WithJARM(goidc.PS256),

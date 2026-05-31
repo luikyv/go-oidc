@@ -1395,7 +1395,7 @@ func TestWithSecretJWTSignatureAlgs(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
-				if diff := cmp.Diff(p.config.TokenAuthnSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
+				if diff := cmp.Diff(p.config.AuthnMethodSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
 					t.Error(diff)
 				}
 			}
@@ -1470,7 +1470,7 @@ func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
 				if err != nil {
 					t.Fatalf("unexpected error: %v", err)
 				}
-				if diff := cmp.Diff(p.config.TokenAuthnPrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
+				if diff := cmp.Diff(p.config.AuthnMethodPrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
 					t.Error(diff)
 				}
 			}
@@ -3325,27 +3325,95 @@ func TestWithSSFMultipleStreamsPerReceiverIsEnabled(t *testing.T) {
 	}
 }
 
-func TestWithTokenAuthnMethods(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost)(p)
-
-	// Then.
-	if err != nil {
+func TestWithAuthnMethodNone(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodNone()(p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			TokenAuthnMethodDefault: goidc.AuthnMethodPrivateKeyJWT,
-			TokenAuthnMethods:       []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost},
-		},
+	want := []goidc.AuthnMethod{goidc.AuthnMethodNone}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+}
+
+func TestWithAuthnMethodSecretPost(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodSecretPost()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSecretPost}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodSecretBasic(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodSecretBasic()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodPrivateKeyJWT(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodPrivateKeyJWT()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodSecretJWT(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodSecretJWT()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSecretJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodTLS(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodTLS()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodTLS}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodSelfSignedTLS(t *testing.T) {
+	p := &Provider{}
+	if err := WithAuthnMethodSelfSignedTLS()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSelfSignedTLS}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAuthnMethodAttestationJWT(t *testing.T) {
+	p := &Provider{}
+	issuer := goidc.AttestationIssuer{Issuer: "https://attester.example.com", JWKSURI: "https://attester.example.com/jwks"}
+	if err := WithAuthnMethodAttestationJWT(issuer)(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wantMethods := []goidc.AuthnMethod{goidc.AuthnMethodAttestationJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, wantMethods); diff != "" {
+		t.Error(diff)
+	}
+	wantIssuers := []goidc.AttestationIssuer{issuer}
+	if diff := cmp.Diff(p.config.AuthnMethodAttestationJWTIssuers, wantIssuers); diff != "" {
 		t.Error(diff)
 	}
 }

@@ -93,12 +93,12 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			c.JARContentEncAlgs = nil
 		}
 
-		c.TokenAuthnMethod, err = resolveChoice(c.TokenAuthnMethods, c.TokenAuthnMethod, ctx.TokenAuthnMethods, "token_endpoint_auth_methods_supported")
+		c.TokenAuthnMethod, err = resolveChoice(c.TokenAuthnMethods, c.TokenAuthnMethod, ctx.AuthnMethods, "token_endpoint_auth_methods_supported")
 		if err != nil {
 			return err
 		}
 
-		tokenAuthnSigAlgs := slices.Concat(ctx.TokenAuthnPrivateKeyJWTSigAlgs, ctx.TokenAuthnSecretJWTSigAlgs)
+		tokenAuthnSigAlgs := slices.Concat(ctx.AuthnMethodPrivateKeyJWTSigAlgs, ctx.AuthnMethodSecretJWTSigAlgs)
 		c.TokenAuthnSigAlg, err = resolveChoice(c.TokenAuthnSigAlgs, c.TokenAuthnSigAlg, tokenAuthnSigAlgs, "token_endpoint_auth_signing_alg_values_supported")
 		if err != nil {
 			return err
@@ -163,16 +163,18 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	}
 
 	if c.TokenAuthnMethod == "" {
-		c.TokenAuthnMethod = ctx.TokenAuthnMethodDefault
+		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
+			errors.New("token_endpoint_auth_method is required"))
 	}
-	if !slices.Contains(ctx.TokenAuthnMethods, c.TokenAuthnMethod) {
+
+	if !slices.Contains(ctx.AuthnMethods, c.TokenAuthnMethod) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 			fmt.Errorf("token_endpoint_auth_method %s is not allowed", c.TokenAuthnMethod))
 	}
 
 	switch c.TokenAuthnMethod {
 	case goidc.AuthnMethodPrivateKeyJWT:
-		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenAuthnSigAlg) {
+		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodPrivateKeyJWTSigAlgs, c.TokenAuthnSigAlg) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg))
 		}
@@ -182,7 +184,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 				errors.New("jwks or jwks_uri is required for private_key_jwt"))
 		}
 	case goidc.AuthnMethodSecretJWT:
-		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenAuthnSigAlg) {
+		if c.TokenAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodSecretJWTSigAlgs, c.TokenAuthnSigAlg) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg))
 		}
@@ -228,12 +230,12 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 
 			switch c.TokenIntrospectionAuthnMethod {
 			case goidc.AuthnMethodPrivateKeyJWT:
-				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
+				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodPrivateKeyJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
 					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 						fmt.Errorf("introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg))
 				}
 			case goidc.AuthnMethodSecretJWT:
-				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
+				if c.TokenIntrospectionAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodSecretJWTSigAlgs, c.TokenIntrospectionAuthnSigAlg) {
 					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 						fmt.Errorf("introspection_endpoint_auth_signing_alg %s is not allowed", c.TokenIntrospectionAuthnSigAlg))
 				}
@@ -257,12 +259,12 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 
 			switch c.TokenRevocationAuthnMethod {
 			case goidc.AuthnMethodPrivateKeyJWT:
-				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnPrivateKeyJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
+				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodPrivateKeyJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
 					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 						fmt.Errorf("revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg))
 				}
 			case goidc.AuthnMethodSecretJWT:
-				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.TokenAuthnSecretJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
+				if c.TokenRevocationAuthnSigAlg != "" && !slices.Contains(ctx.AuthnMethodSecretJWTSigAlgs, c.TokenRevocationAuthnSigAlg) {
 					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 						fmt.Errorf("revocation_endpoint_auth_signing_alg %s is not allowed", c.TokenRevocationAuthnSigAlg))
 				}
