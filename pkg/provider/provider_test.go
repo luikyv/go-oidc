@@ -92,8 +92,8 @@ func TestNew(t *testing.T) {
 						goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken, goidc.ResponseTypeCodeAndIDToken,
 						goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken),
 					WithCIBAGrant(manager, goidc.CIBADeliveryModePoll),
-					WithAuthnMethodPrivateKeyJWT(),
-					WithAuthnMethodSecretJWT(),
+					WithPrivateKeyJWTAuthn(goidc.RS256),
+					WithSecretJWTAuthn(goidc.HS256),
 					WithDCR(manager),
 					WithPAR(manager),
 					WithJAR(goidc.RS256),
@@ -292,7 +292,7 @@ func TestNew_ValidationErrors(t *testing.T) {
 		{
 			name: "dcr secret lifetime requires secret client auth",
 			opts: []Option{
-				WithAuthnMethodPrivateKeyJWT(),
+				WithPrivateKeyJWTAuthn(goidc.PS256),
 				WithDCRSecretLifetime(300),
 			},
 			wantErr: "dcr secret lifetime requires a secret-based token authentication method",
@@ -300,7 +300,7 @@ func TestNew_ValidationErrors(t *testing.T) {
 		{
 			name: "dcr secret rotation requires secret client auth",
 			opts: []Option{
-				WithAuthnMethodPrivateKeyJWT(),
+				WithPrivateKeyJWTAuthn(goidc.PS256),
 				WithDCRSecretRotation(),
 			},
 			wantErr: "dcr secret rotation requires a secret-based token authentication method",

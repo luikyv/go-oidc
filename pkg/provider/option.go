@@ -842,48 +842,6 @@ func WithJARMContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorithm, 
 	}
 }
 
-// WithPrivateKeyJWTSignatureAlgs sets the signature algorithms for private key JWT
-// authentication.
-func WithPrivateKeyJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
-	algs = appendIfNotIn(algs, alg)
-
-	return func(p *Provider) error {
-
-		if slices.Contains(algs, goidc.None) {
-			return errors.New("'none' algorithm is not allowed for private_key_jwt")
-		}
-
-		for _, a := range algs {
-			if strings.HasPrefix(string(a), "HS") {
-				return errors.New("symmetric algorithms are not allowed for private_key_jwt authentication")
-			}
-		}
-
-		p.config.AuthnMethodPrivateKeyJWTSigAlgs = algs
-		return nil
-	}
-}
-
-// WithSecretJWTSignatureAlgs sets the signature algorithms for secret JWT
-// authentication.
-func WithSecretJWTSignatureAlgs(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
-	algs = appendIfNotIn(algs, alg)
-	return func(p *Provider) error {
-
-		if slices.Contains(algs, goidc.None) {
-			return errors.New("'none' algorithm is not allowed for client_secret_jwt")
-		}
-
-		for _, a := range algs {
-			if !strings.HasPrefix(string(a), "HS") {
-				return errors.New("asymmetric algorithms are not allowed for client_secret_jwt authentication")
-			}
-		}
-
-		p.config.AuthnMethodSecretJWTSigAlgs = algs
-		return nil
-	}
-}
 
 // WithJWTLifetime defines a maximum threshold for lifetime of JWTs.
 func WithJWTLifetime(secs int) Option {
@@ -1020,71 +978,91 @@ func WithTokenBindingRequired() Option {
 	}
 }
 
-// WithAuthnMethodNone enables the "none" client authentication method.
-func WithAuthnMethodNone() Option {
+// WithNoneAuthn enables the "none" client authentication method.
+func WithNoneAuthn() Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodNone)
 		return nil
 	}
 }
 
-// WithAuthnMethodSecretPost enables the "client_secret_post" client
+// WithSecretPostAuthn enables the "client_secret_post" client
 // authentication method.
-func WithAuthnMethodSecretPost() Option {
+func WithSecretPostAuthn() Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretPost)
 		return nil
 	}
 }
 
-// WithAuthnMethodSecretBasic enables the "client_secret_basic" client
+// WithSecretBasicAuthn enables the "client_secret_basic" client
 // authentication method.
-func WithAuthnMethodSecretBasic() Option {
+func WithSecretBasicAuthn() Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretBasic)
 		return nil
 	}
 }
 
-// WithAuthnMethodPrivateKeyJWT enables the "private_key_jwt" client
-// authentication method.
-func WithAuthnMethodPrivateKeyJWT() Option {
+// WithPrivateKeyJWTAuthn enables the "private_key_jwt" client
+// authentication method with the given signature algorithms.
+func WithPrivateKeyJWTAuthn(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
+	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
+		if slices.Contains(algs, goidc.None) {
+			return errors.New("'none' algorithm is not allowed for private_key_jwt")
+		}
+		for _, a := range algs {
+			if strings.HasPrefix(string(a), "HS") {
+				return errors.New("symmetric algorithms are not allowed for private_key_jwt authentication")
+			}
+		}
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT)
+		p.config.AuthnMethodPrivateKeyJWTSigAlgs = algs
 		return nil
 	}
 }
 
-// WithAuthnMethodSecretJWT enables the "client_secret_jwt" client
-// authentication method.
-func WithAuthnMethodSecretJWT() Option {
+// WithSecretJWTAuthn enables the "client_secret_jwt" client
+// authentication method with the given signature algorithms.
+func WithSecretJWTAuthn(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgorithm) Option {
+	algs = appendIfNotIn(algs, alg)
 	return func(p *Provider) error {
+		if slices.Contains(algs, goidc.None) {
+			return errors.New("'none' algorithm is not allowed for client_secret_jwt")
+		}
+		for _, a := range algs {
+			if !strings.HasPrefix(string(a), "HS") {
+				return errors.New("asymmetric algorithms are not allowed for client_secret_jwt authentication")
+			}
+		}
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSecretJWT)
+		p.config.AuthnMethodSecretJWTSigAlgs = algs
 		return nil
 	}
 }
 
-// WithAuthnMethodTLS enables the "tls_client_auth" client authentication
+// WithTLSAuthn enables the "tls_client_auth" client authentication
 // method.
-func WithAuthnMethodTLS() Option {
+func WithTLSAuthn() Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodTLS)
 		return nil
 	}
 }
 
-// WithAuthnMethodSelfSignedTLS enables the "self_signed_tls_client_auth" client
+// WithSelfSignedTLSAuthn enables the "self_signed_tls_client_auth" client
 // authentication method.
-func WithAuthnMethodSelfSignedTLS() Option {
+func WithSelfSignedTLSAuthn() Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodSelfSignedTLS)
 		return nil
 	}
 }
 
-// WithAuthnMethodAttestationJWT enables the "attest_jwt_client_auth" client
+// WithAttestationJWTAuthn enables the "attest_jwt_client_auth" client
 // authentication method with the given trusted attestation issuers.
-func WithAuthnMethodAttestationJWT(issuer goidc.AttestationIssuer, issuers ...goidc.AttestationIssuer) Option {
+func WithAttestationJWTAuthn(issuer goidc.AttestationIssuer, issuers ...goidc.AttestationIssuer) Option {
 	return func(p *Provider) error {
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodAttestationJWT)
 		p.config.AuthnMethodAttestationJWTIssuers = append([]goidc.AttestationIssuer{issuer}, issuers...)

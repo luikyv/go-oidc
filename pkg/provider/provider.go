@@ -178,12 +178,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	}
 
 	op.config.AuthnMethods = nonZeroOrDefault(op.config.AuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
-	if slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
-		op.config.AuthnMethodPrivateKeyJWTSigAlgs = nonZeroOrDefault(op.config.AuthnMethodPrivateKeyJWTSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
-	}
-	if slices.Contains(op.config.AuthnMethods, goidc.AuthnMethodSecretJWT) {
-		op.config.AuthnMethodSecretJWTSigAlgs = nonZeroOrDefault(op.config.AuthnMethodSecretJWTSigAlgs, []goidc.SignatureAlgorithm{defaultSymmetricSigAlg})
-	}
 
 	if op.config.DCRIsEnabled {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(inmemoryManager))
