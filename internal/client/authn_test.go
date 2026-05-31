@@ -1061,7 +1061,7 @@ func TestAuthenticated(t *testing.T) {
 
 				pop := oidctest.SignWithOptions(t, map[string]any{
 					goidc.ClaimIssuer: c.ID, goidc.ClaimAudience: ctx.Issuer(),
-					goidc.ClaimExpiry: timeutil.TimestampNow() + 60,
+					goidc.ClaimExpiry:   timeutil.TimestampNow() + 60,
 					goidc.ClaimIssuedAt: timeutil.TimestampNow() - ctx.JWTLifetimeSecs - 10,
 					goidc.ClaimTokenID:  "pop_jti",
 				}, clientJWK, (&jose.SignerOptions{}).WithType("oauth-client-attestation-pop+jwt"))
