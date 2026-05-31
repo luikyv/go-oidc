@@ -37,6 +37,10 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 * [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
 
+### Drafts
+
+* [OAuth 2.0 Attestation-Based Client Authentication (draft)](https://datatracker.ietf.org/doc/draft-ietf-oauth-attestation-based-client-auth/)
+
 ## Certification
 
 Luiky Vasconcelos has certified that [go-oidc](https://pkg.go.dev/github.com/luikyv/go-oidc) conforms to the following profiles of the OpenID Connect™ protocol.
