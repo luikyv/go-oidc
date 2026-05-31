@@ -31,8 +31,14 @@ type Claims struct {
 // JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
 func JWKThumbprint(dpopJWT string, algs []goidc.SignatureAlgorithm) string {
 	// TODO: handle the error
-	parsedDPoPJWT, _ := jwt.ParseSigned(dpopJWT, algs)
-	jkt, _ := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
+	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, algs)
+	if err != nil {
+		return ""
+	}
+	jkt, err := parsedDPoPJWT.Headers[0].JSONWebKey.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return ""
+	}
 	return base64.RawURLEncoding.EncodeToString(jkt)
 }
 
@@ -50,22 +56,22 @@ func JWT(ctx oidc.Context) (string, bool) {
 }
 
 func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error {
-	parsedDPoPJWT, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
+	parsed, err := jwt.ParseSigned(dpopJWT, ctx.DPoPSigAlgs)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
-	if len(parsedDPoPJWT.Headers) != 1 {
+	if len(parsed.Headers) != 1 {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
 			errors.New("the DPoP proof must contain exactly one JOSE header"))
 	}
 
-	if parsedDPoPJWT.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
+	if parsed.Headers[0].ExtraHeaders["typ"] != "dpop+jwt" {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
 			errors.New("the typ header must be dpop+jwt"))
 	}
 
-	jwk := parsedDPoPJWT.Headers[0].JSONWebKey
+	jwk := parsed.Headers[0].JSONWebKey
 	if jwk == nil || !jwk.Valid() || !jwk.IsPublic() {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
 			errors.New("the jwk header must contain a valid public key"))
@@ -73,7 +79,7 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 
 	var claims jwt.Claims
 	var dpopClaims Claims
-	if err := parsedDPoPJWT.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
+	if err := parsed.Claims(jwk.Key, &claims, &dpopClaims); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 

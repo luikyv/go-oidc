@@ -51,15 +51,15 @@ func TestOIDCConfig(t *testing.T) {
 		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userKey.Algorithm),
 		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
 		DCRIsEnabled:             true,
-		TokenAuthnMethods: []goidc.AuthnMethod{
+		AuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodPrivateKeyJWT,
 			goidc.AuthnMethodSecretJWT,
 		},
-		TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
-		TokenAuthnSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
-		RARIsEnabled:                   true,
-		RARDetailTypes:                 []goidc.AuthDetailType{"detail_type"},
+		AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+		AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
+		RARIsEnabled:                    true,
+		RARDetailTypes:                  []goidc.AuthDetailType{"detail_type"},
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -76,7 +76,7 @@ func TestOIDCConfig(t *testing.T) {
 		UserInfoEndpoint:            ctx.Issuer() + ctx.UserInfoEndpoint,
 		JWKSEndpoint:                ctx.Issuer() + ctx.JWKSEndpoint,
 		Scopes:                      []string{"openid", "email"},
-		TokenAuthnMethods:           ctx.TokenAuthnMethods,
+		TokenAuthnMethods:           ctx.AuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},
@@ -151,26 +151,26 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userInfoKey.Algorithm),
 		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
 		DCRIsEnabled:             true,
-		TokenAuthnMethods: []goidc.AuthnMethod{
+		AuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodPrivateKeyJWT,
 			goidc.AuthnMethodSecretJWT,
 		},
-		TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
-		TokenAuthnSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
-		RARIsEnabled:                   true,
-		RARDetailTypes:                 []goidc.AuthDetailType{"detail_type"},
-		PARIsEnabled:                   true,
-		JARIsEnabled:                   true,
-		JARIsRequired:                  true,
-		JARSigAlgs:                     []goidc.SignatureAlgorithm{goidc.PS256},
-		JARMIsEnabled:                  true,
-		JARMSigAlgDefault:              goidc.SignatureAlgorithm(jarmKey.Algorithm),
-		JARMSigAlgs:                    []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jarmKey.Algorithm)},
-		DPoPIsEnabled:                  true,
-		DPoPSigAlgs:                    []goidc.SignatureAlgorithm{goidc.PS256},
-		TokenIntrospectionIsEnabled:    true,
-		TokenRevocationIsEnabled:       true,
+		AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+		AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
+		RARIsEnabled:                    true,
+		RARDetailTypes:                  []goidc.AuthDetailType{"detail_type"},
+		PARIsEnabled:                    true,
+		JARIsEnabled:                    true,
+		JARIsRequired:                   true,
+		JARSigAlgs:                      []goidc.SignatureAlgorithm{goidc.PS256},
+		JARMIsEnabled:                   true,
+		JARMSigAlgDefault:               goidc.SignatureAlgorithm(jarmKey.Algorithm),
+		JARMSigAlgs:                     []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jarmKey.Algorithm)},
+		DPoPIsEnabled:                   true,
+		DPoPSigAlgs:                     []goidc.SignatureAlgorithm{goidc.PS256},
+		TokenIntrospectionIsEnabled:     true,
+		TokenRevocationIsEnabled:        true,
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -190,15 +190,15 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		TokenIntrospectionEndpoint:  ctx.Issuer() + ctx.TokenIntrospectionEndpoint,
 		TokenRevocationEndpoint:     ctx.Issuer() + ctx.TokenRevocationEndpoint,
 		Scopes:                      []string{"openid", "email"},
-		TokenAuthnMethods:           ctx.TokenAuthnMethods,
+		TokenAuthnMethods:           ctx.AuthnMethods,
 		TokenAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},
-		TokenIntrospectionAuthnMethods: ctx.TokenAuthnMethods,
+		TokenIntrospectionAuthnMethods: ctx.AuthnMethods,
 		TokenIntrospectionAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},
-		TokenRevocationAuthnMethods: ctx.TokenAuthnMethods,
+		TokenRevocationAuthnMethods: ctx.AuthnMethods,
 		TokenRevocationAuthnSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.PS256, goidc.HS256,
 		},

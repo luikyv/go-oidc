@@ -44,8 +44,8 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 			name: "private key jwt",
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods:              []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
-					TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+					AuthnMethods:                    []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
+					AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 				},
 			},
 			want: []goidc.SignatureAlgorithm{goidc.PS256},
@@ -54,8 +54,8 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 			name: "secret jwt",
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods:          []goidc.AuthnMethod{goidc.AuthnMethodSecretJWT},
-					TokenAuthnSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
+					AuthnMethods:                []goidc.AuthnMethod{goidc.AuthnMethodSecretJWT},
+					AuthnMethodSecretJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
 			want: []goidc.SignatureAlgorithm{goidc.HS256},
@@ -64,9 +64,9 @@ func TestTokenAuthnSigAlgs(t *testing.T) {
 			name: "both methods",
 			ctx: oidc.Context{
 				Configuration: &oidc.Configuration{
-					TokenAuthnMethods:              []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretJWT},
-					TokenAuthnPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
-					TokenAuthnSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
+					AuthnMethods:                    []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretJWT},
+					AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+					AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
 				},
 			},
 			want: []goidc.SignatureAlgorithm{goidc.PS256, goidc.HS256},

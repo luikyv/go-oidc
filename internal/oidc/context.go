@@ -70,12 +70,12 @@ func (ctx Context) GrantByAuthCode(code string) (*goidc.Grant, error) {
 func (ctx Context) TokenAuthnSigAlgs() []goidc.SignatureAlgorithm {
 	var sigAlgs []goidc.SignatureAlgorithm
 
-	if slices.Contains(ctx.TokenAuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
-		sigAlgs = append(sigAlgs, ctx.TokenAuthnPrivateKeyJWTSigAlgs...)
+	if slices.Contains(ctx.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT) {
+		sigAlgs = append(sigAlgs, ctx.AuthnMethodPrivateKeyJWTSigAlgs...)
 	}
 
-	if slices.Contains(ctx.TokenAuthnMethods, goidc.AuthnMethodSecretJWT) {
-		sigAlgs = append(sigAlgs, ctx.TokenAuthnSecretJWTSigAlgs...)
+	if slices.Contains(ctx.AuthnMethods, goidc.AuthnMethodSecretJWT) {
+		sigAlgs = append(sigAlgs, ctx.AuthnMethodSecretJWTSigAlgs...)
 	}
 
 	return sigAlgs

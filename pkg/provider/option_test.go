@@ -6,7 +6,6 @@ import (
 	"crypto/x509"
 	"net/http"
 	"slices"
-	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -1318,163 +1317,6 @@ func TestWithJARMContentEncryptionAlgs(t *testing.T) {
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
-	}
-}
-
-func TestWithSecretJWTSignatureAlgs(t *testing.T) {
-	testCases := []struct {
-		name          string
-		alg           goidc.SignatureAlgorithm
-		algs          []goidc.SignatureAlgorithm
-		shouldError   bool
-		expectedAlgs  []goidc.SignatureAlgorithm
-		errorContains string
-	}{
-		{
-			name:         "valid single HS256 algorithm",
-			alg:          goidc.HS256,
-			algs:         []goidc.SignatureAlgorithm{},
-			shouldError:  false,
-			expectedAlgs: []goidc.SignatureAlgorithm{goidc.HS256},
-		},
-		{
-			name:         "valid multiple HS algorithms",
-			alg:          goidc.HS256,
-			algs:         []goidc.SignatureAlgorithm{goidc.HS384, goidc.HS512},
-			shouldError:  false,
-			expectedAlgs: []goidc.SignatureAlgorithm{goidc.HS256, goidc.HS384, goidc.HS512},
-		},
-		{
-			name:          "invalid asymmetric algorithm RS256",
-			alg:           goidc.RS256,
-			algs:          []goidc.SignatureAlgorithm{},
-			shouldError:   true,
-			errorContains: "asymmetric algorithms are not allowed",
-		},
-		{
-			name:          "invalid asymmetric algorithm PS256",
-			alg:           goidc.PS256,
-			algs:          []goidc.SignatureAlgorithm{},
-			shouldError:   true,
-			errorContains: "asymmetric algorithms are not allowed",
-		},
-		{
-			name:          "invalid none algorithm",
-			alg:           goidc.None,
-			algs:          []goidc.SignatureAlgorithm{},
-			shouldError:   true,
-			errorContains: "'none' algorithm is not allowed",
-		},
-		{
-			name:          "mix of valid and invalid algorithms",
-			alg:           goidc.HS256,
-			algs:          []goidc.SignatureAlgorithm{goidc.RS256},
-			shouldError:   true,
-			errorContains: "asymmetric algorithms are not allowed",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Given.
-			p := &Provider{
-				config: oidc.Configuration{},
-			}
-
-			// When.
-			err := WithSecretJWTSignatureAlgs(tc.alg, tc.algs...)(p)
-
-			// Then.
-			if tc.shouldError {
-				if err == nil {
-					t.Error("expected an error but got none")
-				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
-					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				if diff := cmp.Diff(p.config.TokenAuthnSecretJWTSigAlgs, tc.expectedAlgs); diff != "" {
-					t.Error(diff)
-				}
-			}
-		})
-	}
-}
-
-func TestWithPrivateKeyJWTSignatureAlgs(t *testing.T) {
-	testCases := []struct {
-		name          string
-		alg           goidc.SignatureAlgorithm
-		algs          []goidc.SignatureAlgorithm
-		shouldError   bool
-		expectedAlgs  []goidc.SignatureAlgorithm
-		errorContains string
-	}{
-		{
-			name:         "valid single RS256 algorithm",
-			alg:          goidc.RS256,
-			algs:         []goidc.SignatureAlgorithm{},
-			shouldError:  false,
-			expectedAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
-		},
-		{
-			name:         "valid multiple asymmetric algorithms",
-			alg:          goidc.RS256,
-			algs:         []goidc.SignatureAlgorithm{goidc.PS256, goidc.ES256},
-			shouldError:  false,
-			expectedAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
-		},
-		{
-			name:          "invalid symmetric algorithm HS256",
-			alg:           goidc.HS256,
-			algs:          []goidc.SignatureAlgorithm{},
-			shouldError:   true,
-			errorContains: "symmetric algorithms are not allowed",
-		},
-		{
-			name:          "invalid none algorithm",
-			alg:           goidc.None,
-			algs:          []goidc.SignatureAlgorithm{},
-			shouldError:   true,
-			errorContains: "'none' algorithm is not allowed",
-		},
-		{
-			name:          "mix of valid and invalid algorithms",
-			alg:           goidc.RS256,
-			algs:          []goidc.SignatureAlgorithm{goidc.HS256},
-			shouldError:   true,
-			errorContains: "symmetric algorithms are not allowed",
-		},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			// Given.
-			p := &Provider{
-				config: oidc.Configuration{},
-			}
-
-			// When.
-			err := WithPrivateKeyJWTSignatureAlgs(tc.alg, tc.algs...)(p)
-
-			// Then.
-			if tc.shouldError {
-				if err == nil {
-					t.Error("expected an error but got none")
-				} else if tc.errorContains != "" && !strings.Contains(err.Error(), tc.errorContains) {
-					t.Errorf("expected error to contain %q, got: %v", tc.errorContains, err)
-				}
-			} else {
-				if err != nil {
-					t.Fatalf("unexpected error: %v", err)
-				}
-				if diff := cmp.Diff(p.config.TokenAuthnPrivateKeyJWTSigAlgs, tc.expectedAlgs); diff != "" {
-					t.Error(diff)
-				}
-			}
-		})
 	}
 }
 
@@ -3325,27 +3167,103 @@ func TestWithSSFMultipleStreamsPerReceiverIsEnabled(t *testing.T) {
 	}
 }
 
-func TestWithTokenAuthnMethods(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithTokenAuthnMethods(goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost)(p)
-
-	// Then.
-	if err != nil {
+func TestWithNoneAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithNoneAuthn()(p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			TokenAuthnMethodDefault: goidc.AuthnMethodPrivateKeyJWT,
-			TokenAuthnMethods:       []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretPost},
-		},
+	want := []goidc.AuthnMethod{goidc.AuthnMethodNone}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+}
+
+func TestWithSecretPostAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithSecretPostAuthn()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSecretPost}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithSecretBasicAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithSecretBasicAuthn()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSecretBasic}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithPrivateKeyJWTAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithPrivateKeyJWTAuthn(goidc.RS256, goidc.PS256)(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wantMethods := []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, wantMethods); diff != "" {
+		t.Error(diff)
+	}
+	wantAlgs := []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256}
+	if diff := cmp.Diff(p.config.AuthnMethodPrivateKeyJWTSigAlgs, wantAlgs); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithSecretJWTAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithSecretJWTAuthn(goidc.HS256)(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wantMethods := []goidc.AuthnMethod{goidc.AuthnMethodSecretJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, wantMethods); diff != "" {
+		t.Error(diff)
+	}
+	wantAlgs := []goidc.SignatureAlgorithm{goidc.HS256}
+	if diff := cmp.Diff(p.config.AuthnMethodSecretJWTSigAlgs, wantAlgs); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithTLSAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithTLSAuthn()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodTLS}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithSelfSignedTLSAuthn(t *testing.T) {
+	p := &Provider{}
+	if err := WithSelfSignedTLSAuthn()(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	want := []goidc.AuthnMethod{goidc.AuthnMethodSelfSignedTLS}
+	if diff := cmp.Diff(p.config.AuthnMethods, want); diff != "" {
+		t.Error(diff)
+	}
+}
+
+func TestWithAttestationJWTAuthn(t *testing.T) {
+	p := &Provider{}
+	issuer := goidc.AttestationIssuer{Issuer: "https://attester.example.com", JWKSURI: "https://attester.example.com/jwks"}
+	if err := WithAttestationJWTAuthn(issuer)(p); err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	wantMethods := []goidc.AuthnMethod{goidc.AuthnMethodAttestationJWT}
+	if diff := cmp.Diff(p.config.AuthnMethods, wantMethods); diff != "" {
+		t.Error(diff)
+	}
+	wantIssuers := []goidc.AttestationIssuer{issuer}
+	if diff := cmp.Diff(p.config.AuthnMethodAttestationJWTIssuers, wantIssuers); diff != "" {
 		t.Error(diff)
 	}
 }
