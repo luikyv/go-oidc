@@ -486,10 +486,6 @@ func (op *Provider) MakeToken(ctx context.Context, grant *goidc.Grant) (string, 
 		grant.CreatedAt = timeutil.TimestampNow()
 	}
 
-	if err := oidcCtx.HandleGrant(grant); err != nil {
-		return "", err
-	}
-
 	if err := oidcCtx.SaveGrant(grant); err != nil {
 		return "", err
 	}
@@ -694,7 +690,7 @@ func defaultRefreshTokenShouldIssueFunc(context.Context, *goidc.Client, *goidc.G
 	return true
 }
 
-func defaultHandleGrantFunc(context.Context, *goidc.Grant) error {
+func defaultHandleGrantFunc(context.Context, goidc.GrantType, *goidc.Grant) error {
 	return nil
 }
 

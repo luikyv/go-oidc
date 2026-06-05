@@ -296,4 +296,6 @@ type Configuration struct {
 	DeviceAuthGenerateUserCodeFunc             goidc.RandomFunc
 	DeviceAuthPromptUserCodeFunc               goidc.RenderFunc
 	DeviceAuthRenderConfirmationFunc           goidc.RenderFunc
+
+	TokenExchangeHandleFunc goidc.TokenExchangeHandleFunc
 }

@@ -644,6 +644,19 @@ func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 	}
 }
 
+// WithTokenExchangeGrant enables the token exchange grant type (RFC 8693).
+//
+// The handler receives the token exchange request parameters and must validate
+// the subject and actor tokens according to the deployment rules. It returns
+// the subject to use for the resulting grant.
+func WithTokenExchangeGrant(f goidc.TokenExchangeHandleFunc) Option {
+	return func(p *Provider) error {
+		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantTokenExchange)
+		p.config.TokenExchangeHandleFunc = f
+		return nil
+	}
+}
+
 func WithPreAuthorizedCodeGrant() Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)

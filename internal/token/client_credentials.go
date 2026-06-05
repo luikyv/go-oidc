@@ -29,7 +29,7 @@ func generateClientCredentialsToken(ctx oidc.Context, req request) (response, er
 		return response{}, err
 	}
 
-	if err := validateResources(ctx, req, ctx.Resources); err != nil {
+	if err := validateResources(ctx, req, nil); err != nil {
 		return response{}, err
 	}
 
@@ -45,6 +45,7 @@ func generateClientCredentialsToken(ctx oidc.Context, req request) (response, er
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
+		Type:                 goidc.GrantClientCredentials,
 		Subject:              c.ID,
 		ClientID:             c.ID,
 		Scopes:               strings.Join(scopes, " "),

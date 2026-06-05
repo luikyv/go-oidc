@@ -21,8 +21,8 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 
 		ctx := oidctest.NewContext(tb)
 		ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantJWTBearer)
-		ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (string, error) {
-			return sub, nil
+		ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (goidc.JWTBearerResult, error) {
+			return goidc.JWTBearerResult{Subject: sub}, nil
 		}
 
 		c, secret := oidctest.NewClient(tb)
@@ -344,8 +344,8 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			name: "assertion handler error",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
-				ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (string, error) {
-					return "", errors.New("assertion handler failed")
+				ctx.JWTBearerHandleAssertionFunc = func(context.Context, string) (goidc.JWTBearerResult, error) {
+					return goidc.JWTBearerResult{}, errors.New("assertion handler failed")
 				}
 				return ctx, req, c
 			},

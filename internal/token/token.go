@@ -240,6 +240,8 @@ func generateToken(ctx oidc.Context, req request) (response, error) {
 		return generatePreAuthCodeToken(ctx, req)
 	case goidc.GrantDeviceCode:
 		return generateDeviceCodeToken(ctx, req)
+	case goidc.GrantTokenExchange:
+		return generateExchangeToken(ctx, req)
 	default:
 		return response{}, goidc.NewError(goidc.ErrorCodeUnsupportedGrantType, "unsupported grant type")
 	}

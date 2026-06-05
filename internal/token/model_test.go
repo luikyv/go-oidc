@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidctest"
+	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
 func TestNewGrant_NonExpiringRefreshToken(t *testing.T) {
@@ -15,6 +16,7 @@ func TestNewGrant_NonExpiringRefreshToken(t *testing.T) {
 	c, _ := oidctest.NewClient(t)
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
+		Type:     goidc.GrantClientCredentials,
 		Subject:  "subject",
 		Username: "alice",
 		ClientID: c.ID,

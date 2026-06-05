@@ -65,13 +65,15 @@ func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	sub, err := ctx.JWTBearerHandleAssertion(req.assertion)
+	result, err := ctx.JWTBearerHandleAssertion(req.assertion)
 	if err != nil {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid assertion", err)
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
-		Subject:              sub,
+		Type:                 goidc.GrantJWTBearer,
+		Subject:              result.Subject,
+		Store:                result.Store,
 		ClientID:             c.ID,
 		Scopes:               req.scopes,
 		AuthDetails:          req.authDetails,

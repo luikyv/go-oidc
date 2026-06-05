@@ -125,6 +125,7 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 		}
 
 		_, err = token.NewGrant(ctx, c, token.GrantOptions{
+			Type:                goidc.GrantDeviceCode,
 			Subject:             as.Subject,
 			Username:            as.Username,
 			ClientID:            as.ClientID,

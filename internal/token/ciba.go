@@ -47,6 +47,7 @@ func GrantCIBARequest(ctx oidc.Context, authReqID string) error {
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
+		Type:               goidc.GrantCIBA,
 		Subject:            as.Subject,
 		Username:           as.Username,
 		AuthReqID:          as.AuthReqID,
