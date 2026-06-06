@@ -115,6 +115,7 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	grant, err := NewGrant(ctx, c, GrantOptions{
+		Type:                 goidc.GrantPreAuthorizedCode,
 		PreAuthCode:          req.preAuthCode,
 		Subject:              result.Subject,
 		ClientID:             c.ID,

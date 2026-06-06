@@ -11,6 +11,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
 * [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
 * [`RFC 6749` - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)
+* [`RFC 9068` - JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens](https://www.rfc-editor.org/rfc/rfc9068.html)
 * [OpenID Connect Dynamic Client Registration 1.0](https://openid.net/specs/openid-connect-registration-1_0.html)
 * [`RFC 7591` - OAuth 2.0 Dynamic Client Registration Protocol (DCR)](https://www.rfc-editor.org/rfc/rfc7591.html)
 * [`RFC 7592` - OAuth 2.0 Dynamic Client Registration Management Protocol (DCM)](https://www.rfc-editor.org/rfc/rfc7592)
@@ -23,6 +24,7 @@ A configurable OpenID Connect Provider for Go.
 * [`RFC 9449` - OAuth 2.0 Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
 * [`RFC 9396` - OAuth 2.0 Rich Authorization Requests (RAR)](https://www.rfc-editor.org/rfc/rfc9396.html)
 * [`RFC 8707` - Resource Indicators for OAuth 2.0](https://datatracker.ietf.org/doc/html/rfc8707)
+* [`RFC 8693` - OAuth 2.0 Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html)
 * [`RFC 8628` - OAuth 2.0 Device Authorization Grant](https://www.rfc-editor.org/rfc/rfc8628.html)
 * [`RFC 7662` - OAuth 2.0 Token Introspection](https://www.rfc-editor.org/rfc/rfc7662.html)
 * [`RFC 7009` - OAuth 2.0 Token Revocation](https://www.rfc-editor.org/rfc/rfc7009.html)
@@ -91,6 +93,7 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [JWT Bearer Grant](#jwt-bearer-grant)
 - [Client-Initiated Backchannel Authentication (CIBA)](#client-initiated-backchannel-authentication-ciba)
 - [Device Code Grant](#device-code-grant)
+- [Token Exchange](#token-exchange)
 - [Pushed Authorization Requests (PAR)](#pushed-authorization-requests-par)
 - [Authentication Policies](#authentication-policies)
 - [Logout](#logout)
@@ -475,6 +478,43 @@ device code grant type and receives tokens derived from the resulting grant.
 
 - one to prompt the user for the `user_code`
 - one to render the confirmation page after successful authorization
+
+## [Token Exchange](https://www.rfc-editor.org/rfc/rfc8693.html)
+
+Token exchange is enabled with `provider.WithTokenExchangeGrant(...)`.
+
+```go
+op, _ := provider.New(
+  "http://localhost",
+  manager,
+  jwksFunc,
+  provider.WithTokenExchangeGrant(
+    func(ctx context.Context, req goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
+      // Validate the subject token and determine the subject.
+      sub, err := validateSubjectToken(req.SubjectToken, req.SubjectTokenType)
+      if err != nil {
+        return goidc.TokenExchangeResult{}, err
+      }
+      return goidc.TokenExchangeResult{Subject: sub}, nil
+    },
+  ),
+)
+```
+
+This enables the `urn:ietf:params:oauth:grant-type:token-exchange` grant type.
+When a token request uses that grant, go-oidc delegates token validation to the
+function passed to `WithTokenExchangeGrant(...)`.
+
+That function receives the full exchange request — subject token, actor token,
+requested token type, audience, and resource — and must validate the tokens
+according to your deployment rules. It returns the subject for the resulting
+grant, and optionally a `Store` map for custom data (e.g., an `act` claim for
+delegation scenarios).
+
+The provider then creates a `goidc.Grant` for that subject and issues a token
+based on the `requested_token_type`. When no type is requested, it defaults to
+an access token. Supported types are access tokens, ID tokens, and refresh
+tokens.
 
 ## [Pushed Authorization Requests (PAR)](https://www.rfc-editor.org/rfc/rfc9126.html)
 

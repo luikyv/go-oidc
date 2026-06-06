@@ -622,14 +622,14 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 		{
 			name: "handle grant",
 			run: func(t *testing.T, ctx oidc.Context) {
-				if err := ctx.HandleGrant(&goidc.Grant{}); err != nil {
+				if err := ctx.HandleGrant(goidc.GrantClientCredentials, &goidc.Grant{}); err != nil {
 					t.Fatalf("HandleGrant() error = %v", err)
 				}
 
-				ctx.HandleGrantFunc = func(context.Context, *goidc.Grant) error {
+				ctx.HandleGrantFunc = func(context.Context, goidc.GrantType, *goidc.Grant) error {
 					return errors.New("error")
 				}
-				if err := ctx.HandleGrant(&goidc.Grant{}); err == nil {
+				if err := ctx.HandleGrant(goidc.GrantClientCredentials, &goidc.Grant{}); err == nil {
 					t.Fatal("HandleGrant() error = nil, want non-nil")
 				}
 			},
@@ -1331,14 +1331,14 @@ func TestSimpleHelpers(t *testing.T) {
 			t.Fatal(diff)
 		}
 
-		ctx.JWTBearerHandleAssertionFunc = func(_ context.Context, assertion string) (string, error) {
+		ctx.JWTBearerHandleAssertionFunc = func(_ context.Context, assertion string) (goidc.JWTBearerResult, error) {
 			if assertion != "assertion" {
 				t.Fatalf("JWTBearerHandleAssertion() assertion = %q, want %q", assertion, "assertion")
 			}
-			return "subject", nil
+			return goidc.JWTBearerResult{Subject: "subject"}, nil
 		}
-		if got, err := ctx.JWTBearerHandleAssertion("assertion"); err != nil || got != "subject" {
-			t.Fatalf("JWTBearerHandleAssertion() = %q, %v; want %q, nil", got, err, "subject")
+		if got, err := ctx.JWTBearerHandleAssertion("assertion"); err != nil || got.Subject != "subject" {
+			t.Fatalf("JWTBearerHandleAssertion() = %q, %v; want %q, nil", got.Subject, err, "subject")
 		}
 
 		if err := ctx.PARHandleSession(authSession, client); err != nil {
@@ -1639,7 +1639,7 @@ func newContext() oidc.Context {
 			RefreshTokenShouldIssueFunc: func(context.Context, *goidc.Client, *goidc.Grant) bool {
 				return true
 			},
-			HandleGrantFunc: func(context.Context, *goidc.Grant) error {
+			HandleGrantFunc: func(context.Context, goidc.GrantType, *goidc.Grant) error {
 				return nil
 			},
 			HandleTokenFunc: func(context.Context, *goidc.Token, *goidc.Grant) error {

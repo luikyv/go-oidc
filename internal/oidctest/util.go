@@ -158,7 +158,7 @@ func NewContext(tb testing.TB) oidc.Context {
 		RefreshTokenShouldIssueFunc: func(context.Context, *goidc.Client, *goidc.Grant) bool {
 			return true
 		},
-		HandleGrantFunc: func(context.Context, *goidc.Grant) error {
+		HandleGrantFunc: func(context.Context, goidc.GrantType, *goidc.Grant) error {
 			return nil
 		},
 		HandleTokenFunc: func(context.Context, *goidc.Token, *goidc.Grant) error {

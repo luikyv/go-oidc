@@ -507,8 +507,8 @@ func (ctx Context) TokenOptions(grant *goidc.Grant, c *goidc.Client) goidc.Token
 	return ctx.TokenOptionsFunc(ctx, grant, c)
 }
 
-func (ctx Context) HandleGrant(grant *goidc.Grant) error {
-	return ctx.HandleGrantFunc(ctx, grant)
+func (ctx Context) HandleGrant(grantType goidc.GrantType, grant *goidc.Grant) error {
+	return ctx.HandleGrantFunc(ctx, grantType, grant)
 }
 
 func (ctx Context) HandleToken(tkn *goidc.Token, grant *goidc.Grant) error {
@@ -531,7 +531,7 @@ func (ctx Context) TokenClaims(tkn *goidc.Token, grant *goidc.Grant) map[string]
 	return ctx.TokenClaimsFunc(ctx, tkn, grant)
 }
 
-func (ctx Context) JWTBearerHandleAssertion(assertion string) (string, error) {
+func (ctx Context) JWTBearerHandleAssertion(assertion string) (goidc.JWTBearerResult, error) {
 	return ctx.JWTBearerHandleAssertionFunc(ctx, assertion)
 }
 
@@ -947,4 +947,8 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...g
 			Signer:    key,
 		},
 	}, opts)
+}
+
+func (ctx Context) TokenExchangeHandle(req goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
+	return ctx.TokenExchangeHandleFunc(ctx, req)
 }

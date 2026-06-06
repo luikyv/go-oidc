@@ -129,6 +129,7 @@ const (
 	GrantCIBA              GrantType = "urn:openid:params:grant-type:ciba"
 	GrantPreAuthorizedCode GrantType = "urn:ietf:params:oauth:grant-type:pre-authorized_code"
 	GrantDeviceCode        GrantType = "urn:ietf:params:oauth:grant-type:device_code"
+	GrantTokenExchange     GrantType = "urn:ietf:params:oauth:grant-type:token-exchange" //nolint:gosec
 )
 
 type ResponseType string
@@ -209,6 +210,9 @@ type TokenType string
 const (
 	TokenTypeBearer TokenType = "Bearer"
 	TokenTypeDPoP   TokenType = "DPoP"
+	// TokenTypeNotApplicable indicates the issued token is not an access token or
+	// usable as an access token.
+	TokenTypeNotApplicable TokenType = "N_A"
 )
 
 const (
@@ -251,6 +255,7 @@ const (
 	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash" //nolint:gosec
 	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
 	ClaimGrantID             string = "grant_id"
+	ClaimAct                 string = "act"
 )
 
 type KeyUsage string
@@ -760,7 +765,12 @@ func (d AuthDetail) Locations() []string {
 	return locs
 }
 
-type JWTBearerHandleAssertionFunc func(context.Context, string) (sub string, err error)
+type JWTBearerResult struct {
+	Subject string
+	Store   map[string]any
+}
+
+type JWTBearerHandleAssertionFunc func(context.Context, string) (JWTBearerResult, error)
 
 type IsClientAllowedFunc func(context.Context, *Client) bool
 
@@ -834,3 +844,49 @@ type AttestationIssuer struct {
 	JWKSURI string
 	SigAlgs []SignatureAlgorithm
 }
+
+// TokenTypeIdentifier indicates the type of a security token as defined in [RFC 8693 §3].
+type TokenTypeIdentifier string
+
+const (
+	// TokenTypeIdentifierAccessToken indicates that the token is an access token.
+	TokenTypeIdentifierAccessToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec
+	// TokenTypeIdentifierRefreshToken indicates that the token is a refresh token.
+	TokenTypeIdentifierRefreshToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:refresh_token" //nolint:gosec
+	// TokenTypeIdentifierIDToken indicates that the token is an ID Token.
+	TokenTypeIdentifierIDToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:id_token" //nolint:gosec
+	// TokenTypeIdentifierSAML1 indicates that the token is a base64url-encoded SAML 1.1 assertion.
+	TokenTypeIdentifierSAML1 TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml1" //nolint:gosec
+	// TokenTypeIdentifierSAML2 indicates that the token is a base64url-encoded SAML 2.0 assertion.
+	TokenTypeIdentifierSAML2 TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml2" //nolint:gosec
+)
+
+type TokenExchangeRequest struct {
+	// RequestedTokenType is an identifier for the type of the requested
+	// security token.
+	RequestedTokenType TokenTypeIdentifier
+	// SubjectToken is a security token that represents the identity of the
+	// party on behalf of whom the request is being made.
+	SubjectToken string
+	// SubjectTokenType is an identifier that indicates the type of the security
+	// token in the "subject_token" parameter.
+	SubjectTokenType TokenTypeIdentifier
+	// ActorToken is a security token that represents the identity of the acting party.
+	ActorToken string
+	// ActorTokenType is an identifier that indicates the type of the security
+	// token in the "actor_token" parameter.
+	ActorTokenType TokenTypeIdentifier
+	// Audience is the logical name of the target service where the client
+	// intends to use the requested security token.
+	Audience []string
+	// Resource is a URI that indicates the target service or resource where
+	// the client intends to use the requested security token.
+	Resource Resources
+}
+
+type TokenExchangeResult struct {
+	Subject string
+	Store   map[string]any
+}
+
+type TokenExchangeHandleFunc func(context.Context, TokenExchangeRequest) (TokenExchangeResult, error)

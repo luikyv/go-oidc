@@ -65,4 +65,4 @@ type Grant struct {
 	Store map[string]any `json:"store,omitempty"`
 }
 
-type HandleGrantFunc func(context.Context, *Grant) error
+type HandleGrantFunc func(context.Context, GrantType, *Grant) error

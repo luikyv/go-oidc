@@ -984,7 +984,7 @@ func TestWithHandleGrantFunc(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	var grantHandler goidc.HandleGrantFunc = func(context.Context, *goidc.Grant) error {
+	var grantHandler goidc.HandleGrantFunc = func(context.Context, goidc.GrantType, *goidc.Grant) error {
 		return nil
 	}
 
@@ -2088,8 +2088,8 @@ func TestWithJWTBearerGrant(t *testing.T) {
 	}
 
 	// When.
-	err := WithJWTBearerGrant(func(_ context.Context, assertion string) (string, error) {
-		return "", nil
+	err := WithJWTBearerGrant(func(_ context.Context, assertion string) (goidc.JWTBearerResult, error) {
+		return goidc.JWTBearerResult{}, nil
 	})(p)
 
 	// Then.
@@ -2103,6 +2103,31 @@ func TestWithJWTBearerGrant(t *testing.T) {
 
 	if p.config.JWTBearerHandleAssertionFunc == nil {
 		t.Error("JWTBearerHandleAssertionFunc cannot be nil")
+	}
+}
+
+func TestWithTokenExchangeGrant(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithTokenExchangeGrant(func(_ context.Context, _ goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
+		return goidc.TokenExchangeResult{}, nil
+	})(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if !slices.Contains(p.config.GrantTypes, goidc.GrantTokenExchange) {
+		t.Error("GrantTokenExchange should be in GrantTypes")
+	}
+
+	if p.config.TokenExchangeHandleFunc == nil {
+		t.Error("TokenExchangeHandleFunc cannot be nil")
 	}
 }
 
