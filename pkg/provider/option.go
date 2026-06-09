@@ -649,10 +649,22 @@ func WithJWTBearerGrant(f goidc.JWTBearerHandleAssertionFunc) Option {
 // The handler receives the token exchange request parameters and must validate
 // the subject and actor tokens according to the deployment rules. It returns
 // the subject to use for the resulting grant.
+//
+// To also require client authentication on token exchange requests, see
+// [WithTokenExchangeClientAuthnRequired].
 func WithTokenExchangeGrant(f goidc.TokenExchangeHandleFunc) Option {
 	return func(p *Provider) error {
 		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantTokenExchange)
 		p.config.TokenExchangeHandleFunc = f
+		return nil
+	}
+}
+
+// WithTokenExchangeClientAuthnRequired makes client authentication
+// required for the token exchange grant type.
+func WithTokenExchangeClientAuthnRequired() Option {
+	return func(p *Provider) error {
+		p.config.TokenExchangeClientAuthnIsRequired = true
 		return nil
 	}
 }

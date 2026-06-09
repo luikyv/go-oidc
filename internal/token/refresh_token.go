@@ -88,6 +88,9 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 	if grant.CertThumbprint != "" {
 		grant.CertThumbprint = tlsThumbprint(ctx)
 	}
+	if err := ctx.HandleGrant(goidc.GrantRefreshToken, grant); err != nil {
+		return response{}, fmt.Errorf("could not handle grant: %w", err)
+	}
 	if err := ctx.SaveGrant(grant); err != nil {
 		return response{}, err
 	}

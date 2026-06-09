@@ -256,6 +256,7 @@ const (
 	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
 	ClaimGrantID             string = "grant_id"
 	ClaimAct                 string = "act"
+	ClaimMayAct              string = "may_act"
 )
 
 type KeyUsage string
@@ -849,32 +850,22 @@ type AttestationIssuer struct {
 type TokenTypeIdentifier string
 
 const (
-	// TokenTypeIdentifierAccessToken indicates that the token is an access token.
-	TokenTypeIdentifierAccessToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:access_token" //nolint:gosec
-	// TokenTypeIdentifierRefreshToken indicates that the token is a refresh token.
+	TokenTypeIdentifierJWT          TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:jwt"           //nolint:gosec
+	TokenTypeIdentifierAccessToken  TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:access_token"  //nolint:gosec
 	TokenTypeIdentifierRefreshToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:refresh_token" //nolint:gosec
-	// TokenTypeIdentifierIDToken indicates that the token is an ID Token.
-	TokenTypeIdentifierIDToken TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:id_token" //nolint:gosec
-	// TokenTypeIdentifierSAML1 indicates that the token is a base64url-encoded SAML 1.1 assertion.
-	TokenTypeIdentifierSAML1 TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml1" //nolint:gosec
-	// TokenTypeIdentifierSAML2 indicates that the token is a base64url-encoded SAML 2.0 assertion.
-	TokenTypeIdentifierSAML2 TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml2" //nolint:gosec
+	TokenTypeIdentifierIDToken      TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:id_token"      //nolint:gosec
+	TokenTypeIdentifierSAML1        TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml1"         //nolint:gosec
+	TokenTypeIdentifierSAML2        TokenTypeIdentifier = "urn:ietf:params:oauth:token-type:saml2"         //nolint:gosec
 )
 
 type TokenExchangeRequest struct {
-	// RequestedTokenType is an identifier for the type of the requested
-	// security token.
 	RequestedTokenType TokenTypeIdentifier
 	// SubjectToken is a security token that represents the identity of the
 	// party on behalf of whom the request is being made.
-	SubjectToken string
-	// SubjectTokenType is an identifier that indicates the type of the security
-	// token in the "subject_token" parameter.
+	SubjectToken     string
 	SubjectTokenType TokenTypeIdentifier
 	// ActorToken is a security token that represents the identity of the acting party.
-	ActorToken string
-	// ActorTokenType is an identifier that indicates the type of the security
-	// token in the "actor_token" parameter.
+	ActorToken     string
 	ActorTokenType TokenTypeIdentifier
 	// Audience is the logical name of the target service where the client
 	// intends to use the requested security token.
