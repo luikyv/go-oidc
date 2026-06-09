@@ -43,10 +43,11 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func() (oidc.Context, request, *goidc.Client)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, response, *goidc.Client)
+		name        string
+		setup       func() (oidc.Context, request, *goidc.Client)
+		wantErr     error
+		wantErrCode goidc.ErrorCode
+		validate    func(*testing.T, oidc.Context, response, *goidc.Client)
 	}{
 		{
 			name: "happy path",
@@ -262,7 +263,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidClient,
+			wantErrCode: goidc.ErrorCodeInvalidClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -278,7 +279,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				ctx.Request.PostForm = map[string][]string{}
 				return ctx, req, c
 			},
-			validate: func(t *testing.T, _ oidc.Context, _ response, _ *goidc.Client) {},
+			wantErr: client.ErrClientNotIdentified,
 		},
 		{
 			name: "missing assertion",
@@ -287,7 +288,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				req.assertion = ""
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErrCode: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -302,7 +303,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				req.scopes = "unknown_scope"
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidScope,
+			wantErrCode: goidc.ErrorCodeInvalidScope,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -317,7 +318,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				ctx.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode, goidc.GrantClientCredentials}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeUnsupportedGrantType,
+			wantErrCode: goidc.ErrorCodeUnsupportedGrantType,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -332,7 +333,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErrCode: goidc.ErrorCodeUnauthorizedClient,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -349,7 +350,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 				}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErrCode: goidc.ErrorCodeInvalidGrant,
 			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 0 {
@@ -365,22 +366,27 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 
 			resp, err := generateToken(ctx, req)
 
-			if test.name == "client auth required" {
-				if !errors.Is(err, client.ErrClientNotIdentified) {
-					t.Fatalf("got %v, want %v", err, client.ErrClientNotIdentified)
+			if test.wantErr != nil {
+				if !errors.Is(err, test.wantErr) {
+					t.Fatalf("got %v, want %v", err, test.wantErr)
 				}
 				return
 			}
 
-			if gotErr, wantErr := err != nil, test.wantErr != ""; gotErr != wantErr {
-				t.Fatalf("got err=%v, wantErr=%v", err, test.wantErr)
+			if test.wantErrCode != "" {
+				if err == nil {
+					t.Fatalf("got no error, wantErrCode=%v", test.wantErrCode)
+				}
+
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErrCode {
+					t.Fatalf("got %v, want error code %s", err, test.wantErrCode)
+				}
+				return
 			}
 
-			if test.wantErr != "" {
-				var oidcErr goidc.Error
-				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
-					t.Fatalf("got %v, want error code %s", err, test.wantErr)
-				}
+			if err != nil {
+				t.Fatalf("unexpected error %v", err)
 			}
 
 			if test.validate != nil {

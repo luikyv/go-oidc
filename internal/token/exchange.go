@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"slices"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -12,8 +13,26 @@ import (
 
 func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	c, err := client.Authenticated(ctx, client.AuthnContextToken)
-	if err != nil {
+	// Return an error for client authentication only if authentication is
+	// required or if the error is unrelated to client identification, such as
+	// when the client provides invalid credentials.
+	if err != nil && (ctx.TokenExchangeClientAuthnIsRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
 		return response{}, err
+	}
+
+	// If the requesting entity is not identified, use a mock client with the
+	// required settings to proceed with the execution.
+	if c == nil {
+		scopeIDs := make([]string, len(ctx.Scopes))
+		for i, scope := range ctx.Scopes {
+			scopeIDs[i] = scope.ID
+		}
+		c = &goidc.Client{
+			ClientMeta: goidc.ClientMeta{
+				GrantTypes: []goidc.GrantType{goidc.GrantTokenExchange},
+				ScopeIDs:   strings.Join(scopeIDs, " "),
+			},
+		}
 	}
 
 	if !slices.Contains(c.GrantTypes, goidc.GrantTokenExchange) {
@@ -43,6 +62,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	validTokenTypes := []goidc.TokenTypeIdentifier{
+		goidc.TokenTypeIdentifierJWT,
 		goidc.TokenTypeIdentifierAccessToken,
 		goidc.TokenTypeIdentifierRefreshToken,
 		goidc.TokenTypeIdentifierIDToken,
@@ -70,11 +90,11 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	result, err := ctx.TokenExchangeHandle(goidc.TokenExchangeRequest{
+		RequestedTokenType: req.requestedTokenType,
 		SubjectToken:       req.subjectToken,
 		SubjectTokenType:   req.subjectTokenType,
 		ActorToken:         req.actorToken,
 		ActorTokenType:     req.actorTokenType,
-		RequestedTokenType: req.requestedTokenType,
 		Audience:           req.audience,
 		Resource:           req.resources,
 	})

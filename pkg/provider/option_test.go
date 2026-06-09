@@ -2131,6 +2131,30 @@ func TestWithTokenExchangeGrant(t *testing.T) {
 	}
 }
 
+func TestWithTokenExchangeClientAuthnRequired(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithTokenExchangeClientAuthnRequired()(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	want := &Provider{
+		config: oidc.Configuration{
+			TokenExchangeClientAuthnIsRequired: true,
+		},
+	}
+	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
+		t.Error(diff)
+	}
+}
+
 func TestWithGrantIDFunc(t *testing.T) {
 	// Given.
 	p := &Provider{

@@ -246,7 +246,12 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 		}
 
 		grant, err := token.NewGrant(ctx, c, token.GrantOptions{
-			Type:        goidc.GrantAuthorizationCode,
+			Type: func() goidc.GrantType {
+				if !as.ResponseType.Contains(goidc.ResponseTypeCode) {
+					return goidc.GrantImplicit
+				}
+				return goidc.GrantAuthorizationCode
+			}(),
 			Subject:     as.Subject,
 			Username:    as.Username,
 			ClientID:    as.ClientID,

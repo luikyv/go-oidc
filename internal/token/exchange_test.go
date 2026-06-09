@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
+	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -43,10 +44,11 @@ func TestGenerateExchangeToken(t *testing.T) {
 	}
 
 	tests := []struct {
-		name     string
-		setup    func() (oidc.Context, request, *goidc.Client)
-		wantErr  goidc.ErrorCode
-		validate func(*testing.T, oidc.Context, response, *goidc.Client)
+		name        string
+		setup       func() (oidc.Context, request, *goidc.Client)
+		wantErr     error
+		wantErrCode goidc.ErrorCode
+		validate    func(*testing.T, oidc.Context, response, *goidc.Client)
 	}{
 		{
 			name: "happy path - default to access token",
@@ -244,6 +246,48 @@ func TestGenerateExchangeToken(t *testing.T) {
 			},
 		},
 		{
+			name: "no client identified",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.Request.PostForm = map[string][]string{}
+				return ctx, req, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].ClientID != "" {
+					t.Errorf("grant.ClientID = %q, want empty", grants[0].ClientID)
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantClaims := map[string]any{
+					"iss":   ctx.Issuer(),
+					"sub":   "token_subject",
+					"scope": grants[0].Scopes,
+				}
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat" || k == "grant_id"
+				})); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "client auth required",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.TokenExchangeClientAuthnIsRequired = true
+				ctx.Request.PostForm = map[string][]string{}
+				return ctx, req, c
+			},
+			wantErr: client.ErrClientNotIdentified,
+		},
+		{
 			name: "invalid client auth",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)
@@ -253,7 +297,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidClient,
+			wantErrCode: goidc.ErrorCodeInvalidClient,
 		},
 		{
 			name: "client lacks grant type",
@@ -262,7 +306,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				c.GrantTypes = []goidc.GrantType{goidc.GrantAuthorizationCode}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeUnauthorizedClient,
+			wantErrCode: goidc.ErrorCodeUnauthorizedClient,
 		},
 		{
 			name: "missing subject_token",
@@ -271,7 +315,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.subjectToken = ""
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "missing subject_token_type",
@@ -280,7 +324,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.subjectTokenType = ""
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "invalid subject_token_type",
@@ -289,7 +333,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.subjectTokenType = "invalid_type"
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "actor_token without actor_token_type",
@@ -299,7 +343,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.actorTokenType = ""
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "invalid actor_token_type",
@@ -309,7 +353,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.actorTokenType = "invalid_type"
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "invalid requested_token_type",
@@ -318,7 +362,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.requestedTokenType = "invalid_type"
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "requested_token_type SAML not issuable",
@@ -327,7 +371,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.requestedTokenType = goidc.TokenTypeIdentifierSAML2
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidRequest,
+			wantErrCode: goidc.ErrorCodeInvalidRequest,
 		},
 		{
 			name: "invalid scope",
@@ -336,7 +380,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				req.scopes = "unknown_scope"
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidScope,
+			wantErrCode: goidc.ErrorCodeInvalidScope,
 		},
 		{
 			name: "handler error",
@@ -347,7 +391,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 				}
 				return ctx, req, c
 			},
-			wantErr: goidc.ErrorCodeInvalidGrant,
+			wantErrCode: goidc.ErrorCodeInvalidGrant,
 		},
 	}
 
@@ -360,14 +404,21 @@ func TestGenerateExchangeToken(t *testing.T) {
 			resp, err := generateToken(ctx, req)
 
 			// Then.
-			if test.wantErr != "" {
+			if test.wantErr != nil {
+				if !errors.Is(err, test.wantErr) {
+					t.Fatalf("got %v, want %v", err, test.wantErr)
+				}
+				return
+			}
+
+			if test.wantErrCode != "" {
 				if err == nil {
-					t.Fatalf("got no error, wantErr=%v", test.wantErr)
+					t.Fatalf("got no error, wantErrCode=%v", test.wantErrCode)
 				}
 
 				var oidcErr goidc.Error
-				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErr {
-					t.Fatalf("got %v, want error code %s", err, test.wantErr)
+				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantErrCode {
+					t.Fatalf("got %v, want error code %s", err, test.wantErrCode)
 				}
 
 				grants := oidctest.Grants(t, ctx)

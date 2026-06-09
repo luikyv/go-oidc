@@ -297,5 +297,6 @@ type Configuration struct {
 	DeviceAuthPromptUserCodeFunc               goidc.RenderFunc
 	DeviceAuthRenderConfirmationFunc           goidc.RenderFunc
 
-	TokenExchangeHandleFunc goidc.TokenExchangeHandleFunc
+	TokenExchangeClientAuthnIsRequired bool
+	TokenExchangeHandleFunc            goidc.TokenExchangeHandleFunc
 }
