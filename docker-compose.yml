@@ -6,17 +6,6 @@ services:
   # The auth server is expected to be running under the domain "auth.localhost".
   mongodb:
     image: mongo:6.0.13
-  httpd:
-    build:
-      context: ./conformance-suite/httpd
-      dockerfile: Dockerfile-static
-    ports:
-     - "8443:8443"
-     - "8444:8444"
-    volumes:
-     - ./conformance-suite/src/main/resources/:/usr/local/apache2/htdocs/
-    depends_on:
-     - server
   nginx:
     build:
       context: ./nginx
