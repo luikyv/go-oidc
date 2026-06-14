@@ -39,6 +39,278 @@
             ]
         }
     },
+    "browser": [
+        {
+            "match": "https://auth.localhost*/authorize*",
+            "tasks": [
+                {
+                    "task": "Login",
+                    "optional": true,
+                    "match": "https://auth.localhost*/authorize/*/login",
+                    "commands": [
+                        ["text", "id", "username", "random@gmail.com"],
+                        ["text", "id", "password", "pass"],
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Consent",
+                    "match": "https://auth.localhost*/authorize/*/consent",
+                    "commands": [
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Verify complete",
+                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                    "commands": [
+                        ["wait", "id", "submission_complete", 10]
+                    ]
+                }
+            ]
+        }
+    ],
+    "override": {
+        "openid-federation-automatic-client-registration-invalid-client-id-in-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-client-id-in-query-parameters": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in query parameters",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-signature-on-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid signature on request object",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-signature-with-other-keys-on-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid signature with other keys",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-exp": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid request object exp",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-iss": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid request object iss",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-aud": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid request object aud",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-sub": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid request object sub",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-jti": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for missing request object jti",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-exp": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for missing request object exp",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-iss": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for missing request object iss",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-aud": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for missing request object aud",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-duplicate-request-object-jti": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                ["text", "id", "username", "random@gmail.com"],
+                                ["text", "id", "password", "pass"],
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Consent",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "commands": [
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Expect error for duplicate request object jti",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    },
     "federation_trust_anchor": {
         "trust_anchor_jwks": {
             "keys": [

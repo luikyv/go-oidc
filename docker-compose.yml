@@ -17,6 +17,18 @@ services:
      - ./conformance-suite/src/main/resources/:/usr/local/apache2/htdocs/
     depends_on:
      - server
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: ./conformance-suite/Dockerfile-static
+    ports:
+     - "8443:8443"
+     - "8444:8444"
+     - "8445:8445"
+    volumes:
+     - ./conformance-suite/src/main/resources/:/usr/share/nginx/html/
+    depends_on:
+     - server
   server:
     build:
       context: ./conformance-suite/server-dev

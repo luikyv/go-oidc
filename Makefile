@@ -168,3 +168,10 @@ cs-ssf-tests:
 		--expected-failures-file ./examples/ssf/failures.json \
 		--export-dir ./examples/ssf \
 		--verbose
+
+cs-federation-tests:
+	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
+		openid-federation-entity-joined-to-test-federation-op-test-plan[server_metadata=discovery][client_registration=automatic] ./examples/federation/config.json \
+		--export-dir ./examples/federation \
+		--verbose
+
