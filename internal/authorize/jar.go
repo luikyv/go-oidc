@@ -113,6 +113,11 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 			"invalid request object", fmt.Errorf("could not extract claims from the request object: %w", err))
 	}
 
+	if claims.Expiry == nil {
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+			errors.New("claim 'exp' is required in the request object"))
+	}
+
 	if ctx.Profile.IsFAPI() {
 		if claims.NotBefore == nil {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
@@ -124,22 +129,20 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 				errors.New("claim 'nbf' is too far in the past"))
 		}
 
-		if claims.Expiry == nil {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
-				errors.New("claim 'exp' is required in the request object"))
-		}
-
 		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'exp' is too far in the future"))
 		}
 	}
 
-	if claims.ID != "" {
-		if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
-				fmt.Errorf("could not validate the request object jti: %w", err))
-		}
+	if claims.ID == "" {
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+			errors.New("claim 'jti' is missing in the request object"))
+	}
+
+	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+			fmt.Errorf("could not validate the request object jti: %w", err))
 	}
 
 	if claims.Subject != "" {

@@ -39,6 +39,26 @@
             ]
         }
     },
+    "federation_trust_anchor": {
+        "trust_anchor_jwks": {
+            "keys": [
+                {
+                    "alg": "RS256",
+                    "d": "IwNiBZTwQJmip8iCrnHad3zG2mZD5hSPwvsvmNGFAv9r-q2xHCclq57fvQbFrRTlLroOqOyzUXsoG0ts6tfYCKycbZQSBXm3OlmcVxUr9lpBd2SxaoxRExtKGtj3txAUwBYYReIMmQYm1vnV8rTR0hfddHkRrLpb6puuC9CmN45NnvbGYlGjUfiQMDuYaR5L-RUJ3BR1zkzp94ycdwTUZ5Oz4SkgWoKUDVHbkeqXruq7nFe9QhOxmiq0R_tXDTk9qkSPYVvSZGPabljBU1dX9IpWRK7qMOit8ItcSEncRKkQ1IzmN5TZ74BrxiyC0PUWamL1z_2kbl16gN3tb1mTmQ",
+                    "dp": "F0Ac0503jN2CyHOkTCYsL2u0MJhpjWiTyhCi9N_4T7x3uYzTVTJWvNtblGvxzuY5XtebLl9QoJvThgMGu8bPIxiAl2VhPSsjnMMpYGpKzAvMbnVe2iilTjKqe5Ur8xloBu1pZg2QIP26eSVjG70yRvMRJ-KrkumVweRaDTVssF0",
+                    "dq": "Mkv5ZsjibzAGlQDv9fvIuoypXHMR477W4VMSbA1rWuv9PiaZJV8qhGt4TvYmNz7Snywe-DIocQSi27hnVYVRuR5FQoQMQc4az05bZTLFRqpFal5HXuwF_GowDXXqgmGtfzelC9BaiuGFdSCUgzuiCdXXHHl9iECfJxs9skt42t0",
+                    "e": "AQAB",
+                    "kty": "RSA",
+                    "n": "vyJXo5qqulgdSUK4fZCEvxXqzuI6XrUu09O-nz8wUc5xjNMOW6zrbbB4hMV4nRTe6I9S6pEcrGPJFIOSJZEoUr_JSaxA_Anzp7IZMqo_ji3yyxFSQsIkmapTkehzEAUy71UT-BMS0dGIdnz0Vj-0Z_eL1iG3N-aCwV_wH99KU-IokxFOdK1uF3WliDWo9aAVRzg-9nx9QSLoZAJBJEg-9ZzGq4OeJVsQ-wuv3ThxYqnrIThhPQFLRQvULbPPWLHuvSpvRaRTZa2YbW6aHETFoGKoNQDkyX94ugKf9aLmRNmcejIWd_woD9bYi_SeVqzuFQ4qLGD4UpBw4mZ6lI_BqQ",
+                    "p": "8azuFUcPt3IJ59FrJFvGkj8Urc3SMWDOC04KDLSmImGrD1ReHjHwS3GVXkz99qmmJh_-8YZlGP00KvrfrBikb-Lqb5M15uxCGOFZwWCP1BeRpv2oXDqbyUQzFpoHE2wrs7mwempi7kA2MxKQ1b62Jk1knI6TIJHfQMQHDAmoxt0",
+                    "q": "ynaFifMoNP8hrlKg1og-HUy3GyFjFruAQxPCyfxv5XKlKl-O-fuQasPF_Fv4ud9K1GjRQgrL7OWQ9rofwtAj85wIoQhkmVAvghoMurUlbfswlL4o_sec4jzLtnF-iNT2P-NjASt7Z4rk4vVphRK_Qa02jQ1pnPExywxbGMCCaz0",
+                    "qi": "q1N6AqYVzixwhK8Yn0Iks4g0kogRkXOMXGm844NXSRxk_Hi9sNrEP4pi7hcojURdlEYVw1Oz4zyxx3TzdXXA59PsV0K7an65U0K-_WovIRHcBSohiqlR4XkirVTEU3H3aQVZBeH6PpBJAYqjNuolu-TM54etE2byAZNxZqOrWME",
+                    "kid": "f0VeqXrqR-VPpqXPCOeigdejRkEI9auWjJscS-3Wwso",
+                    "use": "sig"
+                }
+            ]
+        }
+    },
     "browser": [
         {
             "match": "https://auth.localhost*/authorize*",
@@ -78,10 +98,9 @@
                     "tasks": [
                         {
                             "task": "Expect error for invalid client_id in request object",
-                            "optional": true,
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -94,11 +113,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid client_id in query parameters",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -111,11 +129,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid signature on request object",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -128,11 +145,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid signature with other keys",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -145,11 +161,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid request object exp",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -162,11 +177,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid request object iss",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -179,11 +193,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid request object aud",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -196,11 +209,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for invalid request object sub",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -213,11 +225,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for missing request object jti",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -230,11 +241,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for missing request object exp",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -247,11 +257,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for missing request object iss",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -264,11 +273,10 @@
                     "match": "https://auth.localhost*/authorize*",
                     "tasks": [
                         {
-                            "task": "Expect error for missing request object aud",
-                            "optional": true,
+                            "task": "Expect error for invalid client_id in request object",
                             "match": "https://auth.localhost*/authorize*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
@@ -299,34 +307,22 @@
                             ]
                         },
                         {
-                            "task": "Expect error for duplicate request object jti",
+                            "task": "Verify complete",
                             "optional": true,
-                            "match": "https://auth.localhost*/authorize*",
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
                             "commands": [
-                                ["wait", "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        },
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "optional": true,
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
                             ]
                         }
                     ]
-                }
-            ]
-        }
-    },
-    "federation_trust_anchor": {
-        "trust_anchor_jwks": {
-            "keys": [
-                {
-                    "alg": "RS256",
-                    "d": "IwNiBZTwQJmip8iCrnHad3zG2mZD5hSPwvsvmNGFAv9r-q2xHCclq57fvQbFrRTlLroOqOyzUXsoG0ts6tfYCKycbZQSBXm3OlmcVxUr9lpBd2SxaoxRExtKGtj3txAUwBYYReIMmQYm1vnV8rTR0hfddHkRrLpb6puuC9CmN45NnvbGYlGjUfiQMDuYaR5L-RUJ3BR1zkzp94ycdwTUZ5Oz4SkgWoKUDVHbkeqXruq7nFe9QhOxmiq0R_tXDTk9qkSPYVvSZGPabljBU1dX9IpWRK7qMOit8ItcSEncRKkQ1IzmN5TZ74BrxiyC0PUWamL1z_2kbl16gN3tb1mTmQ",
-                    "dp": "F0Ac0503jN2CyHOkTCYsL2u0MJhpjWiTyhCi9N_4T7x3uYzTVTJWvNtblGvxzuY5XtebLl9QoJvThgMGu8bPIxiAl2VhPSsjnMMpYGpKzAvMbnVe2iilTjKqe5Ur8xloBu1pZg2QIP26eSVjG70yRvMRJ-KrkumVweRaDTVssF0",
-                    "dq": "Mkv5ZsjibzAGlQDv9fvIuoypXHMR477W4VMSbA1rWuv9PiaZJV8qhGt4TvYmNz7Snywe-DIocQSi27hnVYVRuR5FQoQMQc4az05bZTLFRqpFal5HXuwF_GowDXXqgmGtfzelC9BaiuGFdSCUgzuiCdXXHHl9iECfJxs9skt42t0",
-                    "e": "AQAB",
-                    "kty": "RSA",
-                    "n": "vyJXo5qqulgdSUK4fZCEvxXqzuI6XrUu09O-nz8wUc5xjNMOW6zrbbB4hMV4nRTe6I9S6pEcrGPJFIOSJZEoUr_JSaxA_Anzp7IZMqo_ji3yyxFSQsIkmapTkehzEAUy71UT-BMS0dGIdnz0Vj-0Z_eL1iG3N-aCwV_wH99KU-IokxFOdK1uF3WliDWo9aAVRzg-9nx9QSLoZAJBJEg-9ZzGq4OeJVsQ-wuv3ThxYqnrIThhPQFLRQvULbPPWLHuvSpvRaRTZa2YbW6aHETFoGKoNQDkyX94ugKf9aLmRNmcejIWd_woD9bYi_SeVqzuFQ4qLGD4UpBw4mZ6lI_BqQ",
-                    "p": "8azuFUcPt3IJ59FrJFvGkj8Urc3SMWDOC04KDLSmImGrD1ReHjHwS3GVXkz99qmmJh_-8YZlGP00KvrfrBikb-Lqb5M15uxCGOFZwWCP1BeRpv2oXDqbyUQzFpoHE2wrs7mwempi7kA2MxKQ1b62Jk1knI6TIJHfQMQHDAmoxt0",
-                    "q": "ynaFifMoNP8hrlKg1og-HUy3GyFjFruAQxPCyfxv5XKlKl-O-fuQasPF_Fv4ud9K1GjRQgrL7OWQ9rofwtAj85wIoQhkmVAvghoMurUlbfswlL4o_sec4jzLtnF-iNT2P-NjASt7Z4rk4vVphRK_Qa02jQ1pnPExywxbGMCCaz0",
-                    "qi": "q1N6AqYVzixwhK8Yn0Iks4g0kogRkXOMXGm844NXSRxk_Hi9sNrEP4pi7hcojURdlEYVw1Oz4zyxx3TzdXXA59PsV0K7an65U0K-_WovIRHcBSohiqlR4XkirVTEU3H3aQVZBeH6PpBJAYqjNuolu-TM54etE2byAZNxZqOrWME",
-                    "kid": "f0VeqXrqR-VPpqXPCOeigdejRkEI9auWjJscS-3Wwso",
-                    "use": "sig"
                 }
             ]
         }
