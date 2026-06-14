@@ -220,6 +220,8 @@
             ]
         },
         "openid-federation-automatic-client-registration-invalid-missing-request-object-jti": {
+            "_comment": "Use a different alias to force automatic registration since it will be a new client identifier.",
+            "alias": "goidc2",
             "browser": [
                 {
                     "match": "https://auth.localhost*/authorize*",

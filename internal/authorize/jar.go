@@ -21,7 +21,7 @@ const (
 )
 
 type jarOptions struct {
-	jtiIsRequired bool
+	federation bool
 }
 
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
@@ -121,11 +121,6 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, o
 			"invalid request object", fmt.Errorf("could not extract claims from the request object: %w", err))
 	}
 
-	if claims.Expiry == nil {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
-			errors.New("claim 'exp' is required in the request object"))
-	}
-
 	if ctx.Profile.IsFAPI() {
 		if claims.NotBefore == nil {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
@@ -137,9 +132,28 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, o
 				errors.New("claim 'nbf' is too far in the past"))
 		}
 
+		if claims.Expiry == nil {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				errors.New("claim 'exp' is required in the request object"))
+		}
+
 		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'exp' is too far in the future"))
+		}
+	}
+
+	if opts.federation {
+		// [OpenID Fed Connect 1.1 §12.1.1.1] exp and jti are required in
+		// request objects for automatic client registration.
+		if claims.Expiry == nil {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				errors.New("claim 'exp' is required in the request object"))
+		}
+
+		if claims.ID == "" {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				errors.New("claim 'jti' is missing in the request object"))
 		}
 	}
 
@@ -148,9 +162,6 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, o
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				fmt.Errorf("could not validate the request object jti: %w", err))
 		}
-	} else if opts.jtiIsRequired {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
-			errors.New("claim 'jti' is missing in the request object"))
 	}
 
 	if claims.Subject != "" {

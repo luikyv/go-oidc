@@ -117,7 +117,7 @@ func main() {
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
-			TrustAnchorFedID, "https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor",
+			TrustAnchorFedID, "https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor", "https://localhost.emobix.co.uk:8443/test/a/goidc2/trust-anchor",
 		),
 		provider.WithOpenIDFedAuthorityHints(TrustAnchorFedID),
 		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),

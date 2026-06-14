@@ -107,9 +107,7 @@ func initAuth(ctx oidc.Context, req request) error {
 			switch {
 			case req.RequestObject != "":
 				jar, err = jarFromRequestObject(ctx, req.RequestObject, c, &jarOptions{
-					// [OpenID Fed Connect 1.1 §12.1.1.1] jti is required in
-					// request objects for automatic client registration.
-					jtiIsRequired: shouldRegisterFedClient,
+					federation: shouldRegisterFedClient,
 				})
 				if err != nil {
 					return nil, err
