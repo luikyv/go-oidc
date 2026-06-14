@@ -176,10 +176,10 @@ func TestJARFromRequestObject(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			// Given.
-			ctx, requestObject, client, want := test.setup(t)
+			ctx, requestObject, c, want := test.setup(t)
 
 			// When.
-			jar, err := jarFromRequestObject(ctx, requestObject, client)
+			jar, err := jarFromRequestObject(ctx, requestObject, c, nil)
 
 			// Then.
 			if test.wantErr != "" {

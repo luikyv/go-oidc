@@ -20,6 +20,10 @@ const (
 	maxJARResponseByteSize int64 = 1_000_000 // 1 MB.
 )
 
+type jarOptions struct {
+	jtiIsRequired bool
+}
+
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
 	resp, err := ctx.JARHTTPClient().Get(reqURI)
 	if err != nil {
@@ -51,10 +55,14 @@ func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (r
 		)
 	}
 
-	return jarFromRequestObject(ctx, string(reqObject), client)
+	return jarFromRequestObject(ctx, string(reqObject), client, nil)
 }
 
-func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
+func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, opts *jarOptions) (request, error) {
+	if opts == nil {
+		opts = &jarOptions{}
+	}
+
 	if ctx.JAREncIsEnabled && joseutil.IsJWE(reqObject) {
 		contentEncAlgs := ctx.JARContentEncAlgs
 		if c.JARContentEncAlg != "" && slices.Contains(ctx.JARContentEncAlgs, c.JARContentEncAlg) {
@@ -135,14 +143,14 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 		}
 	}
 
-	if claims.ID == "" {
+	if claims.ID != "" {
+		if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				fmt.Errorf("could not validate the request object jti: %w", err))
+		}
+	} else if opts.jtiIsRequired {
 		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 			errors.New("claim 'jti' is missing in the request object"))
-	}
-
-	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-		return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
-			fmt.Errorf("could not validate the request object jti: %w", err))
 	}
 
 	if claims.Subject != "" {
