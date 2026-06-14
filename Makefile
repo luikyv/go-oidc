@@ -131,7 +131,7 @@ cs-fapi2-sp-op-private-key-mtls-tests:
 cs-fapi2-sp-op-private-key-dpop-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		fapi2-security-profile-final-test-plan[client_auth_type=private_key_jwt][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi] ./examples/fapi2_sp_op_private_key_dpop/config.json \
-		--expected-failures-file ./examples/fapi2_sp_op_private_key_dpop_dpop/failures.json \
+		--expected-failures-file ./examples/fapi2_sp_op_private_key_dpop/failures.json \
 		--export-dir ./examples/fapi2_sp_op_private_key_dpop \
 		--verbose
 
