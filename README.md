@@ -1135,12 +1135,13 @@ request must include a `resource` parameter.
 op, _ := provider.New(
   ...,
   provider.WithOpenIDFederation(
+    nil,
     func(_ context.Context) (goidc.JSONWebKeySet, error) {
       return fedJWKS, nil
     },
-    "https://trust-anchor.example.com",
+    []string{"https://intermediate.example.com"},
+    []string{"https://trust-anchor.example.com"},
   ),
-  provider.WithOpenIDFedAuthorityHints("https://intermediate.example.com"),
   ...,
 )
 ```

@@ -3349,7 +3349,7 @@ func TestWithOpenIDFed(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFederation(storage.NewManager(1), jwksFunc, "https://trust.anchor")(p)
+	err := WithOpenIDFederation(storage.NewManager(1), jwksFunc, []string{"https://authority.hint"}, []string{"https://trust.anchor"})(p)
 
 	// Then.
 	if err != nil {
@@ -3362,6 +3362,10 @@ func TestWithOpenIDFed(t *testing.T) {
 
 	if p.config.OpenIDFedJWKSFunc == nil {
 		t.Error("OpenIDFedJWKSFunc cannot be nil")
+	}
+
+	if len(p.config.OpenIDFedAuthorityHints) != 1 || p.config.OpenIDFedAuthorityHints[0] != "https://authority.hint" {
+		t.Error("OpenIDFedAuthorityHints not set correctly")
 	}
 
 	if len(p.config.OpenIDFedTrustedAnchors) != 1 || p.config.OpenIDFedTrustedAnchors[0] != "https://trust.anchor" {

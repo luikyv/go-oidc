@@ -1384,7 +1384,10 @@ func WithErrorURI(uri string) Option {
 //   - jwksFunc: A function that returns the provider's Federation JWKS, used to sign
 //     the provider's entity configuration. This JWKS is separate from the provider's
 //     regular signing keys. See [WithSigner] if the private keys are not available.
-//   - trustedAuthorities: A list of trust anchor entity IDs (URLs) that the provider
+//   - authorityHints: Entity identifiers of immediate superiors that can issue
+//     subordinate statements about this provider. These hints help relying parties
+//     discover trust paths from this provider to a trusted anchor.
+//   - trustedAnchors: A list of trust anchor entity IDs (URLs) that the provider
 //     accepts when resolving trust chains for federated clients.
 //
 // Defaults:
@@ -1394,25 +1397,19 @@ func WithErrorURI(uri string) Option {
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
 //
 // [OpenID Federation specification]: https://openid.net/specs/openid-federation-1_0.html.
-func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, anchor string, anchors ...string) Option {
-	anchors = appendIfNotIn(anchors, anchor)
+func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, authorityHints []string, trustedAnchors []string) Option {
 	return func(p *Provider) error {
+		if len(authorityHints) == 0 {
+			return errors.New("at least one authority hint is required")
+		}
+		if len(trustedAnchors) == 0 {
+			return errors.New("at least one trusted anchor is required")
+		}
 		p.config.OpenIDFedIsEnabled = true
 		p.config.OpenIDFedManager = manager
 		p.config.OpenIDFedJWKSFunc = jwksFunc
-		p.config.OpenIDFedTrustedAnchors = anchors
-		return nil
-	}
-}
-
-// WithOpenIDFedAuthorityHints sets the authority hints for the provider's entity configuration.
-// Authority hints are entity identifiers of immediate superiors that can issue subordinate
-// statements about this provider. These hints help relying parties discover trust paths
-// from this provider to a trusted anchor.
-func WithOpenIDFedAuthorityHints(hint string, hints ...string) Option {
-	hints = appendIfNotIn(hints, hint)
-	return func(p *Provider) error {
-		p.config.OpenIDFedAuthorityHints = hints
+		p.config.OpenIDFedAuthorityHints = authorityHints
+		p.config.OpenIDFedTrustedAnchors = trustedAnchors
 		return nil
 	}
 }
