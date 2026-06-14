@@ -8,8 +8,8 @@ services:
     image: mongo:6.0.13
   nginx:
     build:
-      context: ./nginx
-      dockerfile: ./conformance-suite/Dockerfile-static
+      context: ./conformance-suite/nginx
+      dockerfile: Dockerfile-static
     ports:
      - "8443:8443"
      - "8444:8444"
