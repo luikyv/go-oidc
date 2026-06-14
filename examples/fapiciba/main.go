@@ -25,7 +25,7 @@ func main() {
 		provider.WithCIBAGrant(nil, goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing, goidc.CIBADeliveryModePush),
 		provider.WithCIBAProfile(goidc.CIBAProfileFAPI),
 		provider.WithRefreshTokenGrant(nil),
-		provider.WithCIBAHandleSessionFunc(initBackAuthFunc()),
+		provider.WithCIBASessionHandler(initBackAuthFunc()),
 		provider.WithCIBAJAR(goidc.PS256),
 		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
 		provider.WithTLSTokenBindingRequired(),
@@ -38,10 +38,10 @@ func main() {
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithHandleErrorFunc(authutil.HandleError),
-		provider.WithConsumeJTIFunc(authutil.ConsumeJTIFunc()),
+		provider.WithErrorHandler(authutil.HandleError),
+		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 		provider.WithDCR(nil),
-		provider.WithDCRHandleClientFunc(authutil.DCRFunc),
+		provider.WithDCRClientHandler(authutil.DCRFunc),
 	)
 
 	// Set up the server.

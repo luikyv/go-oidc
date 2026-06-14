@@ -102,7 +102,7 @@ func TestNew(t *testing.T) {
 					WithFormPostResponseMode(),
 					WithTokenIntrospection(nil),
 					WithTokenRevocation(nil),
-					WithCIBAHandleSessionFunc(nil),
+					WithCIBASessionHandler(nil),
 					WithUserInfoSignatureAlgs(goidc.PS256),
 					WithUserInfoEncryption(goidc.RSA_OAEP),
 				}

@@ -302,7 +302,7 @@ func WithIDTokenContentEncryptionAlgs(defaultAlg goidc.ContentEncryptionAlgorith
 // By default, enabling DCR does not require an initial access token, so any
 // caller that can reach the endpoint can create clients. Production
 // deployments should typically combine this option with
-// [WithDCRValidateInitialTokenFunc] and/or [WithDCRHandleClientFunc] to enforce
+// [WithDCRInitialTokenValidator] and/or [WithDCRClientHandler] to enforce
 // their registration policy.
 //
 // To make registration access tokens rotate, see [WithDCRTokenRotation].
@@ -326,23 +326,23 @@ func WithRPMetadataChoices() Option {
 	}
 }
 
-// WithDCRHandleClientFunc installs custom logic for DCR and DCM requests.
+// WithDCRClientHandler installs custom logic for DCR and DCM requests.
 //
 // Use it to enforce registration rules, validate metadata, reject unwanted
 // clients, or apply default values during create and update requests.
-func WithDCRHandleClientFunc(f goidc.DCRHandleClientFunc) Option {
+func WithDCRClientHandler(f goidc.DCRHandleClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRHandleClientFunc = f
 		return nil
 	}
 }
 
-// WithDCRValidateInitialTokenFunc validates the initial access token used when
+// WithDCRInitialTokenValidator validates the initial access token used when
 // creating clients through DCR.
 //
 // Without this option, client creation is open to any caller that can reach the
 // registration endpoint.
-func WithDCRValidateInitialTokenFunc(f goidc.DCRValidateInitialTokenFunc) Option {
+func WithDCRInitialTokenValidator(f goidc.DCRValidateInitialTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRValidateInitialTokenFunc = f
 		return nil
@@ -365,7 +365,7 @@ func WithLocalhostRedirectURIs() Option {
 	}
 }
 
-func WithClientIDFunc(f goidc.ClientIDFunc) Option {
+func WithDCRClientID(f goidc.ClientIDFunc) Option {
 	return func(p *Provider) error {
 		p.config.DCRClientIDFunc = f
 		return nil
@@ -396,14 +396,14 @@ func WithDCRSecretRotation() Option {
 // dynamically registered clients that use a secret-based authentication method.
 // A value of 0 means the issued client secret does not expire.
 // To enable dynamic client registration, see [WithDCR].
-func WithDCRSecretLifetime(lifetimeSecs int) Option {
+func WithDCRSecretLifetime(secs int) Option {
 	return func(p *Provider) error {
-		p.config.DCRSecretLifetimeSecs = lifetimeSecs
+		p.config.DCRSecretLifetimeSecs = secs
 		return nil
 	}
 }
 
-func WithRefreshTokenShouldIssueFunc(f goidc.RefreshTokenShouldIssueFunc) Option {
+func WithRefreshTokenShouldIssue(f goidc.RefreshTokenShouldIssueFunc) Option {
 	return func(p *Provider) error {
 		p.config.RefreshTokenShouldIssueFunc = f
 		return nil
@@ -426,9 +426,9 @@ func WithDeviceCodeFunc(f goidc.RandomFunc) Option {
 
 // WithRefreshTokenLifetime sets the refresh token lifetime in seconds.
 // A value of 0 means issued refresh tokens do not expire.
-func WithRefreshTokenLifetime(lifetimeSecs int) Option {
+func WithRefreshTokenLifetime(secs int) Option {
 	return func(p *Provider) error {
-		p.config.RefreshTokenLifetimeSecs = lifetimeSecs
+		p.config.RefreshTokenLifetimeSecs = secs
 		return nil
 	}
 }
@@ -473,7 +473,7 @@ func WithCIBAEndpoint(endpoint string) Option {
 	}
 }
 
-func WithCIBAHandleSessionFunc(f goidc.HandleSessionFunc) Option {
+func WithCIBASessionHandler(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.CIBAHandleSessionFunc = f
 		return nil
@@ -551,20 +551,20 @@ func WithTokenOptions(tokenOpts goidc.TokenOptionsFunc) Option {
 	}
 }
 
-// WithHandleGrantFunc defines a function executed every time a new grant is created.
+// WithGrantHandler defines a function executed every time a new grant is created.
 // It can be used to perform validations or change the grant information before
 // issuing a new access token.
-func WithHandleGrantFunc(f goidc.HandleGrantFunc) Option {
+func WithGrantHandler(f goidc.HandleGrantFunc) Option {
 	return func(p *Provider) error {
 		p.config.HandleGrantFunc = f
 		return nil
 	}
 }
 
-// WithHandleTokenFunc defines a function executed every time a new token is created.
+// WithTokenHandler defines a function executed every time a new token is created.
 // It can be used to perform validations or change the token information before
 // issuing it.
-func WithHandleTokenFunc(f goidc.HandleTokenFunc) Option {
+func WithTokenHandler(f goidc.HandleTokenFunc) Option {
 	return func(p *Provider) error {
 		p.config.HandleTokenFunc = f
 		return nil
@@ -730,7 +730,7 @@ func WithPARRequired(manager goidc.PARManager) Option {
 	}
 }
 
-func WithPARHandleSessionFunc(f goidc.HandleSessionFunc) Option {
+func WithPARSessionHandler(f goidc.HandleSessionFunc) Option {
 	return func(p *Provider) error {
 		p.config.PARHandleSessionFunc = f
 		return nil
@@ -921,17 +921,17 @@ func WithRAR(typ goidc.AuthDetailType, types ...goidc.AuthDetailType) Option {
 	}
 }
 
-func WithRARValidateDetailFunc(f goidc.RARValidateDetailFunc) Option {
+func WithRARDetailValidator(f goidc.RARValidateDetailFunc) Option {
 	return func(p *Provider) error {
 		p.config.RARValidateDetailFunc = f
 		return nil
 	}
 }
 
-// WithRARCompareDetailsFunc sets the function used to validate that the
+// WithRARDetailsComparator sets the function used to validate that the
 // authorization details requested during authorization_code or refresh_token
 // grants are consistent with the originally granted ones.
-func WithRARCompareDetailsFunc(f goidc.RARCompareDetailsFunc) Option {
+func WithRARDetailsComparator(f goidc.RARCompareDetailsFunc) Option {
 	return func(p *Provider) error {
 		p.config.RARCompareDetailsFunc = f
 		return nil
@@ -998,6 +998,13 @@ func WithDPoPRequired(alg goidc.SignatureAlgorithm, algs ...goidc.SignatureAlgor
 func WithTokenBindingRequired() Option {
 	return func(p *Provider) error {
 		p.config.TokenBindingIsRequired = true
+		return nil
+	}
+}
+
+func WithDefaultAuthn(method goidc.AuthnMethod) Option {
+	return func(p *Provider) error {
+		p.config.AuthnMethodDefault = method
 		return nil
 	}
 }
@@ -1183,10 +1190,10 @@ func WithDisplayValues(value goidc.DisplayValue, values ...goidc.DisplayValue) O
 	}
 }
 
-// WithAuthTimeout sets the user authentication session lifetime.
+// WithAuthSessionLifetime sets the user authentication session lifetime.
 // This defines how long an authorization request may last.
 // The default is [defaultAuthnSessionTimeoutSecs].
-func WithAuthTimeout(secs int) Option {
+func WithAuthSessionLifetime(secs int) Option {
 	return func(p *Provider) error {
 		p.config.AuthTimeoutSecs = secs
 		return nil
@@ -1220,27 +1227,27 @@ func WithPolicies(policies ...goidc.AuthnPolicy) Option {
 	}
 }
 
-// WithRenderErrorFunc defines a handler to be executed when the
+// WithErrorRenderer defines a handler to be executed when the
 // authorization request results in error, but the error can't be redirected.
 // This can be used to display a page with the error.
 // The default behavior is to display a JSON with the error information to the user.
-func WithRenderErrorFunc(render goidc.RenderErrorFunc) Option {
+func WithErrorRenderer(render goidc.RenderErrorFunc) Option {
 	return func(p *Provider) error {
 		p.config.RenderErrorFunc = render
 		return nil
 	}
 }
 
-// WithHandleErrorFunc defines a handler to be executed when an error happens.
+// WithErrorHandler defines a handler to be executed when an error happens.
 // For instance, this can be used to log information about the error.
-func WithHandleErrorFunc(f goidc.HandleErrorFunc) Option {
+func WithErrorHandler(f goidc.HandleErrorFunc) Option {
 	return func(p *Provider) error {
 		p.config.HandleErrorFunc = f
 		return nil
 	}
 }
 
-// WithVerifyClientSecretFunc replaces the default constant-time compare
+// WithClientSecretVerifier replaces the default constant-time compare
 // used to validate client_secret_basic and client_secret_post.
 // This enables callers to store client secrets hashed at rest (bcrypt,
 // argon2, HSM, etc.) by supplying a verifier that compares the hash.
@@ -1250,18 +1257,18 @@ func WithHandleErrorFunc(f goidc.HandleErrorFunc) Option {
 // is treated as plaintext.
 // client_secret_jwt is unaffected: it reads Client.Secret directly as the
 // HMAC signing key per RFC 7523 §2.2.
-func WithVerifyClientSecretFunc(f goidc.VerifyClientSecretFunc) Option {
+func WithClientSecretVerifier(f goidc.VerifyClientSecretFunc) Option {
 	return func(p *Provider) error {
 		p.config.VerifyClientSecretFunc = f
 		return nil
 	}
 }
 
-// WithConsumeJTIFunc registers a function to validate JWT IDs (JTI) during JWT
+// WithJTIConsumer registers a function to validate JWT IDs (JTI) during JWT
 // processing.
 // This function is used to prevent replay attacks by ensuring that each JTI is
 // unique and not reused.
-func WithConsumeJTIFunc(f goidc.ConsumeJTIFunc) Option {
+func WithJTIConsumer(f goidc.ConsumeJTIFunc) Option {
 	return func(p *Provider) error {
 		p.config.ConsumeJTIFunc = f
 		return nil
@@ -1288,7 +1295,7 @@ func WithResourceIndicatorsRequired(resource string, resources ...string) Option
 	}
 }
 
-// WithHTTPClientFunc defines how to generate the client used to make HTTP
+// WithHTTPClient defines how to generate the client used to make HTTP
 // requests to, for instance, a client's JWKS endpoint.
 // By default, the provider uses an HTTP client with request, response header,
 // and TLS handshake timeouts configured. The default client also does not
@@ -1323,7 +1330,7 @@ func WithJWTBearerGrantClientAuthnRequired() Option {
 //
 // If [goidc.SubIdentifierPairwise] is informed, the default behavior for
 // generating pairwise subjects is to keep the value as is.
-// This can be overridden with [WithPairwiseSubjectFunc].
+// This can be overridden with [WithPairwiseSubject].
 func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.SubIdentifierType) Option {
 	types = appendIfNotIn(types, defaultType)
 	return func(p *Provider) error {
@@ -1333,27 +1340,27 @@ func WithSubIdentifierTypes(defaultType goidc.SubIdentifierType, types ...goidc.
 	}
 }
 
-func WithPairwiseSubjectFunc(f goidc.PairwiseSubjectFunc) Option {
+func WithPairwiseSubject(f goidc.PairwiseSubjectFunc) Option {
 	return func(p *Provider) error {
 		p.config.PairwiseSubjectFunc = f
 		return nil
 	}
 }
 
-// WithSignerFunc sets a custom signing function.
+// WithSigner sets a custom signing function.
 // This is required when the JWKS function returns only public keys and signing
 // operations need to be handled separately.
-func WithSignerFunc(f goidc.SignerFunc) Option {
+func WithSigner(f goidc.SignerFunc) Option {
 	return func(p *Provider) error {
 		p.config.SignerFunc = f
 		return nil
 	}
 }
 
-// WithDecrypterFunc sets a custom decryption function.
+// WithDecrypter sets a custom decryption function.
 // This is required when the JWKS function returns only public keys and
 // server-side encryption (e.g., JAR encryption) is enabled.
-func WithDecrypterFunc(f goidc.DecrypterFunc) Option {
+func WithDecrypter(f goidc.DecrypterFunc) Option {
 	return func(p *Provider) error {
 		p.config.DecrypterFunc = f
 		return nil
@@ -1376,7 +1383,7 @@ func WithErrorURI(uri string) Option {
 //     default in-memory storage is used.
 //   - jwksFunc: A function that returns the provider's Federation JWKS, used to sign
 //     the provider's entity configuration. This JWKS is separate from the provider's
-//     regular signing keys. See [WithSignerFunc] if the private keys are not available.
+//     regular signing keys. See [WithSigner] if the private keys are not available.
 //   - trustedAuthorities: A list of trust anchor entity IDs (URLs) that the provider
 //     accepts when resolving trust chains for federated clients.
 //
@@ -1431,18 +1438,18 @@ func WithOpenIDFedSignatureAlgs(defaultAlg goidc.SignatureAlgorithm, algs ...goi
 	}
 }
 
-// WithOpenIDFedSignerFunc sets a custom signing function.
+// WithOpenIDFedSigner sets a custom signing function.
 // For more information, see [WithOpenIDFederation].
-func WithOpenIDFedSignerFunc(f goidc.SignerFunc) Option {
+func WithOpenIDFedSigner(f goidc.SignerFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedSignerFunc = f
 		return nil
 	}
 }
 
-// WithOpenIDFedRequiredTrustMarksFunc sets a custom function to determine the required trust marks for the OpenID Federation.
+// WithOpenIDFedRequiredTrustMarks sets a custom function to determine the required trust marks for the OpenID Federation.
 // For more information, see [WithOpenIDFederation].
-func WithOpenIDFedRequiredTrustMarksFunc(f goidc.RequiredTrustMarksFunc) Option {
+func WithOpenIDFedRequiredTrustMarks(f goidc.RequiredTrustMarksFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedRequiredTrustMarksFunc = f
 		return nil
@@ -1491,9 +1498,9 @@ func WithOpenIDFedSignedJWKSEndpoint(endpoint string) Option {
 // WithOpenIDFedSignedJWKSLifetimeSecs sets the lifetime in seconds for signed JWKS JWTs.
 // After this duration, the signed JWKS expires and must be re-fetched.
 // If set to 0, the signed JWKS will not include an expiration claim.
-func WithOpenIDFedSignedJWKSLifetimeSecs(lifetimeSecs int) Option {
+func WithOpenIDFedSignedJWKSLifetimeSecs(secs int) Option {
 	return func(p *Provider) error {
-		p.config.OpenIDFedSignedJWKSLifetimeSecs = lifetimeSecs
+		p.config.OpenIDFedSignedJWKSLifetimeSecs = secs
 		return nil
 	}
 }
@@ -1517,9 +1524,9 @@ func WithOpenIDFedHTTPClientFunc(f goidc.HTTPClientFunc) Option {
 	}
 }
 
-// WithOpenIDFedHandleClientFunc sets a custom function to handle the client during federation registration.
+// WithOpenIDFedClientHandler sets a custom function to handle the client during federation registration.
 // See [WithOpenIDFederation].
-func WithOpenIDFedHandleClientFunc(f goidc.HandleClientFunc) Option {
+func WithOpenIDFedClientHandler(f goidc.HandleClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedHandleClientFunc = f
 		return nil

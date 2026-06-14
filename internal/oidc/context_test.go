@@ -1547,7 +1547,7 @@ func TestSign(t *testing.T) {
 	}
 }
 
-func TestSignWithSignerFunc(t *testing.T) {
+func TestSignWithSigner(t *testing.T) {
 	signingKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatalf("rsa.GenerateKey() error = %v", err)
@@ -1580,7 +1580,7 @@ func TestSignWithSignerFunc(t *testing.T) {
 	}
 }
 
-func TestDecryptWithDecrypterFunc(t *testing.T) {
+func TestDecryptWithDecrypter(t *testing.T) {
 	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{

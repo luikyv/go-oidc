@@ -49,3 +49,4 @@ services:
       - auth.localhost:host-gateway
       - matls-auth.localhost:host-gateway
       - fed-trust-anchor.localhost:host-gateway
+      - localhost.emobix.co.uk:host-gateway

@@ -183,20 +183,21 @@ func validateInWithOutParams(ctx oidc.Context, inParams goidc.AuthorizationParam
 	// For OIDC, the required OAuth parameters must be sent as query parameters
 	// even if they are among the inner parameters.
 	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
-		if outParams.ResponseType == "" {
-			return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams,
-				errors.New("response_type must be repeated outside the request object or PAR payload for OpenID requests"))
-		}
+		// TODO: Do I need this?
+		// if outParams.ResponseType == "" {
+		// 	return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams,
+		// 		errors.New("response_type must be repeated outside the request object or PAR payload for OpenID requests"))
+		// }
 
-		if inParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
+		if inParams.ResponseType != "" && outParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
 			return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams,
 				errors.New("response_type inside and outside the request object or PAR payload must match"))
 		}
 
-		if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
-			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", mergedParams,
-				errors.New("scope openid must be repeated outside the request object or PAR payload for OpenID requests"))
-		}
+		// if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
+		// 	return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", mergedParams,
+		// 		errors.New("scope openid must be repeated outside the request object or PAR payload for OpenID requests"))
+		// }
 	}
 
 	return nil

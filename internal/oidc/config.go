@@ -63,6 +63,7 @@ type Configuration struct {
 	HandleErrorFunc      goidc.HandleErrorFunc
 
 	AuthnMethods                     []goidc.AuthnMethod
+	AuthnMethodDefault               goidc.AuthnMethod
 	AuthnMethodPrivateKeyJWTSigAlgs  []goidc.SignatureAlgorithm
 	AuthnMethodSecretJWTSigAlgs      []goidc.SignatureAlgorithm
 	AuthnMethodAttestationJWTIssuers []goidc.AttestationIssuer
@@ -78,7 +79,7 @@ type Configuration struct {
 	WellKnownEndpoint     string
 	JWKSEndpoint          string
 	AuthorizationEndpoint string
-	EndpointPrefix        string
+	EndpointPrefix        string // TODO: Do I need this?
 
 	UserInfoEndpoint             string
 	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm

@@ -1,4 +1,4 @@
-CS_VERSION = v5.1.39
+CS_VERSION = v5.1.44
 GOLANGCI_LINT_VERSION = v2.12.2
 
 setup-dev:
@@ -9,8 +9,8 @@ setup-dev:
 setup-cs:
 	@if [ ! -d "conformance-suite" ]; then \
 	  echo "Cloning conformance-suite repository..."; \
-	  git clone --branch "release-$(CS_VERSION)" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git; \
-	  docker compose -f ./conformance-suite/builder-compose.yml run builder; \
+	  git clone --branch "release-$(CS_VERSION)" https://gitlab.com/openid/conformance-suite.git; \
+	  docker run --rm -v ./conformance-suite:/usr/src/mymaven -w /usr/src/mymaven maven:3-eclipse-temurin-21 mvn -B clean package -DskipTests=true; \
 	fi
 
 	@if [ ! -d "conformance-suite/venv" ]; then \

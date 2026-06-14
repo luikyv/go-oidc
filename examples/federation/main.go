@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -116,21 +117,20 @@ func main() {
 			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return opFedJWKS, nil
 			},
-			TrustAnchorFedID,
-			"https://localhost:8443/test/a/go-oidc/trust-anchor",
+			TrustAnchorFedID, "https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor",
 		),
 		provider.WithOpenIDFedAuthorityHints(TrustAnchorFedID),
 		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit),
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithIDTokenSignatureAlgs(goidc.RS256),
-		provider.WithSecretBasicAuthn(),
-		provider.WithSecretPostAuthn(),
 		provider.WithPrivateKeyJWTAuthn(goidc.RS256),
+		provider.WithDefaultAuthn(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),
 		provider.WithRefreshTokenGrant(nil),
-		provider.WithClientCredentialsGrant(),
 		provider.WithJAR(goidc.RS256, goidc.PS256),
+		provider.WithJAREncryption(goidc.RSA_OAEP),
+		provider.WithJARContentEncryptionAlgs(goidc.A256GCM),
 		provider.WithPAR(nil),
 		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
@@ -138,8 +138,18 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(httpClientFunc()),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithHandleErrorFunc(authutil.HandleError),
-		provider.WithRenderErrorFunc(authutil.RenderError()),
+		provider.WithErrorHandler(authutil.HandleError),
+		provider.WithErrorRenderer(authutil.RenderError()),
+		provider.WithOpenIDFedClientHandler(func(ctx context.Context, c *goidc.Client) error {
+			var scopes []string
+			for _, scope := range authutil.Scopes {
+				scopes = append(scopes, scope.ID)
+			}
+			c.ScopeIDs = strings.Join(scopes, " ")
+			c.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
+			return nil
+		}),
+		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 	)
 	if err != nil {
 		log.Fatal(err)
