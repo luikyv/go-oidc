@@ -1397,7 +1397,7 @@ func WithErrorURI(uri string) Option {
 //   - Trust chain max depth: [defaultOpenIDFedTrustChainMaxDepth] (see [WithOpenIDFedTrustChainMaxDepth])
 //
 // [OpenID Federation specification]: https://openid.net/specs/openid-federation-1_0.html.
-func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, authorityHints []string, trustedAnchors []string) Option {
+func WithOpenIDFederation(manager goidc.OpenIDFedManager, jwksFunc goidc.JWKSFunc, authorityHints, trustedAnchors []string) Option {
 	return func(p *Provider) error {
 		if len(authorityHints) == 0 {
 			return errors.New("at least one authority hint is required")

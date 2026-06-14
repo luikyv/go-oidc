@@ -118,7 +118,12 @@ func main() {
 				return opFedJWKS, nil
 			},
 			[]string{TrustAnchorFedID},
-			[]string{TrustAnchorFedID, "https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor", "https://localhost.emobix.co.uk:8443/test/a/goidc2/trust-anchor"},
+			[]string{
+				TrustAnchorFedID,
+				"https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor",
+				"https://localhost.emobix.co.uk:8443/test/a/goidc2/trust-anchor",
+				"https://localhost.emobix.co.uk:8443/test/a/goidc3/trust-anchor",
+			},
 		),
 		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
 		provider.WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit),
