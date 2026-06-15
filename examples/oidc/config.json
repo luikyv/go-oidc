@@ -125,7 +125,7 @@
         "oidcc-prompt-login": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*prompt=login",
+                    "match": "https://auth.localhost*/authorize*prompt=login*",
                     "tasks": [
                         {
                             "task": "Login and upload login form",

@@ -3430,14 +3430,14 @@ func TestWithOpenIDFedRequiredTrustMarks(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFedRequiredTrustMarks(trustMarksFunc)(p)
+	err := WithOpenIDFedRequiredClientTrustMarks(trustMarksFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.OpenIDFedRequiredTrustMarksFunc == nil {
+	if p.config.OpenIDFedRequiredClientTrustMarksFunc == nil {
 		t.Error("OpenIDFedRequiredTrustMarksFunc cannot be nil")
 	}
 }
@@ -3519,19 +3519,19 @@ func TestWithOpenIDFedTrustMark(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	marks := map[goidc.TrustMark]string{
-		"https://example.com/trust-mark": "https://issuer.example.com",
+	marks := []goidc.TrustMarkConfig{
+		{Mark: "https://example.com/trust-mark", Issuer: "https://issuer.example.com"},
 	}
 
 	// When.
-	err := WithOpenIDFedTrustMark(marks)(p)
+	err := WithOpenIDFedTrustMarks(marks...)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if diff := cmp.Diff(p.config.OpenIDFedTrustMarks, marks); diff != "" {
+	if diff := cmp.Diff(p.config.OpenIDFedTrustMarkConfigs, marks); diff != "" {
 		t.Error(diff)
 	}
 }

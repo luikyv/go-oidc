@@ -273,7 +273,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
-		op.config.OpenIDFedRequiredTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
+		op.config.OpenIDFedRequiredClientTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredClientTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
 		op.config.OpenIDFedHandleClientFunc = nonZeroOrDefault(op.config.OpenIDFedHandleClientFunc, goidc.HandleClientFunc(defaultOpenIDFedHandleClientFunc))
 		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {

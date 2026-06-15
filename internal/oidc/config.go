@@ -217,28 +217,27 @@ type Configuration struct {
 
 	ErrorURI string
 
-	OpenIDFedIsEnabled              bool
-	OpenIDFedManager                goidc.OpenIDFedManager
-	OpenIDFedEndpoint               string
-	OpenIDFedRegistrationEndpoint   string
-	OpenIDFedJWKSFunc               goidc.JWKSFunc
-	OpenIDFedSignerFunc             goidc.SignerFunc
-	OpenIDFedAuthorityHints         []string
-	OpenIDFedTrustedAnchors         []string
-	OpenIDFedDefaultSigAlg          goidc.SignatureAlgorithm
-	OpenIDFedSigAlgs                []goidc.SignatureAlgorithm
-	OpenIDFedTrustChainMaxDepth     int
-	OpenIDFedClientRegTypes         []goidc.ClientRegistrationType
-	OpenIDFedRequiredTrustMarksFunc goidc.RequiredTrustMarksFunc
-	// OpenIDFedTrustMarks is a map of trust mark type to the trust mark issuer.
-	OpenIDFedTrustMarks             map[goidc.TrustMark]string
-	OpenIDFedJWKSRepresentations    []goidc.JWKSRepresentation
-	OpenIDFedSignedJWKSEndpoint     string
-	OpenIDFedSignedJWKSLifetimeSecs int
-	OpenIDFedOrganizationName       string
-	OpenIDFedHTTPClientFunc         goidc.HTTPClientFunc
-	OpenIDFedHandleClientFunc       goidc.HandleClientFunc
-	OpenIDFedEntityJWKSFunc         func(ctx Context, id string) (goidc.JSONWebKeySet, error)
+	OpenIDFedIsEnabled                    bool
+	OpenIDFedManager                      goidc.OpenIDFedManager
+	OpenIDFedEndpoint                     string
+	OpenIDFedRegistrationEndpoint         string
+	OpenIDFedJWKSFunc                     goidc.JWKSFunc
+	OpenIDFedSignerFunc                   goidc.SignerFunc
+	OpenIDFedAuthorityHints               []string
+	OpenIDFedTrustedAnchors               []string
+	OpenIDFedDefaultSigAlg                goidc.SignatureAlgorithm
+	OpenIDFedSigAlgs                      []goidc.SignatureAlgorithm
+	OpenIDFedTrustChainMaxDepth           int
+	OpenIDFedClientRegTypes               []goidc.ClientRegistrationType
+	OpenIDFedRequiredClientTrustMarksFunc goidc.RequiredTrustMarksFunc
+	OpenIDFedTrustMarkConfigs             []goidc.TrustMarkConfig
+	OpenIDFedJWKSRepresentations          []goidc.JWKSRepresentation
+	OpenIDFedSignedJWKSEndpoint           string
+	OpenIDFedSignedJWKSLifetimeSecs       int
+	OpenIDFedOrganizationName             string
+	OpenIDFedHTTPClientFunc               goidc.HTTPClientFunc
+	OpenIDFedHandleClientFunc             goidc.HandleClientFunc
+	OpenIDFedEntityJWKSFunc               func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
 	LogoutIsEnabled             bool
 	LogoutEndpoint              string

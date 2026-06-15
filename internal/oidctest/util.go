@@ -149,7 +149,7 @@ func NewContext(tb testing.TB) oidc.Context {
 		RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
 			return nil
 		},
-		OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+		OpenIDFedRequiredClientTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
 			return nil
 		},
 		OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {

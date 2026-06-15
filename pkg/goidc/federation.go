@@ -13,6 +13,11 @@ type RequiredTrustMarksFunc func(context.Context, *Client) []TrustMark
 
 type TrustMark string
 
+type TrustMarkConfig struct {
+	Issuer string
+	Mark   TrustMark
+}
+
 type JWKSRepresentation string
 
 const (

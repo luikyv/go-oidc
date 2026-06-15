@@ -1444,11 +1444,11 @@ func WithOpenIDFedSigner(f goidc.SignerFunc) Option {
 	}
 }
 
-// WithOpenIDFedRequiredTrustMarks sets a custom function to determine the required trust marks for the OpenID Federation.
+// WithOpenIDFedRequiredClientTrustMarks sets a custom function to determine the required trust marks for the OpenID Federation.
 // For more information, see [WithOpenIDFederation].
-func WithOpenIDFedRequiredTrustMarks(f goidc.RequiredTrustMarksFunc) Option {
+func WithOpenIDFedRequiredClientTrustMarks(f goidc.RequiredTrustMarksFunc) Option {
 	return func(p *Provider) error {
-		p.config.OpenIDFedRequiredTrustMarksFunc = f
+		p.config.OpenIDFedRequiredClientTrustMarksFunc = f
 		return nil
 	}
 }
@@ -1511,10 +1511,10 @@ func WithOpenIDFedOrganizationName(name string) Option {
 	}
 }
 
-// WithOpenIDFedHTTPClientFunc sets a custom HTTP client function for federation operations.
+// WithOpenIDFedHTTPClient sets a custom HTTP client function for federation operations.
 // This allows customization of HTTP requests made when fetching entity configurations,
 // subordinate statements, and trust marks from other federation entities.
-func WithOpenIDFedHTTPClientFunc(f goidc.HTTPClientFunc) Option {
+func WithOpenIDFedHTTPClient(f goidc.HTTPClientFunc) Option {
 	return func(p *Provider) error {
 		p.config.OpenIDFedHTTPClientFunc = f
 		return nil
@@ -1530,15 +1530,15 @@ func WithOpenIDFedClientHandler(f goidc.HandleClientFunc) Option {
 	}
 }
 
-// WithOpenIDFedTrustMark configures trust marks that the provider will fetch and include
+// WithOpenIDFedTrustMarks configures trust marks that the provider will fetch and include
 // in its entity configuration. Trust marks are credentials issued by accreditation
 // authorities that attest to certain properties of the provider.
-//
-// Parameters:
-//   - marks: A map of trust mark identifiers (e.g., "https://example.com/trust_marks/certified") to issuers.
-func WithOpenIDFedTrustMark(marks map[goidc.TrustMark]string) Option {
+func WithOpenIDFedTrustMarks(configs ...goidc.TrustMarkConfig) Option {
 	return func(p *Provider) error {
-		p.config.OpenIDFedTrustMarks = marks
+		if len(configs) == 0 {
+			return errors.New("trust mark configurations is empty")
+		}
+		p.config.OpenIDFedTrustMarkConfigs = configs
 		return nil
 	}
 }

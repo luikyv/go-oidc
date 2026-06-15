@@ -1188,7 +1188,7 @@ func TestSimpleHelpers(t *testing.T) {
 			t.Fatalf("OpenIDFedRequiredTrustMarks() = %v, want nil", got)
 		}
 		trustMarks := []goidc.TrustMark{"mark"}
-		ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+		ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 			return trustMarks
 		}
 		if diff := cmp.Diff(trustMarks, ctx.OpenIDFedRequiredTrustMarks(client)); diff != "" {
@@ -1630,7 +1630,7 @@ func newContext() oidc.Context {
 			RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
 				return nil
 			},
-			OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+			OpenIDFedRequiredClientTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
 				return nil
 			},
 			OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {
