@@ -238,7 +238,7 @@
         "oidcc-max-age-1": {
             "browser": [
                 {
-                    "match": "https://auth.localhost*/authorize*max_age=1",
+                    "match": "https://auth.localhost*/authorize*max_age=1*",
                     "tasks": [
                         {
                             "task": "Login and upload login form",
