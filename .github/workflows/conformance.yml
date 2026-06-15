@@ -11,7 +11,7 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     env:
-      CS_VERSION: "v5.1.39"
+      CS_VERSION: "v5.1.44"
 
     strategy:
       fail-fast: false
@@ -33,6 +33,7 @@ jobs:
           fapi1-op-private-key-par,
           fapi1-op-private-key-par-jarm,
           fapiciba,
+          federation,
           # ssf,
         ]
 
@@ -67,7 +68,7 @@ jobs:
           if: steps.cache-cs.outputs.cache-hit != 'true'
           run: |
             git clone --branch "release-$CS_VERSION" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git
-            docker compose -f ./conformance-suite/builder-compose.yml run builder
+            docker run --rm -v ./conformance-suite:/usr/src/mymaven -w /usr/src/mymaven maven:3-eclipse-temurin-21 mvn -B clean package -DskipTests=true
 
             python3 -m venv conformance-suite/venv
             conformance-suite/venv/bin/pip install -r conformance-suite/scripts/requirements.txt

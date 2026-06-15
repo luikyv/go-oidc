@@ -42,10 +42,10 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithHandleErrorFunc(authutil.HandleError),
+		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithStaticClients(clientOne, clientTwo),
-		provider.WithRenderErrorFunc(authutil.RenderError()),
-		provider.WithConsumeJTIFunc(authutil.ConsumeJTIFunc()),
+		provider.WithErrorRenderer(authutil.RenderError()),
+		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 	)
 	if err != nil {

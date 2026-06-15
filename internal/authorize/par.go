@@ -62,7 +62,9 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request object is required"))
 			}
 
-			jar, err := jarFromRequestObject(ctx, req.RequestObject, c)
+			jar, err := jarFromRequestObject(ctx, req.RequestObject, c, &jarOptions{
+				federation: shouldRegisterFedClient,
+			})
 			if err != nil {
 				return nil, err
 			}

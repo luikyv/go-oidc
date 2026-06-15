@@ -176,35 +176,11 @@ func validateInWithOutParams(ctx oidc.Context, inParams goidc.AuthorizationParam
 
 	// Make sure all the outter parameters parameters are valid even if they are
 	// not used.
-	if err := validateParamsAsOptionals(ctx, outParams, c); err != nil {
-		return err
-	}
-
-	// For OIDC, the required OAuth parameters must be sent as query parameters
-	// even if they are among the inner parameters.
-	if ctx.Profile == goidc.ProfileOpenID && strutil.ContainsOpenID(mergedParams.Scopes) {
-		if outParams.ResponseType == "" {
-			return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams,
-				errors.New("response_type must be repeated outside the request object or PAR payload for OpenID requests"))
-		}
-
-		if inParams.ResponseType != "" && inParams.ResponseType != outParams.ResponseType {
-			return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid response_type", mergedParams,
-				errors.New("response_type inside and outside the request object or PAR payload must match"))
-		}
-
-		if strutil.ContainsOpenID(inParams.Scopes) && !strutil.ContainsOpenID(outParams.Scopes) {
-			return wrapRedirectionError(goidc.ErrorCodeInvalidScope, "invalid scope", mergedParams,
-				errors.New("scope openid must be repeated outside the request object or PAR payload for OpenID requests"))
-		}
-	}
-
-	return nil
+	return validateParamsAsOptionals(ctx, outParams, c)
 }
 
 // validateParams validates the parameters of an authorization request.
 func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-
 	if params.RedirectURI == "" {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("redirect_uri is required"))
 	}

@@ -33,7 +33,8 @@ A configurable OpenID Connect Provider for Go.
 * [FAPI 1.0 Security Profile 1.0 - Part 2: Advanced](https://openid.net/specs/openid-financial-api-part-2-1_0.html)
 * [FAPI 2.0 Security Profile](https://openid.net/specs/fapi-security-profile-2_0-final.html)
 * [OpenID Connect Client-Initiated Backchannel Authentication Flow - Core 1.0 (CIBA)](https://openid.net/specs/openid-client-initiated-backchannel-authentication-core-1_0-final.html)
-* [OpenID Federation 1.0](https://openid.net/specs/openid-federation-1_0.html)
+* [OpenID Federation 1.1](https://openid.net/specs/openid-federation-1_1.html)
+* [OpenID Federation for OpenID Connect 1.1](https://openid.net/specs/openid-federation-connect-1_1.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
@@ -378,8 +379,8 @@ op, _ := provider.New(
   "http://localhost",
   manager,
   jwksFunc,
-  provider.WithJWTBearerGrant(func(ctx context.Context, assertion string) (string, error) {
-    return "subject", nil
+  provider.WithJWTBearerGrant(func(ctx context.Context, assertion string) (goidc.JWTBearerResult, error) {
+    return goidc.JWTBearerResult{Subject: "subject"}, nil
   }),
 )
 ```
@@ -389,8 +390,9 @@ When a token request uses that grant, go-oidc delegates assertion handling to
 the function passed to `WithJWTBearerGrant(...)`.
 
 That function receives the raw assertion and must validate it according to your
-deployment rules. It returns the subject represented by the assertion, or an
-error if the assertion is invalid.
+deployment rules. It returns a `goidc.JWTBearerResult` containing the subject
+represented by the assertion (and optionally a `Store` map for extra data), or
+an error if the assertion is invalid.
 
 If the assertion is accepted, the provider creates a `goidc.Grant` for that
 subject and issues a `goidc.Token` from it. This makes the JWT bearer grant a
@@ -834,7 +836,7 @@ op, _ := provider.New(
 )
 ```
 
-If direct access to private keys is unavailable or granular control over signing is needed, the JWKS function can return only public key material. In that case, `provider.WithSignerFunc` must be added:
+If direct access to private keys is unavailable or granular control over signing is needed, the JWKS function can return only public key material. In that case, `provider.WithSigner` must be added:
 ```go
 key, _ := rsa.GenerateKey(rand.Reader, 2048)
 jwks := goidc.JSONWebKeySet{
@@ -851,13 +853,13 @@ op, _ := provider.New(
   func(_ context.Context) (goidc.JSONWebKeySet, error) {
     return jwks, nil
   },
-  provider.WithSignerFunc(func(_ context.Context, _ goidc.SignatureAlgorithm) (kid string, signer crypto.Signer, err error) {
+  provider.WithSigner(func(_ context.Context, _ goidc.SignatureAlgorithm) (kid string, signer crypto.Signer, err error) {
     return "key_id", key, nil
   }),
 )
 ```
 
-Similarly, if server-side decryption is needed (e.g., for encrypted JARs), configure `provider.WithDecrypterFunc`.
+Similarly, if server-side decryption is needed (e.g., for encrypted JARs), configure `provider.WithDecrypter`.
 
 ID tokens are signed using **RS256** by default. Use `provider.WithIDTokenSignatureAlgs` to change the default or add additional algorithms.
 
@@ -917,11 +919,11 @@ Important: enabling `provider.WithDCR(manager)` by itself means client creation 
 to any caller that can reach the registration endpoint.
 
 Production deployments should usually add
-`provider.WithDCRValidateInitialTokenFunc`
+`provider.WithDCRInitialTokenValidator`
 (`goidc.DCRValidateInitialTokenFunc`) to require and validate an initial access
 token during registration.
 
-Use `provider.WithDCRHandleClientFunc` to implement your registration policy
+Use `provider.WithDCRClientHandler` to implement your registration policy
 during create and update requests, such as metadata validation, allow/deny
 rules, or applying default values.
 
@@ -1085,10 +1087,10 @@ op, _ := provider.New(
 )
 ```
 
-When using the `authorization_code` or `refresh_token` grant types, the client may request a subset of the originally granted authorization details. Provide `provider.WithRARCompareDetailsFunc` to enforce consistency between the granted and requested sets:
+When using the `authorization_code` or `refresh_token` grant types, the client may request a subset of the originally granted authorization details. Provide `provider.WithRARDetailsComparator` to enforce consistency between the granted and requested sets:
 
 ```go
-provider.WithRARCompareDetailsFunc(func(ctx context.Context, requested, granted []goidc.AuthDetail) error {
+provider.WithRARDetailsComparator(func(ctx context.Context, requested, granted []goidc.AuthDetail) error {
   // Verify that every requested detail is consistent with the granted ones.
   return nil
 })
@@ -1133,12 +1135,13 @@ request must include a `resource` parameter.
 op, _ := provider.New(
   ...,
   provider.WithOpenIDFederation(
+    nil,
     func(_ context.Context) (goidc.JSONWebKeySet, error) {
       return fedJWKS, nil
     },
-    "https://trust-anchor.example.com",
+    []string{"https://intermediate.example.com"},
+    []string{"https://trust-anchor.example.com"},
   ),
-  provider.WithOpenIDFedAuthorityHints("https://intermediate.example.com"),
   ...,
 )
 ```
@@ -1161,7 +1164,7 @@ With **automatic** registration, the provider resolves the trust chain by fetchi
 
 Require specific trust marks from clients:
 ```go
-provider.WithOpenIDFedRequiredTrustMarksFunc(
+provider.WithOpenIDFedRequiredTrustMarks(
   func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
     return []goidc.TrustMark{"https://trust-anchor.example.com/marks/certified"}
   },

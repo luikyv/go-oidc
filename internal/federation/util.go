@@ -853,7 +853,7 @@ func parseTrustMark(ctx oidc.Context, signedMark string, opts parseTrustMarkOpti
 
 // TODO: Cache the trust marks until expiration.
 func fetchTrustMarks(ctx oidc.Context) ([]trustMarkInfo, error) {
-	if len(ctx.OpenIDFedTrustMarks) == 0 {
+	if len(ctx.OpenIDFedTrustMarkConfigs) == 0 {
 		return nil, nil
 	}
 
@@ -862,16 +862,16 @@ func fetchTrustMarks(ctx oidc.Context) ([]trustMarkInfo, error) {
 		err  error
 	}
 
-	resultCh := make(chan result, len(ctx.OpenIDFedTrustMarks))
-	for markType, issuerID := range ctx.OpenIDFedTrustMarks {
+	resultCh := make(chan result, len(ctx.OpenIDFedTrustMarkConfigs))
+	for _, config := range ctx.OpenIDFedTrustMarkConfigs {
 		go func(markType goidc.TrustMark, issuerID string) {
 			mark, err := fetchTrustMark(ctx, markType, issuerID)
 			resultCh <- result{mark: mark, err: err}
-		}(markType, issuerID)
+		}(config.Mark, config.Issuer)
 	}
 
-	marks := make([]trustMarkInfo, 0, len(ctx.OpenIDFedTrustMarks))
-	for range ctx.OpenIDFedTrustMarks {
+	marks := make([]trustMarkInfo, 0, len(ctx.OpenIDFedTrustMarkConfigs))
+	for range ctx.OpenIDFedTrustMarkConfigs {
 		res := <-resultCh
 		if res.err != nil {
 			return nil, res.err

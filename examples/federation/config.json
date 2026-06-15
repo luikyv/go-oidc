@@ -1,0 +1,334 @@
+{
+    "alias": "goidc",
+    "federation": {
+        "entity_identifier": "https://auth.localhost",
+        "rp_ec_jwks": {
+            "keys": [
+                {
+                    "alg": "RS256",
+                    "d": "HDnEctEkOKhy2AExw8w3Iaj9Neybv1XG3p39GS6qizZB56FySiZkFPG7g4G981jyWPf47yCZUfZJ587I8_86mBlDatlImlk-hNRyZzMzDSzOZrjCCmPzQps13BrQJMpH95Ru-kpqb9aFlqlFhPkrsSZW8kOJcyQXVbH-c_08QKl-Ccs8CHFJ0OVC33jOmDqDo0qgMAtuxpe5zNMcWx5iE3md6VdZ9JtfZYV2vdXTsXjQKnVDcvY_KcX0xseiALXfBJP2jMw-WSRwyfkwgU3P8DDtKxXeva53c_SvxVZstMkFNvAuFuU1onig2z5o_qRqnYGkNTf6QsiEekZ2g9-jHQ",
+                    "dp": "4iNDmPcNYAl6OBR7bDYaxT21JrATRrFVOTDFGCF4EgcEmb9sZB25C_O-BuFx4cKt5zhuYysce9b5q5E5KyXJ_GfAFJdbguLgi2GGkJWL1GS7wPlVu_6m9OoX90C8bNbfhS9BE0O6sMnhS-PRLS5fjgdZ-w-FD8frJQr5RY2aE5k",
+                    "dq": "ZAPXpOQqNVaLKLpxJotP5Bccm4NsoVVMv1o5jJUazv46mKnHkrtcWmfZfKZZefg10O3QplNchNX7hZM_YlKhQ8nzVQ5-5QJxNIT-tfIpQiNn3Xo7Q8Tj1KytZdQAqJPXuiDLDYOK27wv-HqBL5u6_qFCOAt7WtRykhyjEP13BFE",
+                    "e": "AQAB",
+                    "kty": "RSA",
+                    "n": "wiQdU_8x68zbmZvtCAawJzrQ7r1QFW1uFHStg8WcECs7n2TddS49CdlBh4vq_fZHeofu8RwOERc0BlUYptoV8jMhFWYMTxEeI_zxgJIBLcWJ1m1G7WoHocL0yNo5ayb1QYin_rGuQzU3PNuXu-H0AyTzuybSkK60gN1_2uodwMRxxfUSIYfd3Yk8lW4EPK4R3HD2-gZeLNo9EnTM_A5urscXI0KiJCDmQ1aUzKRrWhc3HoIJ3v_KLF3x6ztD8QehqNgcniY1SARX-AUu4xHMpBGXdVJOCC2uY6Egs-z5L1fUxY_GfdhLR1YVXCEfYD9FOps7yIAEzswFr-vqQiOdEQ",
+                    "p": "6npCfWPljmkB_a2RPJLXeHbkgBsxdvl2akleCtUoQ_nF9HcJkJgl8xMmRO7e247iH_1-z8in72yX4N-Xx8-MI65-qSb89IgBSf1_KXusBZuaYMoFaqDfInCA1fQCjMimmFU-Gbr93yWN4yqvkv910sdSJAVYyWYFetYfKBna9AU",
+                    "q": "0_YHsDpnl14lR5rBMSTolXc_TTAMfXMemirsJ7mYhXSr-2Z88PUqEZW88w0hagKUwUe0I2X61f_vzcoy15XNQdKxi8l2NfxosjOeEyWTwTB2J_PBEWLGKe0Ckgq3Wpo-szbYe02Fil-Ho158hiZu4iI_DwwuR1MgVwP7vejz_p0",
+                    "qi": "Dzvhjkk-19sUhWpL9YBM1P3HFEZYMRJtrtwG5PwMejl50wFZumf84ZdVfIiTo8b6IXmhp2XzqzJqlyzh-xhnNKRiCNhSeb-jH0i_J8R-Mrk-ZPoQYooQuahXjIUgJeNhQYytpLhxk-RzyrmGKMR6rOPKe03xm-VtaH2SVPrCS7g",
+                    "kid": "IPiNUwvp8qSVf2-UJ3XnqOdNxWs3FU41Yc1poa_nVO8",
+                    "use": "sig"
+                }
+            ]
+        },
+        "rp_client_jwks": {
+            "keys": [
+                {
+                    "alg": "RS256",
+                    "d": "V5M4tCexVfhhpuszdk3RVQIrYjz1hu1fPmdNZ1QjeAh1-q7IubbQQPmVReTutJRd0xiroIqGBFXrDPtfAR-vZVwYy2mycJ92w-DIPkoiQTQElHmWcK68ZqJZ_S8Y2-Vwy_mns95uI2qcU1XnbDiV5A3f6DryaqV6jBFWPGAJLiqEqtjQwKWJPMqRbXJOC3_TSIn_0UIyDVvAHFdX3QJegswGBrr0mOem11B4AtDx_v3cvSVun-NKr531W9SrTZ9BZUT5l9i8NmDLN9_X9-OKoe85LH2YrZHvTn2vtvt23Jx2SIQSPvgOyd1LJ3rzpEkwxjgnNWb6UZSxmhLCCX4zvQ",
+                    "dp": "1-Wn7vIDFBhxD13hSQknGSYr5uoo-pJ_BSz4OYmM1j9SnDcoB801Tpui15EMBcMsM28jc8_CD2Agjq1yc63y_heaTj4Gg8eQvjfYJy6G2oQGH4Zz5NHiOWc_5U3fUjnzt8faCbfQLjXToKHv79xjKzme3qZMTwGRN1XcHxvgAvU",
+                    "dq": "UCbj4031g2tWOkhlm6XTNRT0unl-SRUYe1xf7U4TxYegf9b0mojtH_0OIS4VcWQ4wUbMjmlx8vIDIU1xqbvp99LSpvO3bUtnDL4bCbzSuuedS84CMMmatjppAsPjpP5KUGXjzn_b36FhizAViXreFJkXroYGAoUyUisBSIUGtos",
+                    "e": "AQAB",
+                    "kty": "RSA",
+                    "n": "stbsymDP5HIE9swkFW-vrcULqVtxGaQdbuE-TQuuPNsD15AgbBmO0ECx6d2ZqPCzD-XjptGpk6H6l0EQVjRPF3vrRaFyuRJ_ZP0LpqEdWIrQIVxkang6qEuohWo_zK3CX5t0wC55RbBEtoOmRr9gLdl-t_J11xHJQCle724ZIxEYT3VX7ZurHKyGnGdGazZCAXKPQLfyywrrCGT7DLBITg27qzmvtgSxLPtkwYdnJFBCAwJ03XX1-sOKCuZT1bsSgMHY20p-_Qs9Oe-a9TqFdNHT2EesH_aAROsQ06ovFnRC7VETEJ89xJd7jFET6Pu9URY3IyNW3oB6grj19bx_fw",
+                    "p": "3l0zX-aU3_H84qFjnS8br1Ddz6xyIgrL7zs0-8dc6jcMf4rcklIR0m_kE2hOyRWLSA6LHB98KhdoHIpi6zjINeObGwydotbVLiT3dHAkiOmztdjFgPqPkaRAkQTqMt3KYLU2SpLIKYLo_kGWo8T__ILToRbmXYv-_WKeURFAf80",
+                    "q": "zeRJRV08KxMr7315rxlx7R4R_taYzhgeG1yOs6aL-MT4PQB53ns8Q5JJ0C37hP-meIFMOJzGwmZ4D6ixZQdzzQjijDM86DesMle3RXHSTU5g3QYw5OVVmWcNd6-M-lmjQG5WRvAPPyg9DZzPZoXACYtOZH-jnIi2iLKkQOIzeHs",
+                    "qi": "FzyMtNvO6HTFwuH2UGow1DvU7Zxpde40itUV03iYHlLvkTRCp2P5_RhHRTOPERUgTi1yxNyR_7jxg3SyTI5VciU9KL8vatOiyOrwCHK0G86H8k-v4HaIxWYRv5kGAd5L6ICOwQ9mZBiPKmTp8oWLPL4E8MgaN1o1gdCoZHv10Ac",
+                    "kid": "xFy24FUVM9DVmUW8wPmfLuLLwNhmer2zgba0Mrhlhv8",
+                    "use": "sig"
+                }
+            ]
+        }
+    },
+    "federation_trust_anchor": {
+        "trust_anchor_jwks": {
+            "keys": [
+                {
+                    "alg": "RS256",
+                    "d": "IwNiBZTwQJmip8iCrnHad3zG2mZD5hSPwvsvmNGFAv9r-q2xHCclq57fvQbFrRTlLroOqOyzUXsoG0ts6tfYCKycbZQSBXm3OlmcVxUr9lpBd2SxaoxRExtKGtj3txAUwBYYReIMmQYm1vnV8rTR0hfddHkRrLpb6puuC9CmN45NnvbGYlGjUfiQMDuYaR5L-RUJ3BR1zkzp94ycdwTUZ5Oz4SkgWoKUDVHbkeqXruq7nFe9QhOxmiq0R_tXDTk9qkSPYVvSZGPabljBU1dX9IpWRK7qMOit8ItcSEncRKkQ1IzmN5TZ74BrxiyC0PUWamL1z_2kbl16gN3tb1mTmQ",
+                    "dp": "F0Ac0503jN2CyHOkTCYsL2u0MJhpjWiTyhCi9N_4T7x3uYzTVTJWvNtblGvxzuY5XtebLl9QoJvThgMGu8bPIxiAl2VhPSsjnMMpYGpKzAvMbnVe2iilTjKqe5Ur8xloBu1pZg2QIP26eSVjG70yRvMRJ-KrkumVweRaDTVssF0",
+                    "dq": "Mkv5ZsjibzAGlQDv9fvIuoypXHMR477W4VMSbA1rWuv9PiaZJV8qhGt4TvYmNz7Snywe-DIocQSi27hnVYVRuR5FQoQMQc4az05bZTLFRqpFal5HXuwF_GowDXXqgmGtfzelC9BaiuGFdSCUgzuiCdXXHHl9iECfJxs9skt42t0",
+                    "e": "AQAB",
+                    "kty": "RSA",
+                    "n": "vyJXo5qqulgdSUK4fZCEvxXqzuI6XrUu09O-nz8wUc5xjNMOW6zrbbB4hMV4nRTe6I9S6pEcrGPJFIOSJZEoUr_JSaxA_Anzp7IZMqo_ji3yyxFSQsIkmapTkehzEAUy71UT-BMS0dGIdnz0Vj-0Z_eL1iG3N-aCwV_wH99KU-IokxFOdK1uF3WliDWo9aAVRzg-9nx9QSLoZAJBJEg-9ZzGq4OeJVsQ-wuv3ThxYqnrIThhPQFLRQvULbPPWLHuvSpvRaRTZa2YbW6aHETFoGKoNQDkyX94ugKf9aLmRNmcejIWd_woD9bYi_SeVqzuFQ4qLGD4UpBw4mZ6lI_BqQ",
+                    "p": "8azuFUcPt3IJ59FrJFvGkj8Urc3SMWDOC04KDLSmImGrD1ReHjHwS3GVXkz99qmmJh_-8YZlGP00KvrfrBikb-Lqb5M15uxCGOFZwWCP1BeRpv2oXDqbyUQzFpoHE2wrs7mwempi7kA2MxKQ1b62Jk1knI6TIJHfQMQHDAmoxt0",
+                    "q": "ynaFifMoNP8hrlKg1og-HUy3GyFjFruAQxPCyfxv5XKlKl-O-fuQasPF_Fv4ud9K1GjRQgrL7OWQ9rofwtAj85wIoQhkmVAvghoMurUlbfswlL4o_sec4jzLtnF-iNT2P-NjASt7Z4rk4vVphRK_Qa02jQ1pnPExywxbGMCCaz0",
+                    "qi": "q1N6AqYVzixwhK8Yn0Iks4g0kogRkXOMXGm844NXSRxk_Hi9sNrEP4pi7hcojURdlEYVw1Oz4zyxx3TzdXXA59PsV0K7an65U0K-_WovIRHcBSohiqlR4XkirVTEU3H3aQVZBeH6PpBJAYqjNuolu-TM54etE2byAZNxZqOrWME",
+                    "kid": "f0VeqXrqR-VPpqXPCOeigdejRkEI9auWjJscS-3Wwso",
+                    "use": "sig"
+                }
+            ]
+        }
+    },
+    "browser": [
+        {
+            "match": "https://auth.localhost*/authorize*",
+            "tasks": [
+                {
+                    "task": "Login",
+                    "optional": true,
+                    "match": "https://auth.localhost*/authorize/*/login",
+                    "commands": [
+                        ["text", "id", "username", "random@gmail.com"],
+                        ["text", "id", "password", "pass"],
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Consent",
+                    "match": "https://auth.localhost*/authorize/*/consent",
+                    "commands": [
+                        ["click", "id", "submit_button"]
+                    ]
+                },
+                {
+                    "task": "Verify complete",
+                    "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                    "commands": [
+                        ["wait", "id", "submission_complete", 10]
+                    ]
+                }
+            ]
+        }
+    ],
+    "override": {
+        "openid-federation-automatic-client-registration-invalid-client-id-in-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-client-id-in-query-parameters": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-signature-on-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-signature-with-other-keys-on-request-object": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-exp": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-iss": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-aud": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-request-object-sub": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-jti": {
+            "_comment": "Use a different alias to force automatic registration since it will be a new client identifier.",
+            "alias": "goidc2",
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-exp": {
+            "_comment": "Use a different alias to force automatic registration since it will be a new client identifier.",
+            "alias": "goidc3",
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-iss": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-missing-request-object-aud": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        },
+        "openid-federation-automatic-client-registration-invalid-duplicate-request-object-jti": {
+            "browser": [
+                {
+                    "match": "https://auth.localhost*/authorize*",
+                    "tasks": [
+                        {
+                            "task": "Login",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/login",
+                            "commands": [
+                                ["text", "id", "username", "random@gmail.com"],
+                                ["text", "id", "password", "pass"],
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Consent",
+                            "optional": true,
+                            "match": "https://auth.localhost*/authorize/*/consent",
+                            "commands": [
+                                ["click", "id", "submit_button"]
+                            ]
+                        },
+                        {
+                            "task": "Verify complete",
+                            "optional": true,
+                            "match": "https://localhost.emobix.co.uk:8443/test/a/goidc/callback*",
+                            "commands": [
+                                ["wait", "id", "submission_complete", 10]
+                            ]
+                        },
+                        {
+                            "task": "Expect error for invalid client_id in request object",
+                            "match": "https://auth.localhost*/authorize*",
+                            "optional": true,
+                            "commands": [
+                                ["wait",  "xpath", "//*", 10, "Error", "update-image-placeholder"]
+                            ]
+                        }
+                    ]
+                }
+            ]
+        }
+    }
+}

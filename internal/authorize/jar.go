@@ -20,6 +20,10 @@ const (
 	maxJARResponseByteSize int64 = 1_000_000 // 1 MB.
 )
 
+type jarOptions struct {
+	federation bool
+}
+
 func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (request, error) {
 	resp, err := ctx.JARHTTPClient().Get(reqURI)
 	if err != nil {
@@ -51,10 +55,14 @@ func jarFromRequestURI(ctx oidc.Context, reqURI string, client *goidc.Client) (r
 		)
 	}
 
-	return jarFromRequestObject(ctx, string(reqObject), client)
+	return jarFromRequestObject(ctx, string(reqObject), client, nil)
 }
 
-func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (request, error) {
+func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, opts *jarOptions) (request, error) {
+	if opts == nil {
+		opts = &jarOptions{}
+	}
+
 	if ctx.JAREncIsEnabled && joseutil.IsJWE(reqObject) {
 		contentEncAlgs := ctx.JARContentEncAlgs
 		if c.JARContentEncAlg != "" && slices.Contains(ctx.JARContentEncAlgs, c.JARContentEncAlg) {
@@ -132,6 +140,20 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client) (
 		if claims.Expiry.Time().After(timeutil.Now().Add(1 * time.Hour)) {
 			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
 				errors.New("claim 'exp' is too far in the future"))
+		}
+	}
+
+	if opts.federation {
+		// [OpenID Fed Connect 1.1 §12.1.1.1] exp and jti are required in
+		// request objects for automatic client registration.
+		if claims.Expiry == nil {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				errors.New("claim 'exp' is required in the request object"))
+		}
+
+		if claims.ID == "" {
+			return request{}, goidc.WrapError(goidc.ErrorCodeInvalidRequestObject, "invalid request object",
+				errors.New("claim 'jti' is missing in the request object"))
 		}
 	}
 

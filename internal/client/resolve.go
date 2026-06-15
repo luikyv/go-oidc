@@ -163,8 +163,10 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 	}
 
 	if c.TokenAuthnMethod == "" {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
-			errors.New("token_endpoint_auth_method is required"))
+		if ctx.AuthnMethodDefault == "" {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata", errors.New("token_endpoint_auth_method is required"))
+		}
+		c.TokenAuthnMethod = ctx.AuthnMethodDefault
 	}
 
 	if !slices.Contains(ctx.AuthnMethods, c.TokenAuthnMethod) {

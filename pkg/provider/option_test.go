@@ -241,7 +241,7 @@ func TestWithRPMetadataChoices(t *testing.T) {
 	}
 }
 
-func TestWithDCRHandleClientFunc(t *testing.T) {
+func TestWithDCRClientHandler(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -253,7 +253,7 @@ func TestWithDCRHandleClientFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithDCRHandleClientFunc(f)(p)
+	err := WithDCRClientHandler(f)(p)
 
 	// Then.
 	if err != nil {
@@ -320,7 +320,7 @@ func TestWithTokenRevocationEndpoint(t *testing.T) {
 	}
 }
 
-func TestWithVerifyClientSecretFunc(t *testing.T) {
+func TestWithClientSecretVerifier(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -334,7 +334,7 @@ func TestWithVerifyClientSecretFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithVerifyClientSecretFunc(f)(p)
+	err := WithClientSecretVerifier(f)(p)
 
 	// Then.
 	if err != nil {
@@ -691,14 +691,14 @@ func TestWithLocalhostRedirectURIs(t *testing.T) {
 	}
 }
 
-func TestWithClientIDFunc(t *testing.T) {
+func TestWithDCRClientID(t *testing.T) {
 	// Given.
 	op := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithClientIDFunc(func(context.Context) string {
+	err := WithDCRClientID(func(context.Context) string {
 		return "client_id"
 	})(op)
 
@@ -979,7 +979,7 @@ func TestWithTokenOptions(t *testing.T) {
 	}
 }
 
-func TestWithHandleGrantFunc(t *testing.T) {
+func TestWithGrantHandler(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -989,7 +989,7 @@ func TestWithHandleGrantFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithHandleGrantFunc(grantHandler)(p)
+	err := WithGrantHandler(grantHandler)(p)
 
 	// Then.
 	if err != nil {
@@ -1466,7 +1466,7 @@ func TestWithTLSCertTokenBinding(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFedHandleClientFunc(t *testing.T) {
+func TestWithOpenIDFedClientHandler(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -1478,7 +1478,7 @@ func TestWithOpenIDFedHandleClientFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFedHandleClientFunc(f)(p)
+	err := WithOpenIDFedClientHandler(f)(p)
 
 	// Then.
 	if err != nil {
@@ -1825,7 +1825,7 @@ func TestWithAuthenticationSessionTimeout(t *testing.T) {
 	}
 
 	// When.
-	err := WithAuthTimeout(10)(p)
+	err := WithAuthSessionLifetime(10)(p)
 
 	// Then.
 	if err != nil {
@@ -1895,7 +1895,7 @@ func TestWithPolicies(t *testing.T) {
 	}
 }
 
-func TestWithRenderErrorFunc(t *testing.T) {
+func TestWithErrorRenderer(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -1909,7 +1909,7 @@ func TestWithRenderErrorFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithRenderErrorFunc(renderFunc)(p)
+	err := WithErrorRenderer(renderFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -1933,7 +1933,7 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithHandleErrorFunc(handleErrorFunc)(p)
+	err := WithErrorHandler(handleErrorFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -1945,7 +1945,7 @@ func TestWithNotifyErrorFunc(t *testing.T) {
 	}
 }
 
-func TestWithConsumeJTIFunc(t *testing.T) {
+func TestWithJTIConsumer(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -1955,7 +1955,7 @@ func TestWithConsumeJTIFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithConsumeJTIFunc(consumeJTIFunc)(p)
+	err := WithJTIConsumer(consumeJTIFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2155,7 +2155,7 @@ func TestWithTokenExchangeClientAuthnRequired(t *testing.T) {
 	}
 }
 
-func TestWithGrantIDFunc(t *testing.T) {
+func TestWithGrantID(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -2175,7 +2175,7 @@ func TestWithGrantIDFunc(t *testing.T) {
 	}
 }
 
-func TestWithPARIDFunc(t *testing.T) {
+func TestWithPARID(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -2195,7 +2195,7 @@ func TestWithPARIDFunc(t *testing.T) {
 	}
 }
 
-func TestWithCIBAIDFunc(t *testing.T) {
+func TestWithCIBAID(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -2513,7 +2513,7 @@ func TestWithGeneratePairwiseSubIDFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithPairwiseSubjectFunc(genFunc)(p)
+	err := WithPairwiseSubject(genFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2525,7 +2525,7 @@ func TestWithGeneratePairwiseSubIDFunc(t *testing.T) {
 	}
 }
 
-func TestWithSignerFunc(t *testing.T) {
+func TestWithSigner(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -2535,7 +2535,7 @@ func TestWithSignerFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithSignerFunc(signerFunc)(p)
+	err := WithSigner(signerFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2547,7 +2547,7 @@ func TestWithSignerFunc(t *testing.T) {
 	}
 }
 
-func TestWithDecrypterFunc(t *testing.T) {
+func TestWithDecrypter(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -2557,7 +2557,7 @@ func TestWithDecrypterFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithDecrypterFunc(decrypterFunc)(p)
+	err := WithDecrypter(decrypterFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -2613,7 +2613,7 @@ func TestWithAuthnSessionIDFunc(t *testing.T) {
 	}
 }
 
-func TestWithJWTIDFunc(t *testing.T) {
+func TestWithJWTID(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3317,7 +3317,7 @@ func TestWithAttestationJWTAuthn(t *testing.T) {
 	}
 }
 
-func TestWithCIBAHandleSessionFunc(t *testing.T) {
+func TestWithCIBASessionHandler(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3327,7 +3327,7 @@ func TestWithCIBAHandleSessionFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithCIBAHandleSessionFunc(f)(p)
+	err := WithCIBASessionHandler(f)(p)
 
 	// Then.
 	if err != nil {
@@ -3349,7 +3349,7 @@ func TestWithOpenIDFed(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFederation(storage.NewManager(1), jwksFunc, "https://trust.anchor")(p)
+	err := WithOpenIDFederation(storage.NewManager(1), jwksFunc, []string{"https://authority.hint"}, []string{"https://trust.anchor"})(p)
 
 	// Then.
 	if err != nil {
@@ -3362,6 +3362,10 @@ func TestWithOpenIDFed(t *testing.T) {
 
 	if p.config.OpenIDFedJWKSFunc == nil {
 		t.Error("OpenIDFedJWKSFunc cannot be nil")
+	}
+
+	if len(p.config.OpenIDFedAuthorityHints) != 1 || p.config.OpenIDFedAuthorityHints[0] != "https://authority.hint" {
+		t.Error("OpenIDFedAuthorityHints not set correctly")
 	}
 
 	if len(p.config.OpenIDFedTrustedAnchors) != 1 || p.config.OpenIDFedTrustedAnchors[0] != "https://trust.anchor" {
@@ -3394,7 +3398,7 @@ func TestWithOpenIDFedSignatureAlgs(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFedSignerFunc(t *testing.T) {
+func TestWithOpenIDFedSigner(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3404,7 +3408,7 @@ func TestWithOpenIDFedSignerFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFedSignerFunc(signerFunc)(p)
+	err := WithOpenIDFedSigner(signerFunc)(p)
 
 	// Then.
 	if err != nil {
@@ -3416,7 +3420,7 @@ func TestWithOpenIDFedSignerFunc(t *testing.T) {
 	}
 }
 
-func TestWithOpenIDFedRequiredTrustMarksFunc(t *testing.T) {
+func TestWithOpenIDFedRequiredTrustMarks(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
@@ -3426,14 +3430,14 @@ func TestWithOpenIDFedRequiredTrustMarksFunc(t *testing.T) {
 	}
 
 	// When.
-	err := WithOpenIDFedRequiredTrustMarksFunc(trustMarksFunc)(p)
+	err := WithOpenIDFedRequiredClientTrustMarks(trustMarksFunc)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if p.config.OpenIDFedRequiredTrustMarksFunc == nil {
+	if p.config.OpenIDFedRequiredClientTrustMarksFunc == nil {
 		t.Error("OpenIDFedRequiredTrustMarksFunc cannot be nil")
 	}
 }
@@ -3515,19 +3519,19 @@ func TestWithOpenIDFedTrustMark(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	marks := map[goidc.TrustMark]string{
-		"https://example.com/trust-mark": "https://issuer.example.com",
+	marks := []goidc.TrustMarkConfig{
+		{Mark: "https://example.com/trust-mark", Issuer: "https://issuer.example.com"},
 	}
 
 	// When.
-	err := WithOpenIDFedTrustMark(marks)(p)
+	err := WithOpenIDFedTrustMarks(marks...)(p)
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	if diff := cmp.Diff(p.config.OpenIDFedTrustMarks, marks); diff != "" {
+	if diff := cmp.Diff(p.config.OpenIDFedTrustMarkConfigs, marks); diff != "" {
 		t.Error(diff)
 	}
 }

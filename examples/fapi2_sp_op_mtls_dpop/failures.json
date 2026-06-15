@@ -1,0 +1,11 @@
+[
+    {
+        "test-name": "fapi2-security-profile-final-ensure-holder-of-key-required",
+        "variant": "*",
+        "configuration-filename": "*",
+        "current-block": "Verify authorization endpoint response",
+        "condition": "CheckTokenEndpointReturnedInvalidRequestGrantOrDPopProofError",
+        "expected-result": "failure",
+        "comment": "The test sends a token request without client_id, so the server cannot identify the client and returns invalid_client before evaluating DPoP binding"
+    }
+]

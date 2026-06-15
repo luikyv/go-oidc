@@ -1188,7 +1188,7 @@ func TestSimpleHelpers(t *testing.T) {
 			t.Fatalf("OpenIDFedRequiredTrustMarks() = %v, want nil", got)
 		}
 		trustMarks := []goidc.TrustMark{"mark"}
-		ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+		ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 			return trustMarks
 		}
 		if diff := cmp.Diff(trustMarks, ctx.OpenIDFedRequiredTrustMarks(client)); diff != "" {
@@ -1547,7 +1547,7 @@ func TestSign(t *testing.T) {
 	}
 }
 
-func TestSignWithSignerFunc(t *testing.T) {
+func TestSignWithSigner(t *testing.T) {
 	signingKey, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
 		t.Fatalf("rsa.GenerateKey() error = %v", err)
@@ -1580,7 +1580,7 @@ func TestSignWithSignerFunc(t *testing.T) {
 	}
 }
 
-func TestDecryptWithDecrypterFunc(t *testing.T) {
+func TestDecryptWithDecrypter(t *testing.T) {
 	encKey := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
@@ -1630,7 +1630,7 @@ func newContext() oidc.Context {
 			RARValidateDetailFunc: func(context.Context, goidc.AuthDetail) error {
 				return nil
 			},
-			OpenIDFedRequiredTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
+			OpenIDFedRequiredClientTrustMarksFunc: func(context.Context, *goidc.Client) []goidc.TrustMark {
 				return nil
 			},
 			OpenIDFedHandleClientFunc: func(context.Context, *goidc.Client) error {

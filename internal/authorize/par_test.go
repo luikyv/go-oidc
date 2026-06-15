@@ -159,6 +159,7 @@ func TestPushAuth(t *testing.T) {
 			goidc.ClaimAudience: ctx.Issuer(),
 			goidc.ClaimIssuedAt: now,
 			goidc.ClaimExpiry:   now + 60,
+			goidc.ClaimTokenID:  "random_jti",
 			"client_id":         federationClientID,
 			"redirect_uri":      redirectURI,
 			"scope":             federationScopeIDs,

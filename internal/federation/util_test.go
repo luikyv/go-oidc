@@ -94,7 +94,7 @@ func TestClient(t *testing.T) {
 			clientID: clientID,
 			setup: func(t *testing.T) oidc.Context {
 				ctx := setup(t, nil)
-				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+				ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 					return []goidc.TrustMark{trustMarkCertification}
 				}
 				return ctx
@@ -146,7 +146,7 @@ func TestClient(t *testing.T) {
 					},
 				}
 				ctx := setup(t, responses)
-				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+				ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 					return []goidc.TrustMark{trustMarkCertification}
 				}
 				return ctx
@@ -195,7 +195,7 @@ func TestClient(t *testing.T) {
 					},
 				}
 				ctx := setup(t, responses)
-				ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+				ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 					return []goidc.TrustMark{trustMarkCertification}
 				}
 				return ctx
@@ -2413,7 +2413,7 @@ func TestParseSubordinateStatement_WithInvalidMetadataPolicy(t *testing.T) {
 func TestExtractRequiredTrustMarks_MissingRequiredMark(t *testing.T) {
 	// Given.
 	ctx := setup(t, nil)
-	ctx.OpenIDFedRequiredTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
+	ctx.OpenIDFedRequiredClientTrustMarksFunc = func(_ context.Context, _ *goidc.Client) []goidc.TrustMark {
 		return []goidc.TrustMark{goidc.TrustMark("https://non-existent.trust-mark.com/certification")}
 	}
 	config := entityStatement{
@@ -3023,8 +3023,8 @@ func TestFetchTrustMark_IssuerNotFederationAuthority(t *testing.T) {
 		},
 	}
 	ctx := setup(t, responses)
-	ctx.OpenIDFedTrustMarks = map[goidc.TrustMark]string{
-		trustMarkCertification: trustMarkIssuerID,
+	ctx.OpenIDFedTrustMarkConfigs = []goidc.TrustMarkConfig{
+		{Mark: trustMarkCertification, Issuer: trustMarkIssuerID},
 	}
 
 	// When.

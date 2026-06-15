@@ -45,9 +45,9 @@ type Provider struct {
 // Typically, it should return both private and public key material.
 // If private keys are unavailable or granular control over signing is required,
 // "jwksFunc" can be configured to return only public key material. In such cases,
-// the [WithSignerFunc] option must be provided to handle signing operations.
+// the [WithSigner] option must be provided to handle signing operations.
 // Similarly, if server-side encryption (e.g., JAR encryption) is enabled,
-// the [WithDecrypterFunc] option must also be configured for decryption support.
+// the [WithDecrypter] option must also be configured for decryption support.
 // For operations like signature verification, only the public key material is
 // needed, which can be retrieved using "jwksFunc".
 //
@@ -69,6 +69,10 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		if err := opt(op); err != nil {
 			return nil, err
 		}
+	}
+
+	if op.config.AuthnMethodDefault != "" && !slices.Contains(op.config.AuthnMethods, op.config.AuthnMethodDefault) {
+		return nil, fmt.Errorf("default authn method %q is not among the enabled authn methods", op.config.AuthnMethodDefault)
 	}
 
 	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
@@ -106,7 +110,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	}
 
 	if op.config.ConsumeJTIFunc == nil {
-		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithConsumeJTIFunc for production use.")
+		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithJTIConsumer for production use.")
 	}
 
 	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
@@ -269,7 +273,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
-		op.config.OpenIDFedRequiredTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
+		op.config.OpenIDFedRequiredClientTrustMarksFunc = nonZeroOrDefault(op.config.OpenIDFedRequiredClientTrustMarksFunc, goidc.RequiredTrustMarksFunc(defaultOpenIDFedRequiredTrustMarksFunc))
 		op.config.OpenIDFedHandleClientFunc = nonZeroOrDefault(op.config.OpenIDFedHandleClientFunc, goidc.HandleClientFunc(defaultOpenIDFedHandleClientFunc))
 		op.config.OpenIDFedEntityJWKSFunc = federation.FetchEntityConfigurationJWKS
 		if slices.Contains(op.config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {

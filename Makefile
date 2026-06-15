@@ -1,4 +1,4 @@
-CS_VERSION = v5.1.39
+CS_VERSION = v5.1.44
 GOLANGCI_LINT_VERSION = v2.12.2
 
 setup-dev:
@@ -9,8 +9,8 @@ setup-dev:
 setup-cs:
 	@if [ ! -d "conformance-suite" ]; then \
 	  echo "Cloning conformance-suite repository..."; \
-	  git clone --branch "release-$(CS_VERSION)" --single-branch --depth=1 https://gitlab.com/openid/conformance-suite.git; \
-	  docker compose -f ./conformance-suite/builder-compose.yml run builder; \
+	  git clone --branch "release-$(CS_VERSION)" https://gitlab.com/openid/conformance-suite.git; \
+	  docker run --rm -v ./conformance-suite:/usr/src/mymaven -w /usr/src/mymaven maven:3-eclipse-temurin-21 mvn -B clean package -DskipTests=true; \
 	fi
 
 	@if [ ! -d "conformance-suite/venv" ]; then \
@@ -118,6 +118,7 @@ cs-fapi2-sp-op-mtls-mtls-tests:
 cs-fapi2-sp-op-mtls-dpop-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		fapi2-security-profile-final-test-plan[client_auth_type=mtls][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi] ./examples/fapi2_sp_op_mtls_dpop/config.json \
+		--expected-failures-file ./examples/fapi2_sp_op_mtls_dpop/failures.json \
 		--export-dir ./examples/fapi2_sp_op_mtls_dpop \
 		--verbose
 
@@ -130,6 +131,7 @@ cs-fapi2-sp-op-private-key-mtls-tests:
 cs-fapi2-sp-op-private-key-dpop-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		fapi2-security-profile-final-test-plan[client_auth_type=private_key_jwt][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi] ./examples/fapi2_sp_op_private_key_dpop/config.json \
+		--expected-failures-file ./examples/fapi2_sp_op_private_key_dpop/failures.json \
 		--export-dir ./examples/fapi2_sp_op_private_key_dpop \
 		--verbose
 
@@ -156,8 +158,8 @@ cs-fapi1-tests:
 
 cs-fapiciba-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
-		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
-		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
+		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=poll][fapi_ciba_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
+		fapi-ciba-id1-test-plan[client_auth_type=private_key_jwt][ciba_mode=ping][fapi_ciba_profile=plain_fapi][client_registration=dynamic_client] ./examples/fapiciba/config.json \
 		--export-dir ./examples/fapiciba \
 		--verbose
 
@@ -168,3 +170,10 @@ cs-ssf-tests:
 		--expected-failures-file ./examples/ssf/failures.json \
 		--export-dir ./examples/ssf \
 		--verbose
+
+cs-federation-tests:
+	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
+		openid-federation-entity-joined-to-test-federation-op-test-plan[server_metadata=discovery][client_registration=automatic] ./examples/federation/config.json \
+		--export-dir ./examples/federation \
+		--verbose
+

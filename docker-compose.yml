@@ -6,15 +6,16 @@ services:
   # The auth server is expected to be running under the domain "auth.localhost".
   mongodb:
     image: mongo:6.0.13
-  httpd:
+  nginx:
     build:
-      context: ./conformance-suite/httpd
+      context: ./conformance-suite/nginx
       dockerfile: Dockerfile-static
     ports:
      - "8443:8443"
      - "8444:8444"
+     - "8445:8445"
     volumes:
-     - ./conformance-suite/src/main/resources/:/usr/local/apache2/htdocs/
+     - ./conformance-suite/src/main/resources/:/usr/share/nginx/html/
     depends_on:
      - server
   server:
@@ -49,3 +50,4 @@ services:
       - auth.localhost:host-gateway
       - matls-auth.localhost:host-gateway
       - fed-trust-anchor.localhost:host-gateway
+      - localhost.emobix.co.uk:host-gateway

@@ -27,8 +27,8 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithHandleErrorFunc(authutil.HandleError),
-		provider.WithRenderErrorFunc(authutil.RenderError()),
+		provider.WithErrorHandler(authutil.HandleError),
+		provider.WithErrorRenderer(authutil.RenderError()),
 	)
 	if err != nil {
 		log.Fatal(err)
@@ -48,8 +48,8 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithHandleErrorFunc(authutil.HandleError),
-		provider.WithRenderErrorFunc(authutil.RenderError()),
+		provider.WithErrorHandler(authutil.HandleError),
+		provider.WithErrorRenderer(authutil.RenderError()),
 	)
 	if err != nil {
 		log.Fatal(err)

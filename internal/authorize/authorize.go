@@ -106,7 +106,9 @@ func initAuth(ctx oidc.Context, req request) error {
 			var jar request
 			switch {
 			case req.RequestObject != "":
-				jar, err = jarFromRequestObject(ctx, req.RequestObject, c)
+				jar, err = jarFromRequestObject(ctx, req.RequestObject, c, &jarOptions{
+					federation: shouldRegisterFedClient,
+				})
 				if err != nil {
 					return nil, err
 				}

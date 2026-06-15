@@ -41,13 +41,13 @@ func main() {
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithPolicies(authutil.Policy()),
-		provider.WithHandleErrorFunc(authutil.HandleError),
+		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithStaticClients(clientOne, clientTwo),
-		provider.WithRenderErrorFunc(authutil.RenderError()),
-		provider.WithConsumeJTIFunc(authutil.ConsumeJTIFunc()),
+		provider.WithErrorRenderer(authutil.RenderError()),
+		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 		provider.WithJWTLeewayTime(30),
 		provider.WithRAR("customer_information"),
-		provider.WithRARCompareDetailsFunc(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
+		provider.WithRARDetailsComparator(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
 			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
 			for i, grantedDetail := range granted {
 				grantedDetailTypes[i] = grantedDetail.Type()
