@@ -105,6 +105,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantTokenExchange,
 		Subject:              result.Subject,
+		Actor:                result.Actor,
 		Store:                result.Store,
 		ClientID:             c.ID,
 		Scopes:               req.scopes,

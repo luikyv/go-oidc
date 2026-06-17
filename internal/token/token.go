@@ -48,6 +48,7 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 		Resources:      grant.Resources,
 		JWKThumbprint:  grant.JWKThumbprint,
 		CertThumbprint: grant.CertThumbprint,
+		Actor:          grant.Actor,
 		CreatedAt:      now,
 		ExpiresAt:      now + tknOpts.LifetimeSecs,
 		Format:         tknOpts.Format,
@@ -101,6 +102,10 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 
 		if tkn.Resources != nil {
 			claims[goidc.ClaimAudience] = tkn.Resources
+		}
+
+		if tkn.Actor != nil {
+			claims[goidc.ClaimAct] = tkn.Actor
 		}
 
 		confirmation := make(map[string]string)

@@ -61,6 +61,8 @@ type Grant struct {
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
 	// CertThumbprint contains the thumbprint of the certificate used to generate the token.
 	CertThumbprint string `json:"cert_thumbprint,omitempty"`
+	// [RFC 8693 §4.1] Actor represents the acting party in delegation scenarios.
+	Actor *Actor `json:"act,omitempty"`
 	// Store allows storing custom data within the grant.
 	Store map[string]any `json:"store,omitempty"`
 }

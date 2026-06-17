@@ -29,6 +29,7 @@ type GrantOptions struct {
 	AuthReqIDConsumedAt  int
 	JWKThumbprint        string
 	ClientCertThumbprint string
+	Actor                *goidc.Actor
 	AuthParams           goidc.AuthorizationParameters
 	Store                map[string]any
 }
@@ -47,6 +48,7 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		Subject:             opts.Subject,
 		Username:            opts.Username,
 		ClientID:            opts.ClientID,
+		Actor:               opts.Actor,
 		Scopes:              opts.Scopes,
 		Store:               opts.Store,
 		JWKThumbprint:       opts.JWKThumbprint,

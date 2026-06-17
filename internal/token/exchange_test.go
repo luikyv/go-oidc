@@ -157,29 +157,112 @@ func TestGenerateExchangeToken(t *testing.T) {
 			},
 		},
 		{
-			name: "store passed through",
+			name: "actor passed through to grant and jwt",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)
 				ctx.TokenExchangeHandleFunc = func(_ context.Context, _ goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
 					return goidc.TokenExchangeResult{
 						Subject: "token_subject",
-						Store: map[string]any{
-							"act": map[string]any{"sub": "actor_sub"},
+						Actor: &goidc.Actor{
+							Subject: "actor_sub",
+							Issuer:  "https://actor-issuer.com",
 						},
 					}, nil
 				}
 				return ctx, req, c
 			},
-			validate: func(t *testing.T, ctx oidc.Context, _ response, _ *goidc.Client) {
+			validate: func(t *testing.T, ctx oidc.Context, resp response, c *goidc.Client) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
 				}
-				wantStore := map[string]any{
-					"act": map[string]any{"sub": "actor_sub"},
+				grant := grants[0]
+				if grant.Actor == nil {
+					t.Fatal("grant.Actor is nil")
 				}
-				if diff := cmp.Diff(grants[0].Store, wantStore); diff != "" {
+				if grant.Actor.Subject != "actor_sub" {
+					t.Errorf("grant.Actor.Subject = %q, want %q", grant.Actor.Subject, "actor_sub")
+				}
+				if grant.Actor.Issuer != "https://actor-issuer.com" {
+					t.Errorf("grant.Actor.Issuer = %q, want %q", grant.Actor.Issuer, "https://actor-issuer.com")
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				wantClaims := map[string]any{
+					"iss":       ctx.Issuer(),
+					"sub":       "token_subject",
+					"client_id": c.ID,
+					"scope":     grant.Scopes,
+					"grant_id":  grant.ID,
+					"act": map[string]any{
+						"sub": "actor_sub",
+						"iss": "https://actor-issuer.com",
+					},
+				}
+				if diff := cmp.Diff(claims, wantClaims, cmpopts.EquateApprox(0, 1), cmpopts.IgnoreMapEntries(func(k string, _ any) bool {
+					return k == "jti" || k == "exp" || k == "iat"
+				})); diff != "" {
 					t.Error(diff)
+				}
+			},
+		},
+		{
+			name: "nested actor chain",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.TokenExchangeHandleFunc = func(_ context.Context, _ goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
+					return goidc.TokenExchangeResult{
+						Subject: "token_subject",
+						Actor: &goidc.Actor{
+							Subject: "actor_b",
+							Actor: &goidc.Actor{
+								Subject: "actor_a",
+							},
+						},
+					}, nil
+				}
+				return ctx, req, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client) {
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				grant := grants[0]
+				if grant.Actor == nil || grant.Actor.Actor == nil {
+					t.Fatal("expected nested actor chain")
+				}
+				if grant.Actor.Subject != "actor_b" {
+					t.Errorf("grant.Actor.Subject = %q, want %q", grant.Actor.Subject, "actor_b")
+				}
+				if grant.Actor.Actor.Subject != "actor_a" {
+					t.Errorf("grant.Actor.Actor.Subject = %q, want %q", grant.Actor.Actor.Subject, "actor_a")
+				}
+
+				claims, err := oidctest.SafeClaims(resp.AccessToken, oidctest.PrivateJWKS(t, ctx).Keys[0])
+				if err != nil {
+					t.Fatalf("error parsing claims: %v", err)
+				}
+				actClaim, ok := claims["act"]
+				if !ok {
+					t.Fatal("act claim missing from JWT")
+				}
+				actMap, ok := actClaim.(map[string]any)
+				if !ok {
+					t.Fatal("act claim is not a map")
+				}
+				if actMap["sub"] != "actor_b" {
+					t.Errorf("act.sub = %q, want %q", actMap["sub"], "actor_b")
+				}
+				innerAct, ok := actMap["act"].(map[string]any)
+				if !ok {
+					t.Fatal("act.act is not a map")
+				}
+				if innerAct["sub"] != "actor_a" {
+					t.Errorf("act.act.sub = %q, want %q", innerAct["sub"], "actor_a")
 				}
 			},
 		},
@@ -196,7 +279,10 @@ func TestGenerateExchangeToken(t *testing.T) {
 					if req.ActorTokenType != goidc.TokenTypeIdentifierAccessToken {
 						return goidc.TokenExchangeResult{}, errors.New("expected actor token type")
 					}
-					return goidc.TokenExchangeResult{Subject: "token_subject"}, nil
+					return goidc.TokenExchangeResult{
+						Subject: "token_subject",
+						Actor:   &goidc.Actor{Subject: "the_actor"},
+					}, nil
 				}
 				return ctx, req, c
 			},
@@ -207,6 +293,9 @@ func TestGenerateExchangeToken(t *testing.T) {
 				grants := oidctest.Grants(t, ctx)
 				if len(grants) != 1 {
 					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if grants[0].Actor == nil || grants[0].Actor.Subject != "the_actor" {
+					t.Errorf("grant.Actor = %v, want actor with sub 'the_actor'", grants[0].Actor)
 				}
 			},
 		},

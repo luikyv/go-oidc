@@ -15,7 +15,7 @@ import (
 )
 
 func Policy() goidc.AuthnPolicy {
-	tmpl := template.Must(template.ParseFS(ui.FS, "*.html"))
+	tmpl := template.Must(template.ParseFS(ui.FS, "template.html"))
 	authenticator := authenticator{tmpl: tmpl}
 	return goidc.NewPolicy(
 		"main",
@@ -177,7 +177,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 
 	login := r.PostFormValue(loginFormParam)
 	if login == "" {
-		return a.renderPage(w, "login.html", as)
+		return a.renderPage(w, "login", as)
 	}
 
 	if login != "true" {
@@ -187,7 +187,7 @@ func (a authenticator) login(w http.ResponseWriter, r *http.Request, as *goidc.A
 	username := r.PostFormValue(usernameFormParam)
 	password := r.PostFormValue(passwordFormParam)
 	if password != correctPassword {
-		return a.renderError(w, "login.html", as, fmt.Sprintf("invalid password, try '%s'", correctPassword))
+		return a.renderError(w, "login", as, fmt.Sprintf("invalid password, try '%s'", correctPassword))
 	}
 
 	as.Subject = username
@@ -219,7 +219,7 @@ func (a authenticator) createUserSession(w http.ResponseWriter, as *goidc.AuthnS
 func (a authenticator) grantConsent(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) {
 	consented := r.PostFormValue(consentFormParam)
 	if consented == "" {
-		return a.renderPage(w, "consent.html", as)
+		return a.renderPage(w, "consent", as)
 	}
 
 	if consented != "true" {

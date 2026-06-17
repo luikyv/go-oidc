@@ -563,6 +563,7 @@ type TokenInfo struct {
 	NotBefore        int                `json:"nbf,omitempty"`
 	ExpiresAt        int                `json:"exp,omitempty"`
 	Confirmation     *TokenConfirmation `json:"cnf,omitempty"`
+	Actor            *Actor             `json:"act,omitempty"`
 	AdditionalClaims map[string]any     `json:"-"`
 }
 
@@ -877,7 +878,14 @@ type TokenExchangeRequest struct {
 
 type TokenExchangeResult struct {
 	Subject string
+	Actor   *Actor
 	Store   map[string]any
 }
 
 type TokenExchangeHandleFunc func(context.Context, TokenExchangeRequest) (TokenExchangeResult, error)
+
+type Actor struct {
+	Subject string `json:"sub,omitempty"`
+	Issuer  string `json:"iss,omitempty"`
+	Actor   *Actor `json:"act,omitempty"`
+}

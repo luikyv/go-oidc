@@ -59,9 +59,9 @@ type entityStatement struct {
 	} `json:"trust_mark_owners,omitempty"`
 	// TrustAnchor is the identifier of the trust anchor in the trust chain.
 	// This claim is specific to explicit registration responses, it is not a general entity statement claim.
-	TrustAnchor      string     `json:"trust_anchor,omitempty"`
-	trustChainHeader trustChain `json:"-"`
-	signed           string     `json:"-"`
+	TrustAnchor      string `json:"trust_anchor,omitempty"`
+	trustChainHeader trustChain
+	signed           string
 }
 
 func (s entityStatement) Signed() string {

@@ -14,6 +14,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/json"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -133,6 +134,7 @@ func main() {
 		provider.WithDefaultAuthn(goidc.AuthnMethodPrivateKeyJWT),
 		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),
 		provider.WithRefreshTokenGrant(nil),
+		provider.WithClientCredentialsGrant(),
 		provider.WithJAR(goidc.RS256, goidc.PS256),
 		provider.WithJAREncryption(goidc.RSA_OAEP),
 		provider.WithJARContentEncryptionAlgs(goidc.A256GCM),
@@ -314,6 +316,7 @@ func authReqURL(clientJWKS goidc.JSONWebKeySet) string {
 	jar, _ := jwt.Signed(signer).Claims(map[string]any{
 		"iss":           ClientFedID,
 		"aud":           OPFedID,
+		"jti":           uuid.NewString(),
 		"iat":           timeutil.TimestampNow(),
 		"exp":           timeutil.TimestampNow() + 600,
 		"client_id":     ClientFedID,
