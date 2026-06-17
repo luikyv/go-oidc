@@ -116,9 +116,9 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	as.AuthReqID = ctx.CIBAID()
 	as.ExpiresAt = timeutil.TimestampNow() + exp
 	if as.IDTokenHint != "" {
-		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
-		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
+		// The ID token hint was already validated during request validation.
+		idTkn, _ := token.IDToken(ctx, as.IDTokenHint)
+		as.IDTokenHintClaims = &idTkn
 	}
 
 	// Store binding information only for CIBA push mode.

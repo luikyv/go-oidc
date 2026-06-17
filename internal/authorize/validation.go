@@ -7,11 +7,10 @@ import (
 	"net/url"
 	"slices"
 	"strings"
-	"time"
 
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/vc"
@@ -537,31 +536,14 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 		return nil
 	}
 
-	parsedIDToken, err := jwt.ParseSigned(params.IDTokenHint, ctx.IDTokenSigAlgs)
+	idTkn, err := token.IDToken(ctx, params.IDTokenHint)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id_token_hint", err)
 	}
 
-	if len(parsedIDToken.Headers) != 1 {
+	if !slices.Contains([]string(idTkn.Audience), c.ID) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id_token_hint",
-			errors.New("the id_token_hint must contain exactly one JOSE header"))
-	}
-
-	publicKey, err := ctx.PublicJWK(parsedIDToken.Headers[0].KeyID)
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id_token_hint", err)
-	}
-
-	var claims jwt.Claims
-	if err := parsedIDToken.Claims(publicKey.Key, &claims); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id_token_hint", err)
-	}
-
-	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      ctx.Issuer(),
-		AnyAudience: []string{c.ID},
-	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid id_token_hint", err)
+			errors.New("the id_token_hint audience does not match the client"))
 	}
 
 	return nil

@@ -4,14 +4,13 @@ import (
 	"errors"
 	"fmt"
 	"slices"
-	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/client"
-	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
+	"github.com/luikyv/go-oidc/internal/token"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -65,9 +64,9 @@ func initLogout(ctx oidc.Context, req request) error {
 
 	ls.PolicyID = policy.ID
 	if ls.IDTokenHint != "" {
-		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(ls.IDTokenHint, ctx.IDTokenSigAlgs)
-		_ = idToken.UnsafeClaimsWithoutVerification(&ls.IDTokenHintClaims)
+		// The ID token hint was already validated during request validation.
+		idTkn, _ := token.IDToken(ctx, ls.IDTokenHint)
+		ls.IDTokenHintClaims = &idTkn
 	}
 
 	if err := ctx.SaveLogoutSession(ls); err != nil {
@@ -166,42 +165,14 @@ func validateIDTokenHint(ctx oidc.Context, req request, _ *goidc.Client) error {
 		return nil
 	}
 
-	if !joseutil.IsJWS(req.IDTokenHint) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
-			errors.New("id_token_hint must be a signed JWT"))
-	}
-
-	// TODO: What if the id token is signed with "none" alg? joseutil.IsUnsignedJWT
-	parsedIDToken, err := jwt.ParseSigned(req.IDTokenHint, ctx.IDTokenSigAlgs)
+	idTkn, err := token.IDToken(ctx, req.IDTokenHint)
 	if err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 	}
 
-	if len(parsedIDToken.Headers) != 1 {
+	if req.ClientID != "" && !slices.Contains([]string(idTkn.Audience), req.ClientID) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
-			errors.New("id_token_hint must contain exactly one JOSE header"))
-	}
-
-	publicKey, err := ctx.PublicJWK(parsedIDToken.Headers[0].KeyID)
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
-	}
-
-	var claims jwt.Claims
-	if err := parsedIDToken.Claims(publicKey.Key, &claims); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
-	}
-
-	var aud []string
-	if req.ClientID != "" {
-		aud = append(aud, req.ClientID)
-	}
-
-	if err := claims.ValidateWithLeeway(jwt.Expected{
-		Issuer:      ctx.Issuer(),
-		AnyAudience: aud,
-	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
+			errors.New("id_token_hint audience does not match the client"))
 	}
 
 	return nil

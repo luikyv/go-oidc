@@ -12,6 +12,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"testing"
 
 	"github.com/go-jose/go-jose/v4"
@@ -521,13 +522,17 @@ func TestInitAuth(t *testing.T) {
 					t.Error(diff)
 				}
 
-				wantClaims := map[string]any{
-					"sub": "random_user",
-					"iss": ctx.Issuer(),
-					"aud": client.ID,
+				if session.IDTokenHintClaims == nil {
+					t.Fatal("expected IDTokenHintClaims to be set")
 				}
-				if diff := cmp.Diff(session.IDTokenHintClaims, wantClaims); diff != "" {
-					t.Error(diff)
+				if session.IDTokenHintClaims.Subject != "random_user" {
+					t.Errorf("IDTokenHintClaims.Subject = %q, want %q", session.IDTokenHintClaims.Subject, "random_user")
+				}
+				if session.IDTokenHintClaims.Issuer != ctx.Issuer() {
+					t.Errorf("IDTokenHintClaims.Issuer = %q, want %q", session.IDTokenHintClaims.Issuer, ctx.Issuer())
+				}
+				if !slices.Contains([]string(session.IDTokenHintClaims.Audience), client.ID) {
+					t.Errorf("IDTokenHintClaims.Audience = %v, want to contain %q", session.IDTokenHintClaims.Audience, client.ID)
 				}
 			},
 		},

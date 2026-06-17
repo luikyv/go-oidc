@@ -448,6 +448,13 @@ func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo
 	return info, err
 }
 
+// IDToken parses and validates an ID token issued by this provider, returning
+// its claims as an [goidc.IDToken].
+func (op *Provider) IDToken(ctx context.Context, idToken string) (goidc.IDToken, error) {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	return token.IDToken(oidcCtx, idToken)
+}
+
 // GrantCIBARequest resolves an approved CIBA request into a grant and notifies
 // the client according to the delivery mode for which the auth request ID was
 // issued.
@@ -476,8 +483,6 @@ func (op *Provider) DenyCIBARequest(ctx context.Context, authReqID string, err g
 
 // MakeToken generates a new access token based on the provided grant
 // and stores the corresponding grant session and token.
-//
-// This function is intended for scenarios where a token is required for the provider itself.
 func (op *Provider) MakeToken(ctx context.Context, grant *goidc.Grant) (string, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
 	c := &goidc.Client{ID: grant.ClientID}
@@ -552,7 +557,6 @@ const (
 	defaultAuthorizationCodeLifetimeSecs  = 60
 
 	defaultAsymmetricSigAlg            = goidc.RS256
-	defaultSymmetricSigAlg             = goidc.HS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 

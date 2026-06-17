@@ -50,7 +50,7 @@ type AuthnSession struct {
 	Store             map[string]any `json:"store,omitempty"`
 	ExpiresAt         int            `json:"expires_at"`
 	CreatedAt         int            `json:"created_at"`
-	IDTokenHintClaims map[string]any `json:"id_token_hint_claims,omitempty"`
+	IDTokenHintClaims *IDToken       `json:"id_token_hint_claims,omitempty"`
 	VCInfo            *struct {
 		Issuer           string              `json:"issuer"`
 		ConfigurationIDs []VCConfigurationID `json:"configuration_ids"`

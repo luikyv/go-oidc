@@ -130,8 +130,8 @@ func (a authenticator) authenticate(w http.ResponseWriter, r *http.Request, as *
 func (a authenticator) loadUser(r *http.Request, as *goidc.AuthnSession) (goidc.Status, error) { //nolint:unparam
 	// Never do this in production, it's just an example.
 	if as.IDTokenHintClaims != nil {
-		as.Subject = as.IDTokenHintClaims[goidc.ClaimSubject].(string)
-		as.Store[paramAuthTime] = as.IDTokenHintClaims[goidc.ClaimAuthTime]
+		as.Subject = as.IDTokenHintClaims.Subject
+		as.Store[paramAuthTime] = as.IDTokenHintClaims.AuthTime
 	}
 
 	cookie, err := r.Cookie(cookieUserSessionID)

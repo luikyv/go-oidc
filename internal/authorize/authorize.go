@@ -7,7 +7,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -155,9 +154,9 @@ func initAuth(ctx oidc.Context, req request) error {
 	as.PolicyID = policy.ID
 	as.ExpiresAt = timeutil.TimestampNow() + ctx.AuthTimeoutSecs
 	if as.IDTokenHint != "" {
-		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
-		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
+		// The ID token hint was already validated during request validation.
+		idTkn, _ := token.IDToken(ctx, as.IDTokenHint)
+		as.IDTokenHintClaims = &idTkn
 	}
 
 	if ctx.VCIsEnabled {

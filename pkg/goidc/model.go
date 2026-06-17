@@ -644,31 +644,36 @@ type AuthorizationParameters struct {
 	IssuerState             string              `json:"issuer_state,omitempty"`
 }
 
-type Resources []string
+// Audiences is a list of strings that marshals as a single string when it
+// contains exactly one element, and as a JSON array otherwise.
+type Audiences []string
 
-func (r *Resources) UnmarshalJSON(data []byte) error {
-	var resource string
-	if err := json.Unmarshal(data, &resource); err == nil {
-		*r = []string{resource}
+func (a *Audiences) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*a = []string{single}
 		return nil
 	}
 
-	var resources []string
-	if err := json.Unmarshal(data, &resources); err != nil {
+	var multi []string
+	if err := json.Unmarshal(data, &multi); err != nil {
 		return err
 	}
 
-	*r = resources
+	*a = multi
 	return nil
 }
 
-func (resources Resources) MarshalJSON() ([]byte, error) {
-	if len(resources) == 1 {
-		return json.Marshal(resources[0])
+func (a Audiences) MarshalJSON() ([]byte, error) {
+	if len(a) == 1 {
+		return json.Marshal(a[0])
 	}
 
-	return json.Marshal([]string(resources))
+	return json.Marshal([]string(a))
 }
+
+// Resources is an alias for [Audiences] used in resource indicator contexts.
+type Resources = Audiences
 
 type ClaimsObject struct {
 	UserInfo map[string]ClaimObjectInfo `json:"userinfo"`
@@ -883,6 +888,50 @@ type TokenExchangeResult struct {
 }
 
 type TokenExchangeHandleFunc func(context.Context, TokenExchangeRequest) (TokenExchangeResult, error)
+
+// IDToken represents a parsed and validated OpenID Connect ID Token.
+type IDToken struct {
+	Subject   string    `json:"sub"`
+	Issuer    string    `json:"iss"`
+	Audience  Audiences `json:"aud"`
+	ExpiresAt int       `json:"exp"`
+	IssuedAt  int       `json:"iat"`
+	Nonce     string    `json:"nonce,omitempty"`
+	// [OIDC Core §2] AuthTime is the time when the end-user authentication occurred.
+	AuthTime         int            `json:"auth_time,omitempty"`
+	ACR              ACR            `json:"acr,omitempty"`
+	AMRs             []AMR          `json:"amr,omitempty"`
+	AccessTokenHash  string         `json:"at_hash,omitempty"`
+	CodeHash         string         `json:"c_hash,omitempty"`
+	StateHash        string         `json:"s_hash,omitempty"`
+	AdditionalClaims map[string]any `json:"-"`
+}
+
+func (t *IDToken) UnmarshalJSON(data []byte) error {
+	type idToken IDToken
+	if err := json.Unmarshal(data, (*idToken)(t)); err != nil {
+		return err
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	typ := reflect.TypeFor[idToken]()
+	for i := range typ.NumField() {
+		tag := typ.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			delete(raw, name)
+		}
+	}
+
+	if len(raw) > 0 {
+		t.AdditionalClaims = raw
+	}
+
+	return nil
+}
 
 type Actor struct {
 	Subject string `json:"sub,omitempty"`
