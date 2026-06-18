@@ -203,22 +203,6 @@ func matchesNamespace(entityID, namespace string) bool {
 	return entityURL.Host == namespaceURL.Host
 }
 
-type federationAuthority struct {
-	FetchEndpoint                string              `json:"federation_fetch_endpoint,omitempty"`
-	FetchEndpointAuthMethods     []goidc.AuthnMethod `json:"federation_fetch_endpoint_auth_methods,omitempty"`
-	ListEndpoint                 string              `json:"federation_list_endpoint,omitempty"`
-	ResolveEndpoint              string              `json:"federation_resolve_endpoint,omitempty"`
-	TrustMarkStatusEndpoint      string              `json:"federation_trust_mark_status_endpoint,omitempty"`
-	TrustMarkListEndpoint        string              `json:"federation_trust_mark_list_endpoint,omitempty"`
-	TrustMarkEndpoint            string              `json:"federation_trust_mark_endpoint,omitempty"`
-	TrustMarkEndpointAuthMethods []goidc.AuthnMethod `json:"federation_trust_mark_endpoint_auth_methods,omitempty"`
-	HistoricalKeysEndpoint       string              `json:"federation_historical_keys_endpoint,omitempty"`
-	// EndpointAuthSigAlgValuesSupported are the algorithms for signing the JWT
-	// used for private_key_jwt when authenticating to federation endpoints.
-	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
-	OrganizationName                  string                     `json:"organization_name,omitempty"`
-}
-
 type trustMark struct {
 	Issuer     string `json:"iss"`
 	Subject    string `json:"sub"`

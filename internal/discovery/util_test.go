@@ -64,10 +64,10 @@ func TestOIDCConfig(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := NewOpenIDConfiguration(ctx)
+	got := NewConfiguration(ctx)
 
 	// Then.
-	want := OpenIDConfiguration{
+	want := goidc.Configuration{
 		Issuer:                      ctx.Issuer(),
 		ClientRegistrationEndpoint:  ctx.Issuer() + ctx.DCREndpoint,
 		AuthorizationEndpoint:       ctx.Issuer() + ctx.AuthorizationEndpoint,
@@ -175,10 +175,10 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 	ctx := oidc.Context{Configuration: config}
 
 	// When.
-	got := NewOpenIDConfiguration(ctx)
+	got := NewConfiguration(ctx)
 
 	// Then.
-	want := OpenIDConfiguration{
+	want := goidc.Configuration{
 		Issuer:                      ctx.Issuer(),
 		ClientRegistrationEndpoint:  ctx.Issuer() + ctx.DCREndpoint,
 		AuthorizationEndpoint:       ctx.Issuer() + ctx.AuthorizationEndpoint,
@@ -273,7 +273,7 @@ func TestOIDCConfig_JARByReferenceMetadata(t *testing.T) {
 			ctx.JARByReferenceIsEnabled = test.byReferenceEnabled
 			ctx.JARByReferenceUnregisteredURIIsEnabled = test.unregisteredURIsEnabled
 
-			got := NewOpenIDConfiguration(ctx)
+			got := NewConfiguration(ctx)
 
 			if got.JARByReferenceIsEnabled != test.wantByReferenceEnabled {
 				t.Fatalf("JARByReferenceIsEnabled = %v, want %v", got.JARByReferenceIsEnabled, test.wantByReferenceEnabled)

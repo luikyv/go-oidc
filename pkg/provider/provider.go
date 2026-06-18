@@ -511,6 +511,13 @@ func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
 	return token.Revoke(oidc.NewContext(ctx, &op.config), tkn, nil)
 }
 
+// Resolve builds and resolves a federation trust chain for the given entity ID,
+// returning the resolved entity statement with merged metadata and applied
+// metadata policies.
+func (op *Provider) ResolveFederationEntity(ctx context.Context, id string) (goidc.EntityStatement, error) {
+	return federation.Resolve(oidc.NewContext(ctx, &op.config), id)
+}
+
 func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
 	oidcCtx := oidc.NewContext(ctx, &p.config)
 	return ssf.PublishEvent(oidcCtx, streamID, event)

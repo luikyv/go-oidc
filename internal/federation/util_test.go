@@ -509,7 +509,7 @@ func setUpWithChain(t *testing.T, overrideResps map[string]func() *http.Response
 	t.Helper()
 
 	ctx := setup(t, overrideResps)
-	_, chain, err := buildAndResolveTrustChain(ctx, clientID)
+	_, chain, err := resolve(ctx, clientID)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -1690,7 +1690,7 @@ func TestFetchSubordinateStatement(t *testing.T) {
 				return setup(t, nil), entityStatement{
 					Issuer: intermediaryAuthorityID,
 					Metadata: metadata{
-						FederationAuthority: &federationAuthority{
+						FederationAuthority: &goidc.FederationAuthority{
 							FetchEndpoint: "://invalid-url",
 						},
 					},
@@ -1728,7 +1728,7 @@ func TestFetchSubordinateStatement(t *testing.T) {
 					Issuer: intermediaryAuthorityID,
 					JWKS:   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK.Public()}},
 					Metadata: metadata{
-						FederationAuthority: &federationAuthority{
+						FederationAuthority: &goidc.FederationAuthority{
 							FetchEndpoint:                     intermediaryAuthorityID + "/fetch",
 							FetchEndpointAuthMethods:          []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
 							EndpointAuthSigAlgValuesSupported: []goidc.SignatureAlgorithm{goidc.RS256},
@@ -2186,7 +2186,7 @@ func TestPrivateKeyJWTRequest(t *testing.T) {
 	authority := entityStatement{
 		Issuer: trustAnchorID,
 		Metadata: metadata{
-			FederationAuthority: &federationAuthority{
+			FederationAuthority: &goidc.FederationAuthority{
 				EndpointAuthSigAlgValuesSupported: []goidc.SignatureAlgorithm{goidc.RS256},
 			},
 		},
@@ -2537,7 +2537,7 @@ func TestFetchSubordinateStatement_WithPrivateKeyJWT(t *testing.T) {
 		Issuer: intermediaryAuthorityID,
 		JWKS:   goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{intermediaryAuthorityJWK.Public()}},
 		Metadata: metadata{
-			FederationAuthority: &federationAuthority{
+			FederationAuthority: &goidc.FederationAuthority{
 				FetchEndpoint:                     intermediaryAuthorityID + "/fetch",
 				FetchEndpointAuthMethods:          []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT},
 				EndpointAuthSigAlgValuesSupported: []goidc.SignatureAlgorithm{goidc.RS256},

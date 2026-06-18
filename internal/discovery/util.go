@@ -7,13 +7,13 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
+func NewConfiguration(ctx oidc.Context) goidc.Configuration {
 	scopes := make([]string, len(ctx.Scopes))
 	for i, scope := range ctx.Scopes {
 		scopes[i] = scope.ID
 	}
 
-	config := OpenIDConfiguration{
+	config := goidc.Configuration{
 		Issuer:                       ctx.Issuer(),
 		AuthorizationEndpoint:        ctx.BaseURL() + ctx.AuthorizationEndpoint,
 		UserInfoEndpoint:             ctx.BaseURL() + ctx.UserInfoEndpoint,
@@ -88,29 +88,37 @@ func NewOpenIDConfiguration(ctx oidc.Context) OpenIDConfiguration {
 	if ctx.MTLSIsEnabled {
 		config.TLSBoundTokensIsEnabled = ctx.MTLSTokenBindingIsEnabled
 
-		config.MTLSConfig = &openIDMTLSConfiguration{
+		config.MTLSAliases = &struct {
+			TokenEndpoint              string `json:"token_endpoint"`
+			ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
+			UserInfoEndpoint           string `json:"userinfo_endpoint"`
+			ClientRegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+			TokenIntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
+			TokenRevocationEndpoint    string `json:"revocation_endpoint,omitempty"`
+			CIBAEndpoint               string `json:"backchannel_authentication_endpoint,omitempty"`
+		}{
 			TokenEndpoint:    ctx.MTLSBaseURL() + ctx.TokenEndpoint,
 			UserInfoEndpoint: ctx.MTLSBaseURL() + ctx.UserInfoEndpoint,
 		}
 
 		if ctx.PARIsEnabled {
-			config.MTLSConfig.ParEndpoint = ctx.MTLSBaseURL() + ctx.PAREndpoint
+			config.MTLSAliases.ParEndpoint = ctx.MTLSBaseURL() + ctx.PAREndpoint
 		}
 
 		if ctx.DCRIsEnabled {
-			config.MTLSConfig.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.DCREndpoint
+			config.MTLSAliases.ClientRegistrationEndpoint = ctx.MTLSBaseURL() + ctx.DCREndpoint
 		}
 
 		if ctx.TokenIntrospectionIsEnabled {
-			config.MTLSConfig.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.TokenIntrospectionEndpoint
+			config.MTLSAliases.TokenIntrospectionEndpoint = ctx.MTLSBaseURL() + ctx.TokenIntrospectionEndpoint
 		}
 
 		if ctx.TokenRevocationIsEnabled {
-			config.MTLSConfig.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.TokenRevocationEndpoint
+			config.MTLSAliases.TokenRevocationEndpoint = ctx.MTLSBaseURL() + ctx.TokenRevocationEndpoint
 		}
 
 		if slices.Contains(ctx.GrantTypes, goidc.GrantCIBA) {
-			config.MTLSConfig.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.CIBAEndpoint
+			config.MTLSAliases.CIBAEndpoint = ctx.MTLSBaseURL() + ctx.CIBAEndpoint
 		}
 	}
 
