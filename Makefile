@@ -1,4 +1,4 @@
-CS_VERSION = v5.1.44
+CS_VERSION = v5.1.45
 GOLANGCI_LINT_VERSION = v2.12.2
 
 setup-dev:
