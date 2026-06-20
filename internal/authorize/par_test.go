@@ -70,7 +70,7 @@ func TestPushAuth(t *testing.T) {
 		ctx.OpenIDFedTrustedAnchors = []string{federationTrustAnchorID}
 		ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
 		ctx.OpenIDFedSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
-		ctx.OpenIDFedDefaultSigAlg = goidc.RS256
+		ctx.OpenIDFedSigAlg = goidc.RS256
 		ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{federationOPJWK}}, nil
 		}

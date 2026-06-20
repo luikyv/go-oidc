@@ -19,23 +19,27 @@ func main() {
 	clientOne, _ := authutil.ClientPrivateKeyJWT("client_one")
 	clientTwo, _ := authutil.ClientPrivateKeyJWT("client_two")
 	op, err := provider.New(
-		authutil.Issuer,
-		nil,
-		authutil.PrivateJWKSFunc(),
+		provider.Config{
+			Issuer:      authutil.Issuer,
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+		},
 		provider.WithProfile(goidc.ProfileFAPI2),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithPARRequired(nil),
 		provider.WithPrivateKeyJWTAuthn(goidc.PS256),
-		provider.WithDPoPRequired(goidc.PS256, goidc.ES256),
-		provider.WithIssuerResponseParameter(),
-		provider.WithClaimsParameter(),
-		provider.WithPKCERequired(goidc.CodeChallengeMethodSHA256),
-		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode),
+		provider.WithDPoP([]goidc.SignatureAlgorithm{goidc.PS256, goidc.ES256}, provider.WithDPoPRequired()),
+		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
+		},
+			provider.WithPAR(nil, provider.WithPARRequired()),
+			provider.WithIssuerResponseParameter(),
+			provider.WithClaimsParameter(),
+			provider.WithPKCE([]goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}, provider.WithPKCERequired()),
+		),
 		provider.WithRefreshTokenGrant(nil),
-		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
-		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
+		provider.WithClaims(authutil.Claims...),
+		provider.WithACRs(authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
@@ -46,20 +50,21 @@ func main() {
 		provider.WithErrorRenderer(authutil.RenderError()),
 		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 		provider.WithJWTLeewayTime(30),
-		provider.WithRAR("customer_information"),
-		provider.WithRARDetailsComparator(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
-			grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
-			for i, grantedDetail := range granted {
-				grantedDetailTypes[i] = grantedDetail.Type()
-			}
-
-			for _, requestedDetail := range requested {
-				if !slices.Contains(grantedDetailTypes, requestedDetail.Type()) {
-					return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization details do not match")
+		provider.WithRAR([]goidc.AuthDetailType{"customer_information"},
+			provider.WithRARDetailsComparator(func(_ context.Context, requested, granted []goidc.AuthDetail) error {
+				grantedDetailTypes := make([]goidc.AuthDetailType, len(granted))
+				for i, grantedDetail := range granted {
+					grantedDetailTypes[i] = grantedDetail.Type()
 				}
-			}
-			return nil
-		}),
+
+				for _, requestedDetail := range requested {
+					if !slices.Contains(grantedDetailTypes, requestedDetail.Type()) {
+						return goidc.NewError(goidc.ErrorCodeInvalidAuthDetails, "authorization details do not match")
+					}
+				}
+				return nil
+			}),
+		),
 	)
 	if err != nil {
 		log.Fatal(err)

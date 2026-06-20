@@ -38,7 +38,7 @@ func (m *EventManager) Create(_ context.Context, stream *goidc.SSFEventStream) e
 
 	if len(m.streams) >= m.maxStreams {
 		removeOldest(m.streams, func(s *goidc.SSFEventStream) int {
-			return s.CreatedAtTimestamp
+			return s.CreatedAt
 		})
 	}
 

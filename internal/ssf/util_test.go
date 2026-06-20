@@ -1721,7 +1721,7 @@ func TestReceiverAndStream_ExpiredStream(t *testing.T) {
 
 	// Manually expire the stream by setting a past timestamp.
 	s, _ := ctx.SSFEventStream(stream.ID)
-	s.ExpiresAtTimestamp = 1 // Epoch + 1 second (definitely expired).
+	s.ExpiresAt = 1 // Epoch + 1 second (definitely expired).
 	_ = ctx.SSFUpdateEventStream(s)
 
 	// When - access the stream.
@@ -1748,7 +1748,7 @@ func TestReceiverAndStream_ExpiredStreamAtCurrentTimestamp(t *testing.T) {
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	s, _ := ctx.SSFEventStream(stream.ID)
-	s.ExpiresAtTimestamp = timeutil.TimestampNow()
+	s.ExpiresAt = timeutil.TimestampNow()
 	_ = ctx.SSFUpdateEventStream(s)
 
 	// When.
@@ -1902,7 +1902,7 @@ func setUp(t *testing.T) oidc.Context {
 	ctx.SSFEventPollManager = manager
 	ctx.SSFScheduleVerificationEventFunc = manager.ScheduleVerificationEvent
 	ctx.SSFDeliveryMethods = []goidc.SSFDeliveryMethod{goidc.SSFDeliveryMethodPush, goidc.SSFDeliveryMethodPoll}
-	ctx.SSFEventsSupported = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
+	ctx.SSFEventTypes = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
 	ctx.SSFIsVerificationEnabled = true
 	ctx.SSFJWKSFunc = ctx.JWKSFunc
 	ctx.SSFDefaultSigAlg = goidc.PS256

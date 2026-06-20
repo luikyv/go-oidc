@@ -152,7 +152,7 @@ type Configuration struct {
 	JAREncIsEnabled                        bool
 	JARKeyEncAlgs                          []goidc.KeyEncryptionAlgorithm
 	JARContentEncAlgs                      []goidc.ContentEncryptionAlgorithm
-	JARHTTPClientFunc                      goidc.HTTPClientFunc
+	JARByReferenceHTTPClientFunc           goidc.HTTPClientFunc
 
 	// PARIsEnabled allows client to push authorization requests.
 	PARIsEnabled bool
@@ -207,7 +207,7 @@ type Configuration struct {
 	// ResourceIndicatorsIsRequired indicates that the resource parameter is
 	// required during authorization requests.
 	ResourceIndicatorsIsRequired bool
-	Resources                    []string
+	ResourceIndicators           []goidc.ResourceIndicator
 
 	HTTPClientFunc goidc.HTTPClientFunc
 	ConsumeJTIFunc goidc.ConsumeJTIFunc
@@ -225,8 +225,12 @@ type Configuration struct {
 	OpenIDFedSignerFunc                   goidc.SignerFunc
 	OpenIDFedAuthorityHints               []string
 	OpenIDFedTrustedAnchors               []string
-	OpenIDFedDefaultSigAlg                goidc.SignatureAlgorithm
-	OpenIDFedSigAlgs                      []goidc.SignatureAlgorithm
+	// OpenIDFedSigAlg is the algorithm used to sign the provider's entity configuration.
+	// The federation JWKS must contain a key matching this algorithm.
+	OpenIDFedSigAlg goidc.SignatureAlgorithm
+	// OpenIDFedSigAlgs are the algorithms accepted when parsing and verifying entity
+	// statements and trust marks from other federation participants.
+	OpenIDFedSigAlgs []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth           int
 	OpenIDFedClientRegTypes               []goidc.ClientRegistrationType
 	OpenIDFedRequiredClientTrustMarksFunc goidc.RequiredTrustMarksFunc
@@ -249,7 +253,7 @@ type Configuration struct {
 
 	SSFIsEnabled                           bool
 	SSFJWKSEndpoint                        string
-	SSFEventsSupported                     []goidc.SSFEventType
+	SSFEventTypes                          []goidc.SSFEventType
 	SSFDeliveryMethods                     []goidc.SSFDeliveryMethod
 	SSFEventStreamManager                  goidc.SSFEventStreamManager
 	SSFConfigurationEndpoint               string

@@ -521,7 +521,7 @@ func validateResourcesAsOptional(ctx oidc.Context, params goidc.AuthorizationPar
 	}
 
 	for _, resource := range params.Resources {
-		if !slices.Contains(ctx.Resources, resource) {
+		if !slices.Contains(ctx.ResourceIndicators, resource) {
 			return wrapRedirectionError(goidc.ErrorCodeInvalidTarget, "invalid target", params,
 				fmt.Errorf("resource %q is not configured by the server", resource))
 		}

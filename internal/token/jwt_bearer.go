@@ -57,7 +57,7 @@ func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	if err := validateResources(ctx, req, ctx.Resources); err != nil {
+	if err := validateResources(ctx, req, ctx.ResourceIndicators); err != nil {
 		return response{}, err
 	}
 

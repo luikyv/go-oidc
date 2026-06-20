@@ -297,7 +297,7 @@ func TestValidateResources(t *testing.T) {
 			name: "valid resource",
 			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com", "https://other.com"}
+				ctx.ResourceIndicators = []string{"https://resource.com", "https://other.com"}
 				return request{resources: []string{"https://resource.com"}}, goidc.Resources{"https://resource.com", "https://other.com"}
 			},
 		},

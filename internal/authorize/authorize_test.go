@@ -85,7 +85,7 @@ func TestInitAuth(t *testing.T) {
 		ctx.OpenIDFedTrustedAnchors = []string{federationTrustAnchorID}
 		ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
 		ctx.OpenIDFedSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
-		ctx.OpenIDFedDefaultSigAlg = goidc.RS256
+		ctx.OpenIDFedSigAlg = goidc.RS256
 		ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{federationOPJWK}}, nil
 		}
@@ -424,7 +424,7 @@ func TestInitAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource1.com", "https://resource2.com"}
+				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com"}
 				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 					as.Subject = "random_subject"
 					as.Username = "random_username"

@@ -153,7 +153,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
+				ctx.ResourceIndicators = []string{"https://resource.com"}
 				req.resources = []string{"https://resource.com"}
 				return ctx, req, c
 			},

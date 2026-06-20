@@ -115,7 +115,7 @@ func validateResources(ctx oidc.Context, req request, granted goidc.Resources) e
 	}
 
 	for _, r := range req.resources {
-		if !slices.Contains(ctx.Resources, r) {
+		if !slices.Contains(ctx.ResourceIndicators, r) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target", fmt.Errorf("resource %q is not configured by the server", r))
 		}
 

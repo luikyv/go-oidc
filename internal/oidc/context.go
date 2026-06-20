@@ -540,10 +540,10 @@ func (ctx Context) HTTPClient() *http.Client {
 }
 
 func (ctx Context) JARHTTPClient() *http.Client {
-	if ctx.JARHTTPClientFunc == nil {
+	if ctx.JARByReferenceHTTPClientFunc == nil {
 		return ctx.HTTPClient()
 	}
-	return ctx.JARHTTPClientFunc(ctx)
+	return ctx.JARByReferenceHTTPClientFunc(ctx)
 }
 
 func (ctx Context) CIBAHTTPClient() *http.Client {
@@ -914,7 +914,7 @@ func (ctx Context) OpenIDFedPublicJWKS() (goidc.JSONWebKeySet, error) {
 
 func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...goidc.SignatureAlgorithm) (string, error) {
 	if len(algs) == 0 {
-		algs = []goidc.SignatureAlgorithm{ctx.OpenIDFedDefaultSigAlg}
+		algs = []goidc.SignatureAlgorithm{ctx.OpenIDFedSigAlg}
 	}
 
 	jwks, err := ctx.OpenIDFedJWKS()

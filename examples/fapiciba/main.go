@@ -18,30 +18,39 @@ import (
 
 func main() {
 	var op *provider.Provider
-	op, _ = provider.New(authutil.Issuer, nil, authutil.PrivateJWKSFunc(),
+	op, _ = provider.New(
+		provider.Config{
+			Issuer:      authutil.Issuer,
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
+		},
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithIDTokenSignatureAlgs(goidc.PS256),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
-		provider.WithCIBAGrant(nil, goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing, goidc.CIBADeliveryModePush),
-		provider.WithCIBAProfile(goidc.CIBAProfileFAPI),
+		provider.WithCIBAGrant(provider.CIBAGrantConfig{
+			DeliveryModes: []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll, goidc.CIBADeliveryModePing, goidc.CIBADeliveryModePush},
+		},
+			provider.WithCIBAProfile(goidc.CIBAProfileFAPI),
+			provider.WithCIBASessionHandler(initBackAuthFunc()),
+			provider.WithCIBAJAR([]goidc.SignatureAlgorithm{goidc.PS256}),
+		),
 		provider.WithRefreshTokenGrant(nil),
-		provider.WithCIBASessionHandler(initBackAuthFunc()),
-		provider.WithCIBAJAR(goidc.PS256),
-		provider.WithMTLS(authutil.MTLSHost, authutil.ClientCertFunc),
-		provider.WithTLSTokenBindingRequired(),
+		provider.WithMTLS(provider.MTLSConfig{
+			Host:           authutil.MTLSHost,
+			ClientCertFunc: authutil.ClientCertFunc,
+		}, provider.WithMTLSTokenBindingRequired()),
 		provider.WithPrivateKeyJWTAuthn(goidc.PS256),
 		provider.WithTLSAuthn(),
-		provider.WithClaimsParameter(),
-		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
-		provider.WithACRs(authutil.ACRs[0], authutil.ACRs...),
+		provider.WithClaims(authutil.Claims...),
+		provider.WithACRs(authutil.ACRs...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.PS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
 		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
-		provider.WithDCR(nil),
-		provider.WithDCRClientHandler(authutil.DCRFunc),
+		provider.WithDCR(nil,
+			provider.WithDCRClientHandler(authutil.DCRFunc),
+		),
 	)
 
 	// Set up the server.

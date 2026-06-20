@@ -81,7 +81,7 @@ func TestValidateRequest(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
+				ctx.ResourceIndicators = []string{"https://resource.com"}
 				client, _ := oidctest.NewClient(t)
 				req := newValidRequest(client)
 				req.ResponseMode = ""
@@ -94,7 +94,7 @@ func TestValidateRequest(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
+				ctx.ResourceIndicators = []string{"https://resource.com"}
 				client, _ := oidctest.NewClient(t)
 				req := newValidRequest(client)
 				req.ResponseMode = ""

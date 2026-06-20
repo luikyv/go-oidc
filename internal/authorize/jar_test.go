@@ -223,7 +223,7 @@ func TestJARFromRequestURI(t *testing.T) {
 			JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 			JARByReferenceIsEnabled: true,
 			HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
-			JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
+			JARByReferenceHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
 		},
 		Request: &http.Request{Method: http.MethodPost},
 	}
@@ -315,7 +315,7 @@ func TestJARFromRequestURIErrors(t *testing.T) {
 				JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 				JARByReferenceIsEnabled: true,
 				HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
-				JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
+				JARByReferenceHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
 			},
 			Request: &http.Request{Method: http.MethodPost},
 		}
@@ -383,7 +383,7 @@ func TestJARFromRequestURIUsesDedicatedClient(t *testing.T) {
 					}),
 				}
 			},
-			JARHTTPClientFunc: func(_ context.Context) *http.Client {
+			JARByReferenceHTTPClientFunc: func(_ context.Context) *http.Client {
 				return http.DefaultClient
 			},
 		},

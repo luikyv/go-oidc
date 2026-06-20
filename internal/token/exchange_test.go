@@ -304,7 +304,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource.com"}
+				ctx.ResourceIndicators = []string{"https://resource.com"}
 				req.resources = []string{"https://resource.com"}
 				req.audience = []string{"audience1"}
 				req.requestedTokenType = goidc.TokenTypeIdentifierAccessToken

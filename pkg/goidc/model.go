@@ -745,6 +745,9 @@ func (a Audiences) MarshalJSON() ([]byte, error) {
 	return json.Marshal([]string(a))
 }
 
+// ResourceIndicator identifies a target resource the client intends to access.
+type ResourceIndicator = string
+
 // Resources is an alias for [Audiences] used in resource indicator contexts.
 type Resources = Audiences
 

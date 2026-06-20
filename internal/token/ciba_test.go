@@ -247,7 +247,7 @@ func TestGenerateCIBAToken(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)

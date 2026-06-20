@@ -51,9 +51,9 @@ type SSFEventStream struct {
 	DeliveryEndpoint    string               `json:"delivery_endpoint,omitempty"`
 	AuthorizationHeader string               `json:"authorization_header,omitempty"`
 	Description         string               `json:"description,omitempty"`
-	CreatedAtTimestamp  int                  `json:"created_at"`
-	ExpiresAtTimestamp  int                  `json:"expires_at,omitempty"`
-	VerifiedAtTimestamp int                  `json:"verified_at,omitempty"`
+	CreatedAt           int                  `json:"created_at"`
+	ExpiresAt           int                  `json:"expires_at,omitempty"`
+	VerifiedAt          int                  `json:"verified_at,omitempty"`
 }
 
 type SSFEventType string

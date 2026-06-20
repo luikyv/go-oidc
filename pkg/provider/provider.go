@@ -38,30 +38,52 @@ type Provider struct {
 	profileValidationIsEnabled bool
 }
 
+type Config struct {
+	Issuer      string
+	Manager     goidc.GrantManager
+	JWKSFunc    goidc.JWKSFunc
+	IDTokenAlgs []goidc.SignatureAlgorithm
+}
+
 // New creates a new openid provider.
 //
-// The "jwksFunc" parameter provides the server's JSON Web Key Set (JWKS),
+// The cfg.JWKSFunc parameter provides the server's JSON Web Key Set (JWKS),
 // used for signing, decryption, and exposure via the JWKS endpoint.
 // Typically, it should return both private and public key material.
 // If private keys are unavailable or granular control over signing is required,
-// "jwksFunc" can be configured to return only public key material. In such cases,
+// cfg.JWKSFunc can be configured to return only public key material. In such cases,
 // the [WithSigner] option must be provided to handle signing operations.
 // Similarly, if server-side encryption (e.g., JAR encryption) is enabled,
 // the [WithDecrypter] option must also be configured for decryption support.
 // For operations like signature verification, only the public key material is
-// needed, which can be retrieved using "jwksFunc".
+// needed, which can be retrieved using cfg.JWKSFunc.
 //
-// Default Settings:
-//   - ID tokens are signed using [defaultAsymmetricSigAlg]. Ensure a JWK supporting [defaultAsymmetricSigAlg] is
-//     available in the server's JWKS.
-//     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
-//   - Access tokens are issued as JWTs signed with the ID token default algorithm.
-func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opts ...Option) (*Provider, error) {
+// cfg.IDTokenAlgs must contain at least one algorithm; the first element is
+// used as the default signing algorithm. Ensure the JWKS contains keys
+// supporting all declared algorithms.
+//
+// cfg.Manager is optional and defaults to an in-memory implementation.
+// Access tokens are issued as JWTs signed with the first ID token algorithm.
+func New(cfg Config, opts ...Option) (*Provider, error) {
+	if cfg.Issuer == "" {
+		return nil, errors.New("issuer cannot be empty")
+	}
+
+	if cfg.JWKSFunc == nil {
+		return nil, errors.New("the jwks function cannot be empty")
+	}
+
+	if len(cfg.IDTokenAlgs) == 0 {
+		return nil, errors.New("at least one ID token signature algorithm must be provided")
+	}
+
 	op := &Provider{
 		config: oidc.Configuration{
-			GrantManager: manager,
-			Host:         issuer,
-			JWKSFunc:     jwksFunc,
+			GrantManager:         cfg.Manager,
+			Host:                 cfg.Issuer,
+			JWKSFunc:             cfg.JWKSFunc,
+			IDTokenDefaultSigAlg: cfg.IDTokenAlgs[0],
+			IDTokenSigAlgs:       cfg.IDTokenAlgs,
 		},
 	}
 
@@ -123,10 +145,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 
 	op.config.Profile = nonZeroOrDefault(op.config.Profile, goidc.ProfileOpenID)
 
-	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
-
-	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
-
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
 	op.config.HTTPClientFunc = nonZeroOrDefault(op.config.HTTPClientFunc, defaultHTTPClientFunc)
@@ -140,8 +158,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	op.config.IDTokenClaimsFunc = nonZeroOrDefault(op.config.IDTokenClaimsFunc, goidc.IDTokenClaimsFunc(defaultIDTokenClaimsFunc))
 	op.config.UserInfoClaimsFunc = nonZeroOrDefault(op.config.UserInfoClaimsFunc, goidc.UserInfoClaimsFunc(defaultUserInfoClaimsFunc))
 	op.config.TokenClaimsFunc = nonZeroOrDefault(op.config.TokenClaimsFunc, goidc.TokenClaimsFunc(defaultTokenClaimsFunc))
-
-	op.config.ResponseModes = appendIfNotIn(op.config.ResponseModes, goidc.ResponseModeQuery, goidc.ResponseModeFragment)
 
 	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
 	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
@@ -170,7 +186,9 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(inmemoryManager))
-		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
+		if !slices.Contains(op.config.ResponseTypes, goidc.ResponseTypeCode) {
+			op.config.ResponseTypes = append([]goidc.ResponseType{goidc.ResponseTypeCode}, op.config.ResponseTypes...)
+		}
 		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
@@ -179,6 +197,11 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}) {
 			op.config.GrantTypes = append(op.config.GrantTypes, goidc.GrantImplicit)
 		}
+		responseModes := []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment}
+		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
+			responseModes = append(responseModes, goidc.ResponseModeFormPost)
+		}
+		op.config.ResponseModes = responseModes
 	}
 
 	op.config.AuthnMethods = nonZeroOrDefault(op.config.AuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
@@ -268,8 +291,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	if op.config.OpenIDFedIsEnabled {
 		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(inmemoryManager))
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
-		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{op.config.OpenIDFedSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
@@ -563,7 +585,6 @@ const (
 	defaultDeviceAuthPollingIntervalSecs  = 5
 	defaultAuthorizationCodeLifetimeSecs  = 60
 
-	defaultAsymmetricSigAlg            = goidc.RS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 

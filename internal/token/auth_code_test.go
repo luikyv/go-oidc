@@ -190,7 +190,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
 				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				req.resources = []string{"https://resource1.com", "https://resource2.com"}
 				return ctx, req, c, grant

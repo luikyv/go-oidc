@@ -15,13 +15,17 @@ import (
 
 func main() {
 	tenant1, err := provider.New(
-		"https://auth1.localhost",
-		nil,
-		authutil.PrivateJWKSFunc(),
+		provider.Config{
+			Issuer:      "https://auth1.localhost",
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+		},
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithSecretBasicAuthn(),
-		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode),
-		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
+		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
+		}),
+		provider.WithClaims(authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
@@ -36,13 +40,17 @@ func main() {
 	tenant1Handler := tenant1.Handler()
 
 	tenant2, err := provider.New(
-		"https://auth2.localhost",
-		nil,
-		authutil.PrivateJWKSFunc(),
+		provider.Config{
+			Issuer:      "https://auth2.localhost",
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+		},
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithSecretPostAuthn(),
-		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode),
-		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
+		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
+		}),
+		provider.WithClaims(authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),

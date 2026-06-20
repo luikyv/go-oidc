@@ -708,7 +708,7 @@ func setup(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 	ctx.OpenIDFedAuthorityHints = []string{trustAnchorID}
 	ctx.OpenIDFedTrustedAnchors = []string{trustAnchorID}
 	ctx.OpenIDFedSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
-	ctx.OpenIDFedDefaultSigAlg = goidc.RS256
+	ctx.OpenIDFedSigAlg = goidc.RS256
 	ctx.OpenIDFedTrustChainMaxDepth = 5
 	ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 	ctx.HTTPClientFunc = func(ctx context.Context) *http.Client {

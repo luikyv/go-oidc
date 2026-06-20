@@ -1000,7 +1000,7 @@ func TestHTTPClientFallbacks(t *testing.T) {
 	}
 
 	customJARClient := &http.Client{}
-	ctx.JARHTTPClientFunc = func(context.Context) *http.Client {
+	ctx.JARByReferenceHTTPClientFunc = func(context.Context) *http.Client {
 		return customJARClient
 	}
 	if got := ctx.JARHTTPClient(); got != customJARClient {
@@ -1497,7 +1497,7 @@ func TestOpenIDFedJWKSHelpers(t *testing.T) {
 	ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
 		return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{signingKey}}, nil
 	}
-	ctx.OpenIDFedDefaultSigAlg = goidc.PS256
+	ctx.OpenIDFedSigAlg = goidc.PS256
 
 	t.Run("jwks", func(t *testing.T) {
 		jwks, err := ctx.OpenIDFedJWKS()
