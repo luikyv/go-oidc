@@ -1242,3 +1242,5 @@ op, _ := provider.New(
 
 Clients can then request `response_mode=form_post` at the authorization
 endpoint.
+
+## OpenID For Verifiable Credentials Issuance (OIDC4VCI)
