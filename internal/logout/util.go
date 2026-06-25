@@ -56,8 +56,14 @@ func initLogout(ctx oidc.Context, req request) error {
 		LogoutParameters: req.LogoutParameters,
 	}
 
-	policy, ok := ctx.AvailableLogoutPolicy(ls)
-	if !ok {
+	var policy goidc.LogoutPolicy
+	for _, candidate := range ctx.LogoutPolicies {
+		if candidate.Setup(ctx.Request, ls) {
+			policy = candidate
+			break
+		}
+	}
+	if policy.ID == "" {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
 			errors.New("no logout policy is available for this logout request"))
 	}

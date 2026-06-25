@@ -160,8 +160,8 @@ func (ctx Context) RequestMTLSURL() string {
 	return ctx.MTLSHost + ctx.Request.RequestURI
 }
 
-func (ctx Context) Policy(id string) goidc.AuthnPolicy {
-	for _, policy := range ctx.Policies {
+func (ctx Context) Policy(policies []goidc.AuthnPolicy, id string) goidc.AuthnPolicy {
+	for _, policy := range policies {
 		if policy.ID == id {
 			return policy
 		}
@@ -184,26 +184,6 @@ func (ctx Context) LogoutPolicy(id string) goidc.LogoutPolicy {
 			return goidc.StatusFailure, goidc.ErrNotFound
 		},
 	}
-}
-
-func (ctx Context) AvailablePolicy(as *goidc.AuthnSession, c *goidc.Client) (policy goidc.AuthnPolicy, ok bool) {
-	for _, policy = range ctx.Policies {
-		if ok = policy.Setup(ctx.Request, as, c); ok {
-			return policy, true
-		}
-	}
-
-	return goidc.AuthnPolicy{}, false
-}
-
-func (ctx Context) AvailableLogoutPolicy(ls *goidc.LogoutSession) (policy goidc.LogoutPolicy, ok bool) {
-	for _, policy = range ctx.LogoutPolicies {
-		if ok = policy.Setup(ctx.Request, ls); ok {
-			return policy, true
-		}
-	}
-
-	return goidc.LogoutPolicy{}, false
 }
 
 func (ctx Context) RARValidateDetail(detail goidc.AuthDetail) error {
@@ -733,41 +713,41 @@ func (ctx Context) SSFHandleExpiredEventStream(stream *goidc.SSFEventStream) err
 	return ctx.SSFHandleExpiredEventStreamFunc(ctx, stream)
 }
 
-func (ctx Context) VCHandlePreAuthCode(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
-	return ctx.VCHandlePreAuthCodeFunc(ctx, preAuthCode, opts)
+func (ctx Context) VCIPreAuthCodeHandle(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+	return ctx.VCIPreAuthCodeHandleFunc(ctx, preAuthCode, opts)
 }
 
-func (ctx Context) VCSaveOffer(offer *goidc.VCOffer) error {
-	return ctx.VCManager.SaveOffer(ctx, offer)
+func (ctx Context) VCIIssuerStateHandle(state string, opts goidc.VCIssuerOptions) (goidc.VCIssuerStateResult, error) {
+	return ctx.VCIIssuerStateHandleFunc(ctx, state, opts)
+}
+
+func (ctx Context) VCISaveOffer(offer *goidc.VCOffer) error {
+	return ctx.VCISelfOfferManager.SaveCredentialOffer(ctx, offer)
 }
 
 func (ctx Context) VCOffer(id string) (*goidc.VCOffer, error) {
-	return ctx.VCManager.Offer(ctx, id)
+	return ctx.VCISelfOfferManager.CredentialOffer(ctx, id)
 }
 
-func (ctx Context) VCOfferID() string {
-	return ctx.VCOfferIDFunc(ctx)
+func (ctx Context) VCIOfferID() string {
+	return ctx.VCISelfOfferIDFunc(ctx)
 }
 
 func (ctx Context) VCIssuer(iss string) (goidc.VCIssuer, bool) {
-	for _, issuer := range ctx.VCIssuers {
-		if issuer.ID == iss {
+	for _, issuer := range ctx.VCIIssuers {
+		if issuer.Issuer == iss {
 			return issuer, true
 		}
 	}
 	return goidc.VCIssuer{}, false
 }
 
-func (ctx Context) VCIssuerIDs() []string {
-	ids := make([]string, len(ctx.VCIssuers))
-	for i, issuer := range ctx.VCIssuers {
-		ids[i] = issuer.ID
+func (ctx Context) VCIIssuerIDs() []string {
+	ids := make([]string, len(ctx.VCIIssuers))
+	for i, issuer := range ctx.VCIIssuers {
+		ids[i] = issuer.Issuer
 	}
 	return ids
-}
-
-func (ctx Context) VCIssuerState() string {
-	return ctx.VCIssuerStateFunc(ctx)
 }
 
 //---------------------------------------- Key Management ----------------------------------------//

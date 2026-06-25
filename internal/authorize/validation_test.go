@@ -80,7 +80,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "resource indicator",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx := oidctest.NewContext(t)
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com"}
 				client, _ := oidctest.NewClient(t)
 				req := newValidRequest(client)
@@ -93,7 +93,7 @@ func TestValidateRequest(t *testing.T) {
 			name: "resource indicator invalid resource",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx := oidctest.NewContext(t)
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com"}
 				client, _ := oidctest.NewClient(t)
 				req := newValidRequest(client)
@@ -288,7 +288,7 @@ func TestValidateRequestWithPAR(t *testing.T) {
 			name: "unregistered redirect uri does not mutate client",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.AuthnSession, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
-				ctx.PARUnregisteredRedirectURIIsEnabled = true
+				ctx.PARUnregisteredRedirectURIEnabled = true
 				client, _ := oidctest.NewClient(t)
 				session := &goidc.AuthnSession{
 					Status:    goidc.StatusPending,
@@ -548,7 +548,7 @@ func TestValidatePushedRequest(t *testing.T) {
 			name: "unregistered redirect uri does not mutate client",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
-				ctx.PARUnregisteredRedirectURIIsEnabled = true
+				ctx.PARUnregisteredRedirectURIEnabled = true
 				client, _ := oidctest.NewClient(t)
 				req := request{
 					ClientID: client.ID,

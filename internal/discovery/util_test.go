@@ -42,15 +42,15 @@ func TestOIDCConfig(t *testing.T) {
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},
-		IssuerRespParamIsEnabled: true,
-		ClaimsParamIsEnabled:     true,
-		ACRs:                     []goidc.ACR{"0"},
-		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(userKey.Algorithm),
-		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
-		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userKey.Algorithm),
-		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
-		DCRIsEnabled:             true,
+		IssuerRespParamEnabled: true,
+		ClaimsParamEnabled:     true,
+		ACRs:                   []goidc.ACR{"0"},
+		DisplayValues:          []goidc.DisplayValue{goidc.DisplayValuePage},
+		UserInfoDefaultSigAlg:  goidc.SignatureAlgorithm(userKey.Algorithm),
+		UserInfoSigAlgs:        []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
+		IDTokenDefaultSigAlg:   goidc.SignatureAlgorithm(userKey.Algorithm),
+		IDTokenSigAlgs:         []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userKey.Algorithm)},
+		DCREnabled:             true,
 		AuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodPrivateKeyJWT,
@@ -58,7 +58,7 @@ func TestOIDCConfig(t *testing.T) {
 		},
 		AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
-		RARIsEnabled:                    true,
+		RAREnabled:                      true,
 		RARDetailTypes:                  []goidc.AuthDetailType{"detail_type"},
 	}
 	ctx := oidc.Context{Configuration: config}
@@ -87,16 +87,16 @@ func TestOIDCConfig(t *testing.T) {
 		IDTokenSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.SignatureAlgorithm(userKey.Algorithm),
 		},
-		ResponseTypes:                ctx.ResponseTypes,
-		ResponseModes:                ctx.ResponseModes,
-		UserClaimsSupported:          ctx.Claims,
-		ClaimTypesSupported:          ctx.ClaimTypes,
-		SubIdentifierTypes:           ctx.SubIdentifierTypes,
-		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
-		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.RARIsEnabled,
-		AuthDetailTypesSupported:     []goidc.AuthDetailType{"detail_type"},
-		ACRs:                         []goidc.ACR{"0"},
+		ResponseTypes:              ctx.ResponseTypes,
+		ResponseModes:              ctx.ResponseModes,
+		UserClaimsSupported:        ctx.Claims,
+		ClaimTypesSupported:        ctx.ClaimTypes,
+		SubIdentifierTypes:         ctx.SubIdentifierTypes,
+		IssuerResponseParamEnabled: ctx.IssuerRespParamEnabled,
+		ClaimsParamEnabled:         ctx.ClaimsParamEnabled,
+		AuthDetailsEnabled:         ctx.RAREnabled,
+		AuthDetailTypesSupported:   []goidc.AuthDetailType{"detail_type"},
+		ACRs:                       []goidc.ACR{"0"},
 		DisplayValues: []goidc.DisplayValue{
 			goidc.DisplayValuePage,
 		},
@@ -142,15 +142,15 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		SubIdentifierTypes: []goidc.SubIdentifierType{
 			goidc.SubIdentifierPublic,
 		},
-		IssuerRespParamIsEnabled: true,
-		ClaimsParamIsEnabled:     true,
-		ACRs:                     []goidc.ACR{"0"},
-		DisplayValues:            []goidc.DisplayValue{goidc.DisplayValuePage},
-		UserInfoDefaultSigAlg:    goidc.SignatureAlgorithm(userInfoKey.Algorithm),
-		UserInfoSigAlgs:          []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
-		IDTokenDefaultSigAlg:     goidc.SignatureAlgorithm(userInfoKey.Algorithm),
-		IDTokenSigAlgs:           []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
-		DCRIsEnabled:             true,
+		IssuerRespParamEnabled: true,
+		ClaimsParamEnabled:     true,
+		ACRs:                   []goidc.ACR{"0"},
+		DisplayValues:          []goidc.DisplayValue{goidc.DisplayValuePage},
+		UserInfoDefaultSigAlg:  goidc.SignatureAlgorithm(userInfoKey.Algorithm),
+		UserInfoSigAlgs:        []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
+		IDTokenDefaultSigAlg:   goidc.SignatureAlgorithm(userInfoKey.Algorithm),
+		IDTokenSigAlgs:         []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(userInfoKey.Algorithm)},
+		DCREnabled:             true,
 		AuthnMethods: []goidc.AuthnMethod{
 			goidc.AuthnMethodNone,
 			goidc.AuthnMethodPrivateKeyJWT,
@@ -158,19 +158,19 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		},
 		AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
-		RARIsEnabled:                    true,
+		RAREnabled:                      true,
 		RARDetailTypes:                  []goidc.AuthDetailType{"detail_type"},
-		PARIsEnabled:                    true,
-		JARIsEnabled:                    true,
-		JARIsRequired:                   true,
+		PAREnabled:                      true,
+		JAREnabled:                      true,
+		JARRequired:                     true,
 		JARSigAlgs:                      []goidc.SignatureAlgorithm{goidc.PS256},
-		JARMIsEnabled:                   true,
+		JARMEnabled:                     true,
 		JARMSigAlgDefault:               goidc.SignatureAlgorithm(jarmKey.Algorithm),
 		JARMSigAlgs:                     []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jarmKey.Algorithm)},
-		DPoPIsEnabled:                   true,
+		DPoPEnabled:                     true,
 		DPoPSigAlgs:                     []goidc.SignatureAlgorithm{goidc.PS256},
-		TokenIntrospectionIsEnabled:     true,
-		TokenRevocationIsEnabled:        true,
+		TokenIntrospectionEnabled:       true,
+		TokenRevocationEnabled:          true,
 	}
 	ctx := oidc.Context{Configuration: config}
 
@@ -209,22 +209,22 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		IDTokenSigAlgs: []goidc.SignatureAlgorithm{
 			goidc.SignatureAlgorithm(userInfoKey.Algorithm),
 		},
-		ResponseTypes:                ctx.ResponseTypes,
-		ResponseModes:                ctx.ResponseModes,
-		UserClaimsSupported:          ctx.Claims,
-		ClaimTypesSupported:          ctx.ClaimTypes,
-		SubIdentifierTypes:           ctx.SubIdentifierTypes,
-		IssuerResponseParamIsEnabled: ctx.IssuerRespParamIsEnabled,
-		ClaimsParamIsEnabled:         ctx.ClaimsParamIsEnabled,
-		AuthDetailsIsEnabled:         ctx.RARIsEnabled,
-		AuthDetailTypesSupported:     []goidc.AuthDetailType{"detail_type"},
-		ACRs:                         []goidc.ACR{"0"},
+		ResponseTypes:              ctx.ResponseTypes,
+		ResponseModes:              ctx.ResponseModes,
+		UserClaimsSupported:        ctx.Claims,
+		ClaimTypesSupported:        ctx.ClaimTypes,
+		SubIdentifierTypes:         ctx.SubIdentifierTypes,
+		IssuerResponseParamEnabled: ctx.IssuerRespParamEnabled,
+		ClaimsParamEnabled:         ctx.ClaimsParamEnabled,
+		AuthDetailsEnabled:         ctx.RAREnabled,
+		AuthDetailTypesSupported:   []goidc.AuthDetailType{"detail_type"},
+		ACRs:                       []goidc.ACR{"0"},
 		DisplayValues: []goidc.DisplayValue{
 			goidc.DisplayValuePage,
 		},
-		JARIsEnabled:  true,
-		JARIsRequired: true,
-		JARAlgs:       ctx.JARSigAlgs,
+		JAREnabled:  true,
+		JARRequired: true,
+		JARAlgs:     ctx.JARSigAlgs,
 		JARMAlgs: []goidc.SignatureAlgorithm{
 			goidc.SignatureAlgorithm(jarmKey.Algorithm),
 		},
@@ -239,28 +239,28 @@ func TestOIDCConfig_JARByReferenceMetadata(t *testing.T) {
 	tests := []struct {
 		name                               string
 		byReferenceEnabled                 bool
-		unregisteredURIsEnabled            bool
+		unregisteredUREnabled              bool
 		wantByReferenceEnabled             bool
 		wantRegistrationRequiredAdvertised bool
 	}{
 		{
 			name:                               "disabled",
 			byReferenceEnabled:                 false,
-			unregisteredURIsEnabled:            false,
+			unregisteredUREnabled:              false,
 			wantByReferenceEnabled:             false,
 			wantRegistrationRequiredAdvertised: false,
 		},
 		{
 			name:                               "enabled with registration required",
 			byReferenceEnabled:                 true,
-			unregisteredURIsEnabled:            false,
+			unregisteredUREnabled:              false,
 			wantByReferenceEnabled:             true,
 			wantRegistrationRequiredAdvertised: true,
 		},
 		{
 			name:                               "enabled with unregistered uris allowed",
 			byReferenceEnabled:                 true,
-			unregisteredURIsEnabled:            true,
+			unregisteredUREnabled:              true,
 			wantByReferenceEnabled:             true,
 			wantRegistrationRequiredAdvertised: false,
 		},
@@ -269,17 +269,17 @@ func TestOIDCConfig_JARByReferenceMetadata(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := oidctest.NewContext(t)
-			ctx.JARIsEnabled = true
-			ctx.JARByReferenceIsEnabled = test.byReferenceEnabled
-			ctx.JARByReferenceUnregisteredURIIsEnabled = test.unregisteredURIsEnabled
+			ctx.JAREnabled = true
+			ctx.JARByReferenceEnabled = test.byReferenceEnabled
+			ctx.JARByReferenceUnregisteredURIEnabled = test.unregisteredUREnabled
 
 			got := NewConfiguration(ctx)
 
-			if got.JARByReferenceIsEnabled != test.wantByReferenceEnabled {
-				t.Fatalf("JARByReferenceIsEnabled = %v, want %v", got.JARByReferenceIsEnabled, test.wantByReferenceEnabled)
+			if got.JARByReferenceEnabled != test.wantByReferenceEnabled {
+				t.Fatalf("JARByReferenceEnabled = %v, want %v", got.JARByReferenceEnabled, test.wantByReferenceEnabled)
 			}
-			if got.JARRequestURIRegistrationIsRequired != test.wantRegistrationRequiredAdvertised {
-				t.Fatalf("JARRequestURIRegistrationIsRequired = %v, want %v", got.JARRequestURIRegistrationIsRequired, test.wantRegistrationRequiredAdvertised)
+			if got.JARRequestURIRegistrationRequired != test.wantRegistrationRequiredAdvertised {
+				t.Fatalf("JARRequestURIRegistrationRequired = %v, want %v", got.JARRequestURIRegistrationRequired, test.wantRegistrationRequiredAdvertised)
 			}
 		})
 	}

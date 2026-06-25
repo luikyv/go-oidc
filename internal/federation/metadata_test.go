@@ -149,8 +149,8 @@ func TestMetadata_Merge_PreservesAllEntityConfigFields(t *testing.T) {
 			Contacts:          []string{"admin@example.com"},
 			PolicyURI:         "https://client.example.com/policy",
 			TermsOfServiceURI: "https://client.example.com/tos",
-			JARIsRequired:     true,
-			PARIsRequired:     true,
+			JARRequired:       true,
+			PARRequired:       true,
 			SubIdentifierType: goidc.SubIdentifierPublic,
 			DefaultMaxAgeSecs: ptr(3600),
 		}},
@@ -198,11 +198,11 @@ func TestMetadata_Merge_PreservesAllEntityConfigFields(t *testing.T) {
 	if c.TermsOfServiceURI != "https://client.example.com/tos" {
 		t.Errorf("TermsOfServiceURI = %v, want 'https://client.example.com/tos'", c.TermsOfServiceURI)
 	}
-	if !c.JARIsRequired {
-		t.Error("JARIsRequired should be true")
+	if !c.JARRequired {
+		t.Error("JARRequired should be true")
 	}
-	if !c.PARIsRequired {
-		t.Error("PARIsRequired should be true")
+	if !c.PARRequired {
+		t.Error("PARRequired should be true")
 	}
 	if c.SubIdentifierType != goidc.SubIdentifierPublic {
 		t.Errorf("SubIdentifierType = %v, want %v", c.SubIdentifierType, goidc.SubIdentifierPublic)

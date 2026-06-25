@@ -105,7 +105,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "auth details",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -149,7 +149,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "auth details subset",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -189,7 +189,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "resource indicators subset",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				req.resources = []string{"https://resource1.com", "https://resource2.com"}
@@ -236,7 +236,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				grant.AuthParams.CodeChallenge = "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ"
@@ -259,7 +259,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce sha256 valid 2",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				grant.AuthParams.CodeChallenge = "yQ0Wg2MXS83nBOaS3yit-n-xEaEw5LQ8TlhtX_2NkLw"
@@ -284,7 +284,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce sha256 wrong verifier",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				grant.AuthParams.CodeChallenge = "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ"
@@ -310,7 +310,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce sha256 verifier as challenge",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				grant.AuthParams.CodeChallenge = "179de59c7146cbb47757e7bc796c9b21d4a2be62535c4f577566816a"
@@ -336,7 +336,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce sha256 empty verifier",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				grant.AuthParams.CodeChallenge = "ZObPYv2iA-CObk06I1Z0q5zWRG7gbGjZEWLX5ZC6rjQ"
@@ -362,7 +362,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce plain valid",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodPlain}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodPlain
 				grant.AuthParams.CodeChallenge = "0123456789abcdef0123456789abcdef0123456789a"
@@ -387,7 +387,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "pkce downgrade is mitigated",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.PKCEIsEnabled = true
+				ctx.PKCEEnabled = true
 				ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{goidc.CodeChallengeMethodSHA256}
 				ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 				req.codeVerifier = "4ea55634198fb6a0c120d46b26359cf50ccea86fd03302b9bca9fa98"
@@ -435,7 +435,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop binding",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/token"
@@ -475,7 +475,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop binding key mismatch",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/token"
@@ -496,7 +496,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop binding missing header",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 
 				_, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{Method: http.MethodPost, URI: ctx.Host + "/token"})
@@ -513,7 +513,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
 				certRaw := []byte("test_client_cert")
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: certRaw}, nil
 				}
@@ -550,7 +550,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "tls binding cert mismatch",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: []byte("different_cert")}, nil
 				}
@@ -566,7 +566,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "tls binding missing cert",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return nil, errors.New("no client certificate")
 				}
@@ -582,7 +582,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop and tls binding",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/token"
@@ -592,7 +592,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				grant.JWKThumbprint = thumbprint
 
 				certRaw := []byte("test_client_cert")
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: certRaw}, nil
 				}
@@ -636,8 +636,8 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop required by config but not sent",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
-				ctx.DPoPIsRequired = true
+				ctx.DPoPEnabled = true
+				ctx.DPoPRequired = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				return ctx, req, c, grant
 			},
@@ -647,9 +647,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "dpop required by client but not sent",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
-				c.DPoPTokenBindingIsRequired = true
+				c.DPoPTokenBindingRequired = true
 				return ctx, req, c, grant
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
@@ -658,7 +658,7 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "mtls binding no grant thumbprint",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: []byte("test_client_cert")}, nil
 				}
@@ -690,15 +690,15 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "vc auth details same issuer",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
-				ctx.VCIsEnabled = true
+				ctx.RAREnabled = true
+				ctx.VCIEnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
 				}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer1.example.com",
+						Issuer: "https://issuer1.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 							"cred2": {Scope: goidc.NewScope("vc_scope2")},
@@ -736,21 +736,21 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 			name: "vc auth details different issuers",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
-				ctx.VCIsEnabled = true
+				ctx.RAREnabled = true
+				ctx.VCIEnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
 				}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer1.example.com",
+						Issuer: "https://issuer1.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 					{
-						ID: "https://issuer2.example.com",
+						Issuer: "https://issuer2.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred2": {Scope: goidc.NewScope("vc_scope2")},
 						},

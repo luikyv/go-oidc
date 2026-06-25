@@ -80,7 +80,7 @@ func TestInitAuth(t *testing.T) {
 
 		ctx := oidctest.NewContext(t)
 		ctx.AuthManager = oidctest.Manager(t, ctx)
-		ctx.OpenIDFedIsEnabled = true
+		ctx.OpenIDFedEnabled = true
 		ctx.OpenIDFedManager = oidctest.Manager(t, ctx)
 		ctx.OpenIDFedTrustedAnchors = []string{federationTrustAnchorID}
 		ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
@@ -89,7 +89,7 @@ func TestInitAuth(t *testing.T) {
 		ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{federationOPJWK}}, nil
 		}
-		ctx.JARIsEnabled = true
+		ctx.JAREnabled = true
 		ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 		ctx.AuthSessionIDFunc = func(_ context.Context) string {
 			return "random_authn_session_id"
@@ -98,7 +98,7 @@ func TestInitAuth(t *testing.T) {
 			return "random_auth_code"
 		}
 
-		ctx.Policies = []goidc.AuthnPolicy{
+		ctx.AuthPolicies = []goidc.AuthnPolicy{
 			goidc.NewPolicy(
 				"random_policy_id",
 				func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
@@ -297,7 +297,7 @@ func TestInitAuth(t *testing.T) {
 			name: "jar",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -365,7 +365,7 @@ func TestInitAuth(t *testing.T) {
 			name: "jarm",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.JARMIsEnabled = true
+				ctx.JARMEnabled = true
 				ctx.JARMLifetimeSecs = 60
 				ctx.JARMSigAlgDefault = goidc.SignatureAlgorithm(oidctest.PrivateJWKS(t, ctx).Keys[0].Algorithm)
 				ctx.ResponseModes = append(ctx.ResponseModes, goidc.ResponseModeJWT)
@@ -423,9 +423,9 @@ func TestInitAuth(t *testing.T) {
 			name: "resource indicators",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com"}
-				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
+				ctx.AuthPolicies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, as *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 					as.Subject = "random_subject"
 					as.Username = "random_username"
 					as.GrantedScopes = as.Scopes
@@ -466,7 +466,7 @@ func TestInitAuth(t *testing.T) {
 			name: "id token hint",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
+				ctx.AuthPolicies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 					return goidc.StatusPending, nil
 				}
 
@@ -506,8 +506,8 @@ func TestInitAuth(t *testing.T) {
 				if session.ID == "" {
 					t.Fatal("expected session id to be set")
 				}
-				if session.PolicyID != ctx.Policies[0].ID {
-					t.Errorf("PolicyID = %q, want %q", session.PolicyID, ctx.Policies[0].ID)
+				if session.PolicyID != ctx.AuthPolicies[0].ID {
+					t.Errorf("PolicyID = %q, want %q", session.PolicyID, ctx.AuthPolicies[0].ID)
 				}
 				if session.ExpiresAt == 0 {
 					t.Fatal("expected session expiration to be set")
@@ -550,7 +550,7 @@ func TestInitAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				t.Helper()
 				ctx := oidctest.NewContext(t)
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = oidctest.Manager(t, ctx)
 				ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
 				return ctx, nil, request{ClientID: "https://unknown-client.example.com"}
@@ -571,7 +571,7 @@ func TestInitAuth(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				t.Helper()
 				ctx := oidctest.NewContext(t)
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = oidctest.Manager(t, ctx)
 				ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
 				return ctx, nil, request{ClientID: "unknown-client"}
@@ -662,7 +662,7 @@ func TestInitAuth(t *testing.T) {
 			name: "no policy available",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.Policies = nil
+				ctx.AuthPolicies = nil
 				req := request{
 					ClientID: client.ID,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -687,7 +687,7 @@ func TestInitAuth(t *testing.T) {
 			name: "authn failed",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.Policies = []goidc.AuthnPolicy{
+				ctx.AuthPolicies = []goidc.AuthnPolicy{
 					goidc.NewPolicy(
 						"policy_id",
 						func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
@@ -731,7 +731,7 @@ func TestInitAuth(t *testing.T) {
 			name: "authn in progress",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.Policies = []goidc.AuthnPolicy{
+				ctx.AuthPolicies = []goidc.AuthnPolicy{
 					goidc.NewPolicy(
 						"policy_id",
 						func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
@@ -794,8 +794,8 @@ func TestInitAuth(t *testing.T) {
 			name: "verifiable credentials populate session vc info",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.VCIsEnabled = true
-				ctx.Policies = []goidc.AuthnPolicy{
+				ctx.VCIEnabled = true
+				ctx.AuthPolicies = []goidc.AuthnPolicy{
 					goidc.NewPolicy(
 						"policy_id",
 						func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
@@ -806,9 +806,10 @@ func TestInitAuth(t *testing.T) {
 						},
 					),
 				}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuerStateEnabled = true
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
@@ -860,12 +861,12 @@ func TestInitAuth(t *testing.T) {
 			name: "verifiable credentials validation error redirects",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.VCIsEnabled = true
-				ctx.RARIsEnabled = true
+				ctx.VCIEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
@@ -915,7 +916,7 @@ func TestInitAuth(t *testing.T) {
 			name: "par",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, request) {
 				ctx, client := setup(t)
-				ctx.PARIsEnabled = true
+				ctx.PAREnabled = true
 				ctx.PARManager = ctx.AuthManager.(goidc.PARManager)
 
 				session := &goidc.AuthnSession{
@@ -1273,7 +1274,7 @@ func TestContinueAuthentication(t *testing.T) {
 			return goidc.StatusPending, nil
 		},
 	)
-	ctx.Policies = []goidc.AuthnPolicy{policy}
+	ctx.AuthPolicies = []goidc.AuthnPolicy{policy}
 
 	session := &goidc.AuthnSession{
 		ID:        "random_session_id",
@@ -1339,7 +1340,7 @@ func setUpAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 			return goidc.StatusSuccess, nil
 		},
 	)
-	ctx.Policies = append(ctx.Policies, policy)
+	ctx.AuthPolicies = append(ctx.AuthPolicies, policy)
 
 	return ctx, client
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
-	if !config.SSFIsEnabled {
+	if !config.SSFEnabled {
 		return
 	}
 

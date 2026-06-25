@@ -34,7 +34,7 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 		subType = c.SubIdentifierType
 	}
 
-	if !ctx.OpaqueTokenIsEnabled && tknOpts.Format == goidc.TokenFormatOpaque {
+	if !ctx.OpaqueTokenEnabled && tknOpts.Format == goidc.TokenFormatOpaque {
 		return nil, "", errors.New("opaque tokens are not enabled")
 	}
 
@@ -62,10 +62,10 @@ func Issue(ctx oidc.Context, grant *goidc.Grant, c *goidc.Client, opts *Issuance
 	if opts.Scopes != "" {
 		tkn.Scopes = opts.Scopes
 	}
-	if ctx.RARIsEnabled && opts.AuthDetails != nil {
+	if ctx.RAREnabled && opts.AuthDetails != nil {
 		tkn.AuthDetails = opts.AuthDetails
 	}
-	if ctx.ResourceIndicatorsIsEnabled && opts.Resources != nil {
+	if ctx.ResourceIndicatorsEnabled && opts.Resources != nil {
 		tkn.Resources = opts.Resources
 	}
 
@@ -204,7 +204,7 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 	}
 
 	// If encryption is disabled, just return the signed ID token.
-	if !ctx.IDTokenEncIsEnabled || c.IDTokenKeyEncAlg == "" {
+	if !ctx.IDTokenEncEnabled || c.IDTokenKeyEncAlg == "" {
 		return idToken, nil
 	}
 

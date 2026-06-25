@@ -42,8 +42,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.PAREndpoint != "" {
 				merged.PAREndpoint = sub.PAREndpoint
 			}
-			if sub.PARIsRequired {
-				merged.PARIsRequired = sub.PARIsRequired
+			if sub.PARRequired {
+				merged.PARRequired = sub.PARRequired
 			}
 			if sub.ResponseTypes != nil {
 				merged.ResponseTypes = sub.ResponseTypes
@@ -90,11 +90,11 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.TokenAuthnSigAlgs != nil {
 				merged.TokenAuthnSigAlgs = sub.TokenAuthnSigAlgs
 			}
-			if sub.JARIsEnabled {
-				merged.JARIsEnabled = sub.JARIsEnabled
+			if sub.JAREnabled {
+				merged.JAREnabled = sub.JAREnabled
 			}
-			if sub.JARIsRequired {
-				merged.JARIsRequired = sub.JARIsRequired
+			if sub.JARRequired {
+				merged.JARRequired = sub.JARRequired
 			}
 			if sub.JARAlgs != nil {
 				merged.JARAlgs = sub.JARAlgs
@@ -105,11 +105,11 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.JARContentEncAlgs != nil {
 				merged.JARContentEncAlgs = sub.JARContentEncAlgs
 			}
-			if sub.JARByReferenceIsEnabled {
-				merged.JARByReferenceIsEnabled = sub.JARByReferenceIsEnabled
+			if sub.JARByReferenceEnabled {
+				merged.JARByReferenceEnabled = sub.JARByReferenceEnabled
 			}
-			if sub.JARRequestURIRegistrationIsRequired {
-				merged.JARRequestURIRegistrationIsRequired = sub.JARRequestURIRegistrationIsRequired
+			if sub.JARRequestURIRegistrationRequired {
+				merged.JARRequestURIRegistrationRequired = sub.JARRequestURIRegistrationRequired
 			}
 			if sub.JARMAlgs != nil {
 				merged.JARMAlgs = sub.JARMAlgs
@@ -120,14 +120,14 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.JARMContentEncAlgs != nil {
 				merged.JARMContentEncAlgs = sub.JARMContentEncAlgs
 			}
-			if sub.IssuerResponseParamIsEnabled {
-				merged.IssuerResponseParamIsEnabled = sub.IssuerResponseParamIsEnabled
+			if sub.IssuerResponseParamEnabled {
+				merged.IssuerResponseParamEnabled = sub.IssuerResponseParamEnabled
 			}
-			if sub.ClaimsParamIsEnabled {
-				merged.ClaimsParamIsEnabled = sub.ClaimsParamIsEnabled
+			if sub.ClaimsParamEnabled {
+				merged.ClaimsParamEnabled = sub.ClaimsParamEnabled
 			}
-			if sub.AuthDetailsIsEnabled {
-				merged.AuthDetailsIsEnabled = sub.AuthDetailsIsEnabled
+			if sub.AuthDetailsEnabled {
+				merged.AuthDetailsEnabled = sub.AuthDetailsEnabled
 			}
 			if sub.AuthDetailTypesSupported != nil {
 				merged.AuthDetailTypesSupported = sub.AuthDetailTypesSupported
@@ -165,14 +165,14 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.CIBAJARSigAlgs != nil {
 				merged.CIBAJARSigAlgs = sub.CIBAJARSigAlgs
 			}
-			if sub.CIBAUserCodeIsEnabled {
-				merged.CIBAUserCodeIsEnabled = sub.CIBAUserCodeIsEnabled
+			if sub.CIBAUserCodeEnabled {
+				merged.CIBAUserCodeEnabled = sub.CIBAUserCodeEnabled
 			}
 			if sub.MTLSAliases != nil {
 				merged.MTLSAliases = sub.MTLSAliases
 			}
-			if sub.TLSBoundTokensIsEnabled {
-				merged.TLSBoundTokensIsEnabled = sub.TLSBoundTokensIsEnabled
+			if sub.TLSBoundTokensEnabled {
+				merged.TLSBoundTokensEnabled = sub.TLSBoundTokensEnabled
 			}
 			if sub.ACRs != nil {
 				merged.ACRs = sub.ACRs
@@ -327,8 +327,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.UserInfoContentEncAlg != "" {
 				merged.UserInfoContentEncAlg = sub.UserInfoContentEncAlg
 			}
-			if sub.JARIsRequired {
-				merged.JARIsRequired = sub.JARIsRequired
+			if sub.JARRequired {
+				merged.JARRequired = sub.JARRequired
 			}
 			if sub.JARSigAlg != "" {
 				merged.JARSigAlg = sub.JARSigAlg
@@ -366,8 +366,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.TokenRevocationAuthnSigAlg != "" {
 				merged.TokenRevocationAuthnSigAlg = sub.TokenRevocationAuthnSigAlg
 			}
-			if sub.DPoPTokenBindingIsRequired {
-				merged.DPoPTokenBindingIsRequired = sub.DPoPTokenBindingIsRequired
+			if sub.DPoPTokenBindingRequired {
+				merged.DPoPTokenBindingRequired = sub.DPoPTokenBindingRequired
 			}
 			if sub.TLSSubjectDistinguishedName != "" {
 				merged.TLSSubjectDistinguishedName = sub.TLSSubjectDistinguishedName
@@ -378,8 +378,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.TLSSubjectAlternativeNameIP != "" {
 				merged.TLSSubjectAlternativeNameIP = sub.TLSSubjectAlternativeNameIP
 			}
-			if sub.TLSTokenBindingIsRequired {
-				merged.TLSTokenBindingIsRequired = sub.TLSTokenBindingIsRequired
+			if sub.TLSTokenBindingRequired {
+				merged.TLSTokenBindingRequired = sub.TLSTokenBindingRequired
 			}
 			if sub.AuthDetailTypes != nil {
 				merged.AuthDetailTypes = sub.AuthDetailTypes
@@ -390,8 +390,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.DefaultACRValues != "" {
 				merged.DefaultACRValues = sub.DefaultACRValues
 			}
-			if sub.PARIsRequired {
-				merged.PARIsRequired = sub.PARIsRequired
+			if sub.PARRequired {
+				merged.PARRequired = sub.PARRequired
 			}
 			if sub.CIBATokenDeliveryMode != "" {
 				merged.CIBATokenDeliveryMode = sub.CIBATokenDeliveryMode
@@ -402,8 +402,8 @@ func (subordinate metadata) Merge(config metadata) (metadata, error) {
 			if sub.CIBAJARSigAlg != "" {
 				merged.CIBAJARSigAlg = sub.CIBAJARSigAlg
 			}
-			if sub.CIBAUserCodeIsEnabled {
-				merged.CIBAUserCodeIsEnabled = sub.CIBAUserCodeIsEnabled
+			if sub.CIBAUserCodeEnabled {
+				merged.CIBAUserCodeEnabled = sub.CIBAUserCodeEnabled
 			}
 			if sub.OrganizationName != "" {
 				merged.OrganizationName = sub.OrganizationName

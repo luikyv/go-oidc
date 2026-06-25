@@ -699,7 +699,7 @@ func setup(t *testing.T, overrideResps map[string]func() *http.Response) oidc.Co
 	maps.Copy(responses, overrideResps)
 
 	ctx := oidctest.NewContext(t)
-	ctx.OpenIDFedIsEnabled = true
+	ctx.OpenIDFedEnabled = true
 	ctx.OpenIDFedManager = ctx.GrantManager.(goidc.OpenIDFedManager)
 	ctx.OpenIDFedEndpoint = "/.well-known/openid-federation"
 	ctx.OpenIDFedJWKSFunc = func(ctx context.Context) (goidc.JSONWebKeySet, error) {

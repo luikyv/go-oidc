@@ -24,13 +24,12 @@ func main() {
 		provider.WithSecretBasicAuthn(),
 		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
-		}),
+		}, provider.WithAuthPolicies(authutil.Policy())),
 		provider.WithClaims(authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithPolicies(authutil.Policy()),
 		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithErrorRenderer(authutil.RenderError()),
 	)
@@ -49,13 +48,12 @@ func main() {
 		provider.WithSecretPostAuthn(),
 		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
-		}),
+		}, provider.WithAuthPolicies(authutil.Policy())),
 		provider.WithClaims(authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(authutil.HTTPClient),
-		provider.WithPolicies(authutil.Policy()),
 		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithErrorRenderer(authutil.RenderError()),
 	)

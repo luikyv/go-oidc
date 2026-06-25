@@ -14,6 +14,7 @@ type SSFEventStreamManager interface {
 	// EventStreams returns the event streams associated with the receiver.
 	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
 	Delete(context.Context, string) error
+	// TODO: Split this.
 	AddSubject(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error
 	RemoveSubject(ctx context.Context, streamID string, sub SSFSubject) error
 }

@@ -17,6 +17,7 @@ var _ goidc.RefreshTokenManager = &Manager{}
 var _ goidc.GrantManager = &Manager{}
 var _ goidc.OpaqueTokenManager = &Manager{}
 var _ goidc.LogoutManager = &Manager{}
+var _ goidc.VCOfferManager = &Manager{}
 
 type Manager struct {
 	Sessions       map[string]*goidc.AuthnSession
@@ -29,6 +30,8 @@ type Manager struct {
 	tokenMutex     sync.RWMutex
 	LogoutSessions map[string]*goidc.LogoutSession
 	logoutMutex    sync.RWMutex
+	Offers         map[string]*goidc.VCOffer
+	offerMutex     sync.RWMutex
 	maxSize        int
 }
 
@@ -39,6 +42,7 @@ func NewManager(maxSize int) *Manager {
 		Grants:         make(map[string]*goidc.Grant),
 		Tokens:         make(map[string]*goidc.Token),
 		LogoutSessions: make(map[string]*goidc.LogoutSession),
+		Offers:         make(map[string]*goidc.VCOffer),
 		maxSize:        maxSize,
 	}
 }
@@ -292,6 +296,32 @@ func (m *Manager) LogoutSession(_ context.Context, id string) (*goidc.LogoutSess
 	}
 
 	return session, nil
+}
+
+func (m *Manager) SaveCredentialOffer(_ context.Context, offer *goidc.VCOffer) error {
+	m.offerMutex.Lock()
+	defer m.offerMutex.Unlock()
+
+	if len(m.Offers) >= m.maxSize {
+		removeOldest(m.Offers, func(offer *goidc.VCOffer) int {
+			return offer.CreatedAtTimestamp
+		})
+	}
+
+	m.Offers[offer.ID] = offer
+	return nil
+}
+
+func (m *Manager) CredentialOffer(_ context.Context, id string) (*goidc.VCOffer, error) {
+	m.offerMutex.RLock()
+	defer m.offerMutex.RUnlock()
+
+	offer, ok := m.Offers[id]
+	if !ok {
+		return nil, goidc.ErrNotFound
+	}
+
+	return offer, nil
 }
 
 // findFirst returns the first element in a slice for which the condition is true.

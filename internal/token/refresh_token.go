@@ -69,7 +69,7 @@ func generateRefreshToken(ctx oidc.Context, req request) (response, error) {
 	}
 
 	var refreshToken string
-	if ctx.RefreshTokenRotationIsEnabled {
+	if ctx.RefreshTokenRotationEnabled {
 		refreshToken = ctx.RefreshToken()
 		grant.RefreshToken = refreshToken
 		if ctx.RefreshTokenLifetimeSecs != 0 {
@@ -140,7 +140,7 @@ func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.To
 	if cnf.JWKThumbprint != "" {
 		// Note that a DPoP JWT for a different key can be used to bind the token.
 		opts := bindindValidationOptions{}
-		opts.dpopIsRequired = true
+		opts.dpopRequired = true
 		if err := validateBindingDPoP(ctx, c, opts); err != nil {
 			return err
 		}
@@ -150,7 +150,7 @@ func validateRefreshTokenBinding(ctx oidc.Context, c *goidc.Client, cnf goidc.To
 	// token is bound to the same tls certificate.
 	if cnf.CertThumbprint != "" {
 		opts := bindindValidationOptions{
-			tlsIsRequired:     true,
+			tlsRequired:       true,
 			tlsCertThumbprint: cnf.CertThumbprint,
 		}
 		if err := validateBindingTLS(ctx, c, opts); err != nil {

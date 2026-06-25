@@ -17,7 +17,7 @@ func generateJWTBearerToken(ctx oidc.Context, req request) (response, error) {
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
-	if err != nil && (ctx.JWTBearerClientAuthnIsRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
+	if err != nil && (ctx.JWTBearerClientAuthnRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
 		return response{}, err
 	}
 

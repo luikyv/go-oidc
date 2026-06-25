@@ -9,7 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
-	"github.com/luikyv/go-oidc/internal/vc"
+	vcutil "github.com/luikyv/go-oidc/internal/vc/util"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -54,9 +54,9 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		}
 
 		if err := ValidateBinding(ctx, c, &bindindValidationOptions{
-			tlsIsRequired:     grant.CertThumbprint != "",
+			tlsRequired:       grant.CertThumbprint != "",
 			tlsCertThumbprint: grant.CertThumbprint,
-			dpopIsRequired:    grant.JWKThumbprint != "",
+			dpopRequired:      grant.JWKThumbprint != "",
 			dpopJWKThumbprint: grant.JWKThumbprint,
 		}); err != nil {
 			return response{}, err
@@ -134,11 +134,11 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 }
 
 func validateVerifiableCredentials(ctx oidc.Context, grant *goidc.Grant) error {
-	if !ctx.VCIsEnabled {
+	if !ctx.VCIEnabled {
 		return nil
 	}
 
-	if _, _, err := vc.Resolve(ctx, vc.Request{
+	if _, _, err := vcutil.Resolve(ctx, vcutil.Request{
 		Scopes:    grant.Scopes,
 		Details:   grant.AuthDetails,
 		Resources: grant.Resources,

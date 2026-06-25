@@ -370,7 +370,7 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 	audiences := []string{ctx.Issuer()}
 	if ctx.Profile != goidc.ProfileFAPI2 {
 		audiences = append(audiences, ctx.TokenURL(), ctx.RequestURL())
-		if ctx.MTLSIsEnabled {
+		if ctx.MTLSEnabled {
 			audiences = append(audiences, ctx.TokenMTLSURL(), ctx.RequestMTLSURL())
 		}
 	}
@@ -609,7 +609,7 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 		// no OAuth-Client-Attestation-PoP header is present. This is only
 		// allowed at endpoints where the DPoP proof is always fully validated
 		// downstream (token endpoint and PAR).
-		if !ctx.DPoPIsEnabled || (authnCtx != AuthnContextToken && authnCtx != AuthnContextPAR) {
+		if !ctx.DPoPEnabled || (authnCtx != AuthnContextToken && authnCtx != AuthnContextPAR) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 				errors.New(headerAttestionPoP+" header is missing"))
 		}

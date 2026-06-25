@@ -19,8 +19,8 @@ type Configuration struct {
 	AuthCodeLifetimeSecs int
 	AuthSessionIDFunc    goidc.RandomFunc
 
-	OpaqueTokenIsEnabled bool
-	OpaqueTokenManager   goidc.OpaqueTokenManager
+	OpaqueTokenEnabled bool
+	OpaqueTokenManager goidc.OpaqueTokenManager
 
 	// JWKSFunc retrieves the server's JWKS.
 	// The returned JWKS must include private keys if SignFunc or DecryptFunc
@@ -35,9 +35,10 @@ type Configuration struct {
 	IDTokenClaimsFunc  goidc.IDTokenClaimsFunc
 	UserInfoClaimsFunc goidc.UserInfoClaimsFunc
 	TokenClaimsFunc    goidc.TokenClaimsFunc
-	Policies           []goidc.AuthnPolicy
+	AuthPolicies       []goidc.AuthnPolicy
+	DevicePolicies     []goidc.AuthnPolicy
 	Scopes             []goidc.Scope
-	OpenIDIsRequired   bool
+	OpenIDRequired     bool
 	GrantTypes         []goidc.GrantType
 	ResponseTypes      []goidc.ResponseType
 	ResponseModes      []goidc.ResponseMode
@@ -52,15 +53,15 @@ type Configuration struct {
 	SubIdentifierTypes       []goidc.SubIdentifierType
 	PairwiseSubjectFunc      goidc.PairwiseSubjectFunc
 	StaticClients            []*goidc.Client
-	// IssuerRespParamIsEnabled indicates if the "iss" parameter will be
+	// IssuerRespParamEnabled indicates if the "iss" parameter will be
 	// returned when redirecting the user back to the client application.
-	IssuerRespParamIsEnabled bool
-	// ClaimsParamIsEnabled informs the clients whether the server accepts
+	IssuerRespParamEnabled bool
+	// ClaimsParamEnabled informs the clients whether the server accepts
 	// the "claims" parameter.
 	// This will be published in the /.well-known/openid-configuration endpoint.
-	ClaimsParamIsEnabled bool
-	RenderErrorFunc      goidc.RenderErrorFunc
-	HandleErrorFunc      goidc.HandleErrorFunc
+	ClaimsParamEnabled bool
+	RenderErrorFunc    goidc.RenderErrorFunc
+	HandleErrorFunc    goidc.HandleErrorFunc
 
 	AuthnMethods                     []goidc.AuthnMethod
 	AuthnMethodDefault               goidc.AuthnMethod
@@ -72,9 +73,9 @@ type Configuration struct {
 	OpaqueTokenFunc        goidc.OpaqueTokenFunc
 	TokenOptionsFunc       goidc.TokenOptionsFunc
 	VerifyClientSecretFunc goidc.VerifyClientSecretFunc
-	// TokenBindingIsRequired indicates that at least one mechanism of sender
+	// TokenBindingRequired indicates that at least one mechanism of sender
 	// contraining tokens is required, either DPoP or client TLS.
-	TokenBindingIsRequired bool
+	TokenBindingRequired bool
 
 	WellKnownEndpoint     string
 	JWKSEndpoint          string
@@ -84,14 +85,14 @@ type Configuration struct {
 	UserInfoEndpoint             string
 	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
 	UserInfoSigAlgs              []goidc.SignatureAlgorithm
-	UserInfoEncIsEnabled         bool
+	UserInfoEncEnabled           bool
 	UserInfoKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
 	UserInfoDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
 	UserInfoContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 
 	IDTokenDefaultSigAlg        goidc.SignatureAlgorithm
 	IDTokenSigAlgs              []goidc.SignatureAlgorithm
-	IDTokenEncIsEnabled         bool
+	IDTokenEncEnabled           bool
 	IDTokenKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
 	IDTokenDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
 	IDTokenContentEncAlgs       []goidc.ContentEncryptionAlgorithm
@@ -102,71 +103,71 @@ type Configuration struct {
 	JWTLeewayTimeSecs int
 	JWTIDFunc         goidc.RandomFunc
 
-	RPMetadataChoicesIsEnabled bool
+	RPMetadataChoicesEnabled bool
 
-	DCRIsEnabled                  bool
-	DCRManager                    goidc.DCRManager
-	DCREndpoint                   string
-	DCRTokenRotationIsEnabled     bool
-	DCRHandleClientFunc           goidc.DCRHandleClientFunc
-	DCRValidateInitialTokenFunc   goidc.DCRValidateInitialTokenFunc
-	DCRRegistrationTokenFunc      goidc.RandomFunc
-	LocalhostRedirectURIIsEnabled bool
-	DCRClientIDFunc               goidc.ClientIDFunc
-	DCRSecretRotationIsEnabled    bool
-	DCRSecretLifetimeSecs         int
+	DCREnabled                  bool
+	DCRManager                  goidc.DCRManager
+	DCREndpoint                 string
+	DCRTokenRotationEnabled     bool
+	DCRHandleClientFunc         goidc.DCRHandleClientFunc
+	DCRValidateInitialTokenFunc goidc.DCRValidateInitialTokenFunc
+	DCRRegistrationTokenFunc    goidc.RandomFunc
+	LocalhostRedirectURIEnabled bool
+	DCRClientIDFunc             goidc.ClientIDFunc
+	DCRSecretRotationEnabled    bool
+	DCRSecretLifetimeSecs       int
 
-	TokenIntrospectionIsEnabled           bool
+	TokenIntrospectionEnabled             bool
 	TokenIntrospectionEndpoint            string
 	TokenIntrospectionIsClientAllowedFunc goidc.IsClientAllowedTokenIntrospectionFunc
 
-	TokenRevocationIsEnabled                         bool
-	TokenRevocationEndpoint                          string
-	TokenRevocationIsClientAllowedFunc               goidc.IsClientAllowedFunc
-	TokenRevocationRevokeGrantOnAccessTokenIsEnabled bool
+	TokenRevocationEnabled                         bool
+	TokenRevocationEndpoint                        string
+	TokenRevocationIsClientAllowedFunc             goidc.IsClientAllowedFunc
+	TokenRevocationRevokeGrantOnAccessTokenEnabled bool
 
-	RefreshTokenManager           goidc.RefreshTokenManager
-	RefreshTokenFunc              goidc.RandomFunc
-	RefreshTokenShouldIssueFunc   goidc.RefreshTokenShouldIssueFunc
-	RefreshTokenRotationIsEnabled bool
-	RefreshTokenLifetimeSecs      int
+	RefreshTokenManager         goidc.RefreshTokenManager
+	RefreshTokenFunc            goidc.RandomFunc
+	RefreshTokenShouldIssueFunc goidc.RefreshTokenShouldIssueFunc
+	RefreshTokenRotationEnabled bool
+	RefreshTokenLifetimeSecs    int
 
-	JARMIsEnabled     bool
+	JARMEnabled       bool
 	JARMSigAlgDefault goidc.SignatureAlgorithm
 	JARMSigAlgs       []goidc.SignatureAlgorithm
 	// JARMLifetimeSecs defines how long response objects are valid for.
 	JARMLifetimeSecs         int
-	JARMEncIsEnabled         bool
+	JARMEncEnabled           bool
 	JARMKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
 	JARMContentEncAlgDefault goidc.ContentEncryptionAlgorithm
 	JARMContentEncAlgs       []goidc.ContentEncryptionAlgorithm
 
-	JARIsEnabled  bool
-	JARIsRequired bool
-	JARSigAlgs    []goidc.SignatureAlgorithm
-	// JARByReferenceIsEnabled determines whether Request Objects can be provided
+	JAREnabled  bool
+	JARRequired bool
+	JARSigAlgs  []goidc.SignatureAlgorithm
+	// JARByReferenceEnabled determines whether Request Objects can be provided
 	// by reference using the "request_uri" parameter. When enabled, the authorization
 	// server retrieves the request object from the specified URI.
-	JARByReferenceIsEnabled                bool
-	JARByReferenceUnregisteredURIIsEnabled bool
-	JAREncIsEnabled                        bool
-	JARKeyEncAlgs                          []goidc.KeyEncryptionAlgorithm
-	JARContentEncAlgs                      []goidc.ContentEncryptionAlgorithm
-	JARByReferenceHTTPClientFunc           goidc.HTTPClientFunc
+	JARByReferenceEnabled                bool
+	JARByReferenceUnregisteredURIEnabled bool
+	JAREncEnabled                        bool
+	JARKeyEncAlgs                        []goidc.KeyEncryptionAlgorithm
+	JARContentEncAlgs                    []goidc.ContentEncryptionAlgorithm
+	JARByReferenceHTTPClientFunc         goidc.HTTPClientFunc
 
-	// PARIsEnabled allows client to push authorization requests.
-	PARIsEnabled bool
-	// PARIsRequired indicates that authorization requests can only be made if
+	// PAREnabled allows client to push authorization requests.
+	PAREnabled bool
+	// PARRequired indicates that authorization requests can only be made if
 	// they were pushed.
-	PARIsRequired        bool
+	PARRequired          bool
 	PARManager           goidc.PARManager
 	PARIDFunc            goidc.RandomFunc
 	PAREndpoint          string
 	PARHandleSessionFunc goidc.HandleSessionFunc
 	PARLifetimeSecs      int
-	// PARUnregisteredRedirectURIIsEnabled indicates whether the redirect URIs
+	// PARUnregisteredRedirectURIEnabled indicates whether the redirect URIs
 	// informed during PAR must be previously registered or not.
-	PARUnregisteredRedirectURIIsEnabled bool
+	PARUnregisteredRedirectURIEnabled bool
 
 	CIBAEndpoint                   string
 	CIBAManager                    goidc.CIBAManager
@@ -174,63 +175,63 @@ type Configuration struct {
 	CIBATokenDeliveryModes         []goidc.CIBATokenDeliveryMode
 	CIBAIDFunc                     goidc.RandomFunc
 	CIBAHandleSessionFunc          goidc.HandleSessionFunc
-	CIBAUserCodeIsEnabled          bool
+	CIBAUserCodeEnabled            bool
 	CIBADefaultSessionLifetimeSecs int
 	CIBAPollingIntervalSecs        int
 	CIBAHTTPClientFunc             goidc.HTTPClientFunc
 
-	CIBAJARIsEnabled  bool
-	CIBAJARIsRequired bool
-	CIBAJARSigAlgs    []goidc.SignatureAlgorithm
+	CIBAJAREnabled  bool
+	CIBAJARRequired bool
+	CIBAJARSigAlgs  []goidc.SignatureAlgorithm
 
-	MTLSIsEnabled              bool
-	MTLSHost                   string
-	MTLSTokenBindingIsEnabled  bool
-	MTLSTokenBindingIsRequired bool
-	ClientCertFunc             goidc.ClientCertFunc
+	MTLSEnabled              bool
+	MTLSHost                 string
+	MTLSTokenBindingEnabled  bool
+	MTLSTokenBindingRequired bool
+	ClientCertFunc           goidc.ClientCertFunc
 
-	DPoPIsEnabled  bool
-	DPoPIsRequired bool
-	DPoPSigAlgs    []goidc.SignatureAlgorithm
+	DPoPEnabled  bool
+	DPoPRequired bool
+	DPoPSigAlgs  []goidc.SignatureAlgorithm
 
-	PKCEIsEnabled              bool
-	PKCEIsRequired             bool
+	PKCEEnabled                bool
+	PKCERequired               bool
 	PKCEDefaultChallengeMethod goidc.CodeChallengeMethod
 	PKCEChallengeMethods       []goidc.CodeChallengeMethod
 
-	RARIsEnabled          bool
+	RAREnabled            bool
 	RARDetailTypes        []goidc.AuthDetailType
 	RARValidateDetailFunc func(context.Context, goidc.AuthDetail) error
 	RARCompareDetailsFunc goidc.RARCompareDetailsFunc
 
-	ResourceIndicatorsIsEnabled bool
-	// ResourceIndicatorsIsRequired indicates that the resource parameter is
+	ResourceIndicatorsEnabled bool
+	// ResourceIndicatorsRequired indicates that the resource parameter is
 	// required during authorization requests.
-	ResourceIndicatorsIsRequired bool
-	ResourceIndicators           []goidc.ResourceIndicator
+	ResourceIndicatorsRequired bool
+	ResourceIndicators         []goidc.ResourceIndicator
 
 	HTTPClientFunc goidc.HTTPClientFunc
 	ConsumeJTIFunc goidc.ConsumeJTIFunc
 
-	JWTBearerClientAuthnIsRequired bool
-	JWTBearerHandleAssertionFunc   goidc.JWTBearerHandleAssertionFunc
+	JWTBearerClientAuthnRequired bool
+	JWTBearerHandleAssertionFunc goidc.JWTBearerHandleAssertionFunc
 
 	ErrorURI string
 
-	OpenIDFedIsEnabled                    bool
-	OpenIDFedManager                      goidc.OpenIDFedManager
-	OpenIDFedEndpoint                     string
-	OpenIDFedRegistrationEndpoint         string
-	OpenIDFedJWKSFunc                     goidc.JWKSFunc
-	OpenIDFedSignerFunc                   goidc.SignerFunc
-	OpenIDFedAuthorityHints               []string
-	OpenIDFedTrustedAnchors               []string
+	OpenIDFedEnabled              bool
+	OpenIDFedManager              goidc.OpenIDFedManager
+	OpenIDFedEndpoint             string
+	OpenIDFedRegistrationEndpoint string
+	OpenIDFedJWKSFunc             goidc.JWKSFunc
+	OpenIDFedSignerFunc           goidc.SignerFunc
+	OpenIDFedAuthorityHints       []string
+	OpenIDFedTrustedAnchors       []string
 	// OpenIDFedSigAlg is the algorithm used to sign the provider's entity configuration.
 	// The federation JWKS must contain a key matching this algorithm.
 	OpenIDFedSigAlg goidc.SignatureAlgorithm
 	// OpenIDFedSigAlgs are the algorithms accepted when parsing and verifying entity
 	// statements and trust marks from other federation participants.
-	OpenIDFedSigAlgs []goidc.SignatureAlgorithm
+	OpenIDFedSigAlgs                      []goidc.SignatureAlgorithm
 	OpenIDFedTrustChainMaxDepth           int
 	OpenIDFedClientRegTypes               []goidc.ClientRegistrationType
 	OpenIDFedRequiredClientTrustMarksFunc goidc.RequiredTrustMarksFunc
@@ -243,7 +244,7 @@ type Configuration struct {
 	OpenIDFedHandleClientFunc             goidc.HandleClientFunc
 	OpenIDFedEntityJWKSFunc               func(ctx Context, id string) (goidc.JSONWebKeySet, error)
 
-	LogoutIsEnabled             bool
+	LogoutEnabled               bool
 	LogoutEndpoint              string
 	LogoutManager               goidc.LogoutManager
 	LogoutSessionTimeoutSecs    int
@@ -251,56 +252,63 @@ type Configuration struct {
 	LogoutSessionIDFunc         goidc.RandomFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
-	SSFIsEnabled                           bool
-	SSFJWKSEndpoint                        string
-	SSFEventTypes                          []goidc.SSFEventType
-	SSFDeliveryMethods                     []goidc.SSFDeliveryMethod
-	SSFEventStreamManager                  goidc.SSFEventStreamManager
-	SSFConfigurationEndpoint               string
-	SSFPollingEndpoint                     string
-	SSFEventPollManager                    goidc.SSFEventPollManager
-	SSFIsStatusManagementEnabled           bool
-	SSFStatusEndpoint                      string
-	SSFIsSubjectManagementEnabled          bool
-	SSFAddSubjectEndpoint                  string
-	SSFRemoveSubjectEndpoint               string
-	SSFIsVerificationEnabled               bool
-	SSFScheduleVerificationEventFunc       goidc.SSFScheduleVerificationEventFunc
-	SSFVerificationEndpoint                string
-	SSFMinVerificationInterval             int
-	SSFCriticalSubjectMembers              []string
-	SSFAuthorizationSchemes                []goidc.SSFAuthorizationScheme
-	SSFDefaultSubjects                     goidc.SSFDefaultSubject
-	SSFJWKSFunc                            goidc.JWKSFunc
-	SSFDefaultSigAlg                       goidc.SignatureAlgorithm
-	SSFSignerFunc                          goidc.SignerFunc
-	SSFAuthenticatedReceiverFunc           goidc.SSFAuthenticatedReceiverFunc
-	SSFEventStreamIDFunc                   goidc.RandomFunc
-	SSFHTTPClientFunc                      goidc.HTTPClientFunc
-	SSFInactivityTimeoutSecs               int
-	SSFHandleExpiredEventStreamFunc        goidc.SSFHandleExpiredEventStreamFunc
-	SSFMultipleStreamsPerReceiverIsEnabled bool
+	SSFEnabled                           bool
+	SSFJWKSEndpoint                      string
+	SSFEventTypes                        []goidc.SSFEventType
+	SSFDeliveryMethods                   []goidc.SSFDeliveryMethod
+	SSFEventStreamManager                goidc.SSFEventStreamManager
+	SSFConfigurationEndpoint             string
+	SSFPollingEndpoint                   string
+	SSFEventPollManager                  goidc.SSFEventPollManager
+	SSFIsStatusManagementEnabled         bool
+	SSFStatusEndpoint                    string
+	SSFIsSubjectManagementEnabled        bool
+	SSFAddSubjectEndpoint                string
+	SSFRemoveSubjectEndpoint             string
+	SSFIsVerificationEnabled             bool
+	SSFScheduleVerificationEventFunc     goidc.SSFScheduleVerificationEventFunc
+	SSFVerificationEndpoint              string
+	SSFMinVerificationInterval           int
+	SSFCriticalSubjectMembers            []string
+	SSFAuthorizationSchemes              []goidc.SSFAuthorizationScheme
+	SSFDefaultSubjects                   goidc.SSFDefaultSubject
+	SSFJWKSFunc                          goidc.JWKSFunc
+	SSFDefaultSigAlg                     goidc.SignatureAlgorithm
+	SSFSignerFunc                        goidc.SignerFunc
+	SSFAuthenticatedReceiverFunc         goidc.SSFAuthenticatedReceiverFunc
+	SSFEventStreamIDFunc                 goidc.RandomFunc
+	SSFHTTPClientFunc                    goidc.HTTPClientFunc
+	SSFInactivityTimeoutSecs             int
+	SSFHandleExpiredEventStreamFunc      goidc.SSFHandleExpiredEventStreamFunc
+	SSFMultipleStreamsPerReceiverEnabled bool
 
-	VCIsEnabled                           bool
-	VCIssuers                             []goidc.VCIssuer
-	VCOfferEndpoint                       string
-	VCOfferIDFunc                         goidc.RandomFunc
-	VCIssuerStateFunc                     goidc.RandomFunc
-	VCManager                             goidc.VCManager
-	VCHandlePreAuthCodeFunc               goidc.VCHandlePreAuthCodeFunc
-	VCPreAuthCodeAnonymousAccessIsEnabled bool
+	VCIEnabled                           bool
+	VCIIssuers                           []goidc.VCIssuer
+	VCISelfEnabled                       bool
+	VCISelfHost                          string
+	VCISelfConfigurations                map[goidc.VCConfigurationID]goidc.VCConfiguration
+	VCISelfOffersEnabled                 bool
+	VCISelfOfferManager                  goidc.VCOfferManager
+	VCISelfCredentialEndpoint            string
+	VCISelfOfferEndpoint                 string
+	VCISelfOfferIDFunc                   goidc.RandomFunc
+	VCIPreAuthCodeGrantEnabled           bool
+	VCIPreAuthCodeHandleFunc             goidc.VCIPreAuthCodeHandleFunc
+	VCIIssuerStateEnabled                bool
+	VCIIssuerStateHandleFunc             goidc.VCIIssuerStateHandleFunc
+	VCIPreAuthCodeAnonymousAccessEnabled bool
 
-	DeviceAuthManager                          goidc.DeviceAuthManager
-	DeviceAuthEndpoint                         string
-	DeviceAuthVerificationEndpoint             string
-	DeviceAuthVerificationURICompleteIsEnabled bool
-	DeviceAuthLifetimeSecs                     int
-	DeviceAuthPollingIntervalSecs              int
-	DeviceCodeFunc                             goidc.RandomFunc
-	DeviceAuthGenerateUserCodeFunc             goidc.RandomFunc
-	DeviceAuthPromptUserCodeFunc               goidc.RenderFunc
-	DeviceAuthRenderConfirmationFunc           goidc.RenderFunc
+	DeviceAuthManager                        goidc.DeviceAuthManager
+	DeviceAuthEndpoint                       string
+	DeviceAuthVerificationEndpoint           string
+	DeviceAuthVerificationURICompleteEnabled bool
+	DeviceAuthLifetimeSecs                   int
+	DeviceAuthPollingIntervalSecs            int
+	DeviceCodeFunc                           goidc.RandomFunc
+	DeviceAuthGenerateUserCodeFunc           goidc.RandomFunc
+	DeviceAuthPromptUserCodeFunc             goidc.RenderFunc
+	DeviceAuthRenderConfirmationFunc         goidc.RenderFunc
 
-	TokenExchangeClientAuthnIsRequired bool
-	TokenExchangeHandleFunc            goidc.TokenExchangeHandleFunc
+	TokenExchangeClientAuthnRequired bool
+	TokenExchangeHandleFunc          goidc.TokenExchangeHandleFunc
 }

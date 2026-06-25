@@ -105,7 +105,7 @@ type openIDClientMetadataPolicy struct {
 	UserInfoSigAlg                metadataOperators[goidc.SignatureAlgorithm]           `json:"userinfo_signed_response_alg"`
 	UserInfoKeyEncAlg             metadataOperators[goidc.KeyEncryptionAlgorithm]       `json:"userinfo_encrypted_response_alg"`
 	UserInfoContentEncAlg         metadataOperators[goidc.ContentEncryptionAlgorithm]   `json:"userinfo_encrypted_response_enc"`
-	JARIsRequired                 metadataOperators[bool]                               `json:"require_signed_request_object"`
+	JARRequired                   metadataOperators[bool]                               `json:"require_signed_request_object"`
 	JARSigAlg                     metadataOperators[goidc.SignatureAlgorithm]           `json:"request_object_signing_alg"`
 	JARKeyEncAlg                  metadataOperators[goidc.KeyEncryptionAlgorithm]       `json:"request_object_encryption_alg"`
 	JARContentEncAlg              metadataOperators[goidc.ContentEncryptionAlgorithm]   `json:"request_object_encryption_enc"`
@@ -118,19 +118,19 @@ type openIDClientMetadataPolicy struct {
 	TokenIntrospectionAuthnSigAlg metadataOperators[goidc.SignatureAlgorithm]           `json:"introspection_endpoint_auth_signing_alg"`
 	TokenRevocationAuthnMethod    metadataOperators[goidc.AuthnMethod]                  `json:"revocation_endpoint_auth_method"`
 	TokenRevocationAuthnSigAlg    metadataOperators[goidc.SignatureAlgorithm]           `json:"revocation_endpoint_auth_signing_alg"`
-	DPoPTokenBindingIsRequired    metadataOperators[bool]                               `json:"dpop_bound_access_tokens"`
+	DPoPTokenBindingRequired      metadataOperators[bool]                               `json:"dpop_bound_access_tokens"`
 	TLSSubDistinguishedName       metadataOperators[string]                             `json:"tls_client_auth_subject_dn"`
 	TLSSubAlternativeName         metadataOperators[string]                             `json:"tls_client_auth_san_dns"`
 	TLSSubAlternativeNameIp       metadataOperators[string]                             `json:"tls_client_auth_san_ip"`
-	TLSTokenBindingIsRequired     metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
+	TLSTokenBindingRequired       metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
 	AuthDetailTypes               metadataOperators[[]goidc.AuthDetailType]             `json:"authorization_details_types"`
 	DefaultMaxAgeSecs             metadataOperators[*int]                               `json:"default_max_age"`
 	DefaultACRValues              metadataOperators[string]                             `json:"default_acr_values"`
-	PARIsRequired                 metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
+	PARRequired                   metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
 	CIBATokenDeliveryMode         metadataOperators[goidc.CIBATokenDeliveryMode]        `json:"backchannel_token_delivery_mode"`
 	CIBANotificationEndpoint      metadataOperators[string]                             `json:"backchannel_client_notification_endpoint"`
 	CIBAJARSigAlg                 metadataOperators[goidc.SignatureAlgorithm]           `json:"backchannel_authentication_request_signing_alg"`
-	CIBAUserCodeIsEnabled         metadataOperators[bool]                               `json:"backchannel_user_code_parameter"`
+	CIBAUserCodeEnabled           metadataOperators[bool]                               `json:"backchannel_user_code_parameter"`
 	SignedJWKSURI                 metadataOperators[string]                             `json:"signed_jwks_uri"`
 	OrganizationName              metadataOperators[string]                             `json:"organization_name"`
 	ClientRegistrationTypes       metadataOperators[[]goidc.ClientRegistrationType]     `json:"client_registration_types"`
@@ -280,7 +280,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.JARIsRequired.Validate(); err != nil {
+	if err := p.JARRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -332,7 +332,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.DPoPTokenBindingIsRequired.Validate(); err != nil {
+	if err := p.DPoPTokenBindingRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -348,7 +348,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.TLSTokenBindingIsRequired.Validate(); err != nil {
+	if err := p.TLSTokenBindingRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -364,7 +364,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.PARIsRequired.Validate(); err != nil {
+	if err := p.PARRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -380,7 +380,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.CIBAUserCodeIsEnabled.Validate(); err != nil {
+	if err := p.CIBAUserCodeEnabled.Validate(); err != nil {
 		return err
 	}
 
@@ -624,11 +624,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.UserInfoContentEncAlg = opUserInfoContentEncAlg
 
-	opJARIsRequired, err := high.JARIsRequired.Merge(low.JARIsRequired)
+	opJARRequired, err := high.JARRequired.Merge(low.JARRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.JARIsRequired = opJARIsRequired
+	high.JARRequired = opJARRequired
 
 	opJARSigAlg, err := high.JARSigAlg.Merge(low.JARSigAlg)
 	if err != nil {
@@ -702,11 +702,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.TokenRevocationAuthnSigAlg = opTokenRevocationAuthnSigAlg
 
-	opDPoPTokenBindingIsRequired, err := high.DPoPTokenBindingIsRequired.Merge(low.DPoPTokenBindingIsRequired)
+	opDPoPTokenBindingRequired, err := high.DPoPTokenBindingRequired.Merge(low.DPoPTokenBindingRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.DPoPTokenBindingIsRequired = opDPoPTokenBindingIsRequired
+	high.DPoPTokenBindingRequired = opDPoPTokenBindingRequired
 
 	opTLSSubDistinguishedName, err := high.TLSSubDistinguishedName.Merge(low.TLSSubDistinguishedName)
 	if err != nil {
@@ -726,11 +726,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.TLSSubAlternativeNameIp = opTLSSubAlternativeNameIp
 
-	opTLSTokenBindingIsRequired, err := high.TLSTokenBindingIsRequired.Merge(low.TLSTokenBindingIsRequired)
+	opTLSTokenBindingRequired, err := high.TLSTokenBindingRequired.Merge(low.TLSTokenBindingRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.TLSTokenBindingIsRequired = opTLSTokenBindingIsRequired
+	high.TLSTokenBindingRequired = opTLSTokenBindingRequired
 
 	opAuthDetailTypes, err := high.AuthDetailTypes.Merge(low.AuthDetailTypes)
 	if err != nil {
@@ -750,11 +750,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.DefaultACRValues = opDefaultACRValues
 
-	opPARIsRequired, err := high.PARIsRequired.Merge(low.PARIsRequired)
+	opPARRequired, err := high.PARRequired.Merge(low.PARRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.PARIsRequired = opPARIsRequired
+	high.PARRequired = opPARRequired
 
 	opCIBATokenDeliveryMode, err := high.CIBATokenDeliveryMode.Merge(low.CIBATokenDeliveryMode)
 	if err != nil {
@@ -774,11 +774,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.CIBAJARSigAlg = opCIBAJARSigAlg
 
-	opCIBAUserCodeIsEnabled, err := high.CIBAUserCodeIsEnabled.Merge(low.CIBAUserCodeIsEnabled)
+	opCIBAUserCodeEnabled, err := high.CIBAUserCodeEnabled.Merge(low.CIBAUserCodeEnabled)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.CIBAUserCodeIsEnabled = opCIBAUserCodeIsEnabled
+	high.CIBAUserCodeEnabled = opCIBAUserCodeEnabled
 
 	opSignedJWKSURI, err := high.SignedJWKSURI.Merge(low.SignedJWKSURI)
 	if err != nil {
@@ -1036,7 +1036,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 		return client.Meta{}, err
 	}
 
-	if c.JARIsRequired, err = policy.JARIsRequired.Apply(c.JARIsRequired); err != nil {
+	if c.JARRequired, err = policy.JARRequired.Apply(c.JARRequired); err != nil {
 		return client.Meta{}, err
 	}
 
@@ -1088,7 +1088,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 		return client.Meta{}, err
 	}
 
-	if c.DPoPTokenBindingIsRequired, err = policy.DPoPTokenBindingIsRequired.Apply(c.DPoPTokenBindingIsRequired); err != nil {
+	if c.DPoPTokenBindingRequired, err = policy.DPoPTokenBindingRequired.Apply(c.DPoPTokenBindingRequired); err != nil {
 		return client.Meta{}, err
 	}
 
@@ -1104,7 +1104,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 		return client.Meta{}, err
 	}
 
-	if c.TLSTokenBindingIsRequired, err = policy.TLSTokenBindingIsRequired.Apply(c.TLSTokenBindingIsRequired); err != nil {
+	if c.TLSTokenBindingRequired, err = policy.TLSTokenBindingRequired.Apply(c.TLSTokenBindingRequired); err != nil {
 		return client.Meta{}, err
 	}
 
@@ -1120,7 +1120,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 		return client.Meta{}, err
 	}
 
-	if c.PARIsRequired, err = policy.PARIsRequired.Apply(c.PARIsRequired); err != nil {
+	if c.PARRequired, err = policy.PARRequired.Apply(c.PARRequired); err != nil {
 		return client.Meta{}, err
 	}
 
@@ -1136,7 +1136,7 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 		return client.Meta{}, err
 	}
 
-	if c.CIBAUserCodeIsEnabled, err = policy.CIBAUserCodeIsEnabled.Apply(c.CIBAUserCodeIsEnabled); err != nil {
+	if c.CIBAUserCodeEnabled, err = policy.CIBAUserCodeEnabled.Apply(c.CIBAUserCodeEnabled); err != nil {
 		return client.Meta{}, err
 	}
 
@@ -1257,65 +1257,65 @@ func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, erro
 }
 
 type openIDProviderMetadataPolicy struct {
-	Issuer                              metadataOperators[string]                             `json:"issuer"`
-	ClientRegistrationEndpoint          metadataOperators[string]                             `json:"registration_endpoint"`
-	AuthorizationEndpoint               metadataOperators[string]                             `json:"authorization_endpoint"`
-	TokenEndpoint                       metadataOperators[string]                             `json:"token_endpoint"`
-	UserInfoEndpoint                    metadataOperators[string]                             `json:"userinfo_endpoint"`
-	JWKSEndpoint                        metadataOperators[string]                             `json:"jwks_uri"`
-	PAREndpoint                         metadataOperators[string]                             `json:"pushed_authorization_request_endpoint"`
-	PARIsRequired                       metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
-	ResponseTypes                       metadataOperators[[]goidc.ResponseType]               `json:"response_types_supported"`
-	ResponseModes                       metadataOperators[[]goidc.ResponseMode]               `json:"response_modes_supported"`
-	GrantTypes                          metadataOperators[[]goidc.GrantType]                  `json:"grant_types_supported"`
-	Scopes                              metadataOperators[[]string]                           `json:"scopes_supported"`
-	UserClaimsSupported                 metadataOperators[[]string]                           `json:"claims_supported"`
-	ClaimTypesSupported                 metadataOperators[[]goidc.ClaimType]                  `json:"claim_types_supported"`
-	SubIdentifierTypes                  metadataOperators[[]goidc.SubIdentifierType]          `json:"subject_types_supported"`
-	IDTokenSigAlgs                      metadataOperators[[]goidc.SignatureAlgorithm]         `json:"id_token_signing_alg_values_supported"`
-	IDTokenKeyEncAlgs                   metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"id_token_encryption_alg_values_supported"`
-	IDTokenContentEncAlgs               metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"id_token_encryption_enc_values_supported"`
-	UserInfoKeyEncAlgs                  metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"userinfo_encryption_alg_values_supported"`
-	UserInfoContentEncAlgs              metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"userinfo_encryption_enc_values_supported"`
-	UserInfoSigAlgs                     metadataOperators[[]goidc.SignatureAlgorithm]         `json:"userinfo_signing_alg_values_supported"`
-	TokenAuthnMethods                   metadataOperators[[]goidc.AuthnMethod]                `json:"token_endpoint_auth_methods_supported"`
-	TokenAuthnSigAlgs                   metadataOperators[[]goidc.SignatureAlgorithm]         `json:"token_endpoint_auth_signing_alg_values_supported"`
-	JARIsEnabled                        metadataOperators[bool]                               `json:"request_parameter_supported"`
-	JARIsRequired                       metadataOperators[bool]                               `json:"require_signed_request_object"`
-	JARAlgs                             metadataOperators[[]goidc.SignatureAlgorithm]         `json:"request_object_signing_alg_values_supported"`
-	JARKeyEncAlgs                       metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"request_object_encryption_alg_values_supported"`
-	JARContentEncAlgs                   metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"request_object_encryption_enc_values_supported"`
-	JARByReferenceIsEnabled             metadataOperators[bool]                               `json:"request_uri_parameter_supported"`
-	JARRequestURIRegistrationIsRequired metadataOperators[bool]                               `json:"require_request_uri_registration"`
-	JARMAlgs                            metadataOperators[[]goidc.SignatureAlgorithm]         `json:"authorization_signing_alg_values_supported"`
-	JARMKeyEncAlgs                      metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"authorization_encryption_alg_values_supported"`
-	JARMContentEncAlgs                  metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"authorization_encryption_enc_values_supported"`
-	IssuerResponseParamIsEnabled        metadataOperators[bool]                               `json:"authorization_response_iss_parameter_supported"`
-	ClaimsParamIsEnabled                metadataOperators[bool]                               `json:"claims_parameter_supported"`
-	AuthDetailsIsEnabled                metadataOperators[bool]                               `json:"authorization_details_supported"`
-	AuthDetailTypesSupported            metadataOperators[[]goidc.AuthDetailType]             `json:"authorization_details_types_supported"`
-	DPoPSigAlgs                         metadataOperators[[]goidc.SignatureAlgorithm]         `json:"dpop_signing_alg_values_supported"`
-	TokenIntrospectionEndpoint          metadataOperators[string]                             `json:"introspection_endpoint"`
-	TokenIntrospectionAuthnMethods      metadataOperators[[]goidc.AuthnMethod]                `json:"introspection_endpoint_auth_methods_supported"`
-	TokenIntrospectionAuthnSigAlgs      metadataOperators[[]goidc.SignatureAlgorithm]         `json:"introspection_endpoint_auth_signing_alg_values_supported"`
-	TokenRevocationEndpoint             metadataOperators[string]                             `json:"revocation_endpoint"`
-	TokenRevocationAuthnMethods         metadataOperators[[]goidc.AuthnMethod]                `json:"revocation_endpoint_auth_methods_supported"`
-	TokenRevocationAuthnSigAlgs         metadataOperators[[]goidc.SignatureAlgorithm]         `json:"revocation_endpoint_auth_signing_alg_values_supported"`
-	DeviceAuthorizationEndpoint         metadataOperators[string]                             `json:"device_authorization_endpoint"`
-	CIBATokenDeliveryModes              metadataOperators[[]goidc.CIBATokenDeliveryMode]      `json:"backchannel_token_delivery_modes_supported"`
-	CIBAEndpoint                        metadataOperators[string]                             `json:"backchannel_authentication_endpoint"`
-	CIBAJARSigAlgs                      metadataOperators[[]goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg_values_supported"`
-	CIBAUserCodeIsEnabled               metadataOperators[bool]                               `json:"backchannel_user_code_parameter_supported"`
-	TLSBoundTokensIsEnabled             metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
-	ACRs                                metadataOperators[[]goidc.ACR]                        `json:"acr_values_supported"`
-	DisplayValues                       metadataOperators[[]goidc.DisplayValue]               `json:"display_values_supported"`
-	CodeChallengeMethods                metadataOperators[[]goidc.CodeChallengeMethod]        `json:"code_challenge_methods_supported"`
-	EndSessionEndpoint                  metadataOperators[string]                             `json:"end_session_endpoint"`
-	ClientRegistrationTypes             metadataOperators[[]goidc.ClientRegistrationType]     `json:"client_registration_types_supported"`
-	OrganizationName                    metadataOperators[string]                             `json:"organization_name"`
-	FederationRegistrationEndpoint      metadataOperators[string]                             `json:"federation_registration_endpoint"`
-	SignedJWKSEndpoint                  metadataOperators[string]                             `json:"signed_jwks_uri"`
-	PreAuthCodeAnonymousAccess          metadataOperators[bool]                               `json:"pre-authorized_grant_anonymous_access_supported"`
+	Issuer                            metadataOperators[string]                             `json:"issuer"`
+	ClientRegistrationEndpoint        metadataOperators[string]                             `json:"registration_endpoint"`
+	AuthorizationEndpoint             metadataOperators[string]                             `json:"authorization_endpoint"`
+	TokenEndpoint                     metadataOperators[string]                             `json:"token_endpoint"`
+	UserInfoEndpoint                  metadataOperators[string]                             `json:"userinfo_endpoint"`
+	JWKSEndpoint                      metadataOperators[string]                             `json:"jwks_uri"`
+	PAREndpoint                       metadataOperators[string]                             `json:"pushed_authorization_request_endpoint"`
+	PARRequired                       metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
+	ResponseTypes                     metadataOperators[[]goidc.ResponseType]               `json:"response_types_supported"`
+	ResponseModes                     metadataOperators[[]goidc.ResponseMode]               `json:"response_modes_supported"`
+	GrantTypes                        metadataOperators[[]goidc.GrantType]                  `json:"grant_types_supported"`
+	Scopes                            metadataOperators[[]string]                           `json:"scopes_supported"`
+	UserClaimsSupported               metadataOperators[[]string]                           `json:"claims_supported"`
+	ClaimTypesSupported               metadataOperators[[]goidc.ClaimType]                  `json:"claim_types_supported"`
+	SubIdentifierTypes                metadataOperators[[]goidc.SubIdentifierType]          `json:"subject_types_supported"`
+	IDTokenSigAlgs                    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"id_token_signing_alg_values_supported"`
+	IDTokenKeyEncAlgs                 metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"id_token_encryption_alg_values_supported"`
+	IDTokenContentEncAlgs             metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"id_token_encryption_enc_values_supported"`
+	UserInfoKeyEncAlgs                metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"userinfo_encryption_alg_values_supported"`
+	UserInfoContentEncAlgs            metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"userinfo_encryption_enc_values_supported"`
+	UserInfoSigAlgs                   metadataOperators[[]goidc.SignatureAlgorithm]         `json:"userinfo_signing_alg_values_supported"`
+	TokenAuthnMethods                 metadataOperators[[]goidc.AuthnMethod]                `json:"token_endpoint_auth_methods_supported"`
+	TokenAuthnSigAlgs                 metadataOperators[[]goidc.SignatureAlgorithm]         `json:"token_endpoint_auth_signing_alg_values_supported"`
+	JAREnabled                        metadataOperators[bool]                               `json:"request_parameter_supported"`
+	JARRequired                       metadataOperators[bool]                               `json:"require_signed_request_object"`
+	JARAlgs                           metadataOperators[[]goidc.SignatureAlgorithm]         `json:"request_object_signing_alg_values_supported"`
+	JARKeyEncAlgs                     metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"request_object_encryption_alg_values_supported"`
+	JARContentEncAlgs                 metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"request_object_encryption_enc_values_supported"`
+	JARByReferenceEnabled             metadataOperators[bool]                               `json:"request_uri_parameter_supported"`
+	JARRequestURIRegistrationRequired metadataOperators[bool]                               `json:"require_request_uri_registration"`
+	JARMAlgs                          metadataOperators[[]goidc.SignatureAlgorithm]         `json:"authorization_signing_alg_values_supported"`
+	JARMKeyEncAlgs                    metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"authorization_encryption_alg_values_supported"`
+	JARMContentEncAlgs                metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"authorization_encryption_enc_values_supported"`
+	IssuerResponseParamEnabled        metadataOperators[bool]                               `json:"authorization_response_iss_parameter_supported"`
+	ClaimsParamEnabled                metadataOperators[bool]                               `json:"claims_parameter_supported"`
+	AuthDetailsEnabled                metadataOperators[bool]                               `json:"authorization_details_supported"`
+	AuthDetailTypesSupported          metadataOperators[[]goidc.AuthDetailType]             `json:"authorization_details_types_supported"`
+	DPoPSigAlgs                       metadataOperators[[]goidc.SignatureAlgorithm]         `json:"dpop_signing_alg_values_supported"`
+	TokenIntrospectionEndpoint        metadataOperators[string]                             `json:"introspection_endpoint"`
+	TokenIntrospectionAuthnMethods    metadataOperators[[]goidc.AuthnMethod]                `json:"introspection_endpoint_auth_methods_supported"`
+	TokenIntrospectionAuthnSigAlgs    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"introspection_endpoint_auth_signing_alg_values_supported"`
+	TokenRevocationEndpoint           metadataOperators[string]                             `json:"revocation_endpoint"`
+	TokenRevocationAuthnMethods       metadataOperators[[]goidc.AuthnMethod]                `json:"revocation_endpoint_auth_methods_supported"`
+	TokenRevocationAuthnSigAlgs       metadataOperators[[]goidc.SignatureAlgorithm]         `json:"revocation_endpoint_auth_signing_alg_values_supported"`
+	DeviceAuthorizationEndpoint       metadataOperators[string]                             `json:"device_authorization_endpoint"`
+	CIBATokenDeliveryModes            metadataOperators[[]goidc.CIBATokenDeliveryMode]      `json:"backchannel_token_delivery_modes_supported"`
+	CIBAEndpoint                      metadataOperators[string]                             `json:"backchannel_authentication_endpoint"`
+	CIBAJARSigAlgs                    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg_values_supported"`
+	CIBAUserCodeEnabled               metadataOperators[bool]                               `json:"backchannel_user_code_parameter_supported"`
+	TLSBoundTokensEnabled             metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
+	ACRs                              metadataOperators[[]goidc.ACR]                        `json:"acr_values_supported"`
+	DisplayValues                     metadataOperators[[]goidc.DisplayValue]               `json:"display_values_supported"`
+	CodeChallengeMethods              metadataOperators[[]goidc.CodeChallengeMethod]        `json:"code_challenge_methods_supported"`
+	EndSessionEndpoint                metadataOperators[string]                             `json:"end_session_endpoint"`
+	ClientRegistrationTypes           metadataOperators[[]goidc.ClientRegistrationType]     `json:"client_registration_types_supported"`
+	OrganizationName                  metadataOperators[string]                             `json:"organization_name"`
+	FederationRegistrationEndpoint    metadataOperators[string]                             `json:"federation_registration_endpoint"`
+	SignedJWKSEndpoint                metadataOperators[string]                             `json:"signed_jwks_uri"`
+	PreAuthCodeAnonymousAccess        metadataOperators[bool]                               `json:"pre-authorized_grant_anonymous_access_supported"`
 }
 
 func (p openIDProviderMetadataPolicy) Validate() error {
@@ -1327,7 +1327,7 @@ func (p openIDProviderMetadataPolicy) Validate() error {
 		p.UserInfoEndpoint.Validate,
 		p.JWKSEndpoint.Validate,
 		p.PAREndpoint.Validate,
-		p.PARIsRequired.Validate,
+		p.PARRequired.Validate,
 		p.ResponseTypes.Validate,
 		p.ResponseModes.Validate,
 		p.GrantTypes.Validate,
@@ -1343,19 +1343,19 @@ func (p openIDProviderMetadataPolicy) Validate() error {
 		p.UserInfoSigAlgs.Validate,
 		p.TokenAuthnMethods.Validate,
 		p.TokenAuthnSigAlgs.Validate,
-		p.JARIsEnabled.Validate,
-		p.JARIsRequired.Validate,
+		p.JAREnabled.Validate,
+		p.JARRequired.Validate,
 		p.JARAlgs.Validate,
 		p.JARKeyEncAlgs.Validate,
 		p.JARContentEncAlgs.Validate,
-		p.JARByReferenceIsEnabled.Validate,
-		p.JARRequestURIRegistrationIsRequired.Validate,
+		p.JARByReferenceEnabled.Validate,
+		p.JARRequestURIRegistrationRequired.Validate,
 		p.JARMAlgs.Validate,
 		p.JARMKeyEncAlgs.Validate,
 		p.JARMContentEncAlgs.Validate,
-		p.IssuerResponseParamIsEnabled.Validate,
-		p.ClaimsParamIsEnabled.Validate,
-		p.AuthDetailsIsEnabled.Validate,
+		p.IssuerResponseParamEnabled.Validate,
+		p.ClaimsParamEnabled.Validate,
+		p.AuthDetailsEnabled.Validate,
 		p.AuthDetailTypesSupported.Validate,
 		p.DPoPSigAlgs.Validate,
 		p.TokenIntrospectionEndpoint.Validate,
@@ -1368,8 +1368,8 @@ func (p openIDProviderMetadataPolicy) Validate() error {
 		p.CIBATokenDeliveryModes.Validate,
 		p.CIBAEndpoint.Validate,
 		p.CIBAJARSigAlgs.Validate,
-		p.CIBAUserCodeIsEnabled.Validate,
-		p.TLSBoundTokensIsEnabled.Validate,
+		p.CIBAUserCodeEnabled.Validate,
+		p.TLSBoundTokensEnabled.Validate,
 		p.ACRs.Validate,
 		p.DisplayValues.Validate,
 		p.CodeChallengeMethods.Validate,
@@ -1421,7 +1421,7 @@ func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy)
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.PARIsRequired, err = high.PARIsRequired.Merge(low.PARIsRequired); err != nil {
+	if high.PARRequired, err = high.PARRequired.Merge(low.PARRequired); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
@@ -1485,11 +1485,11 @@ func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy)
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.JARIsEnabled, err = high.JARIsEnabled.Merge(low.JARIsEnabled); err != nil {
+	if high.JAREnabled, err = high.JAREnabled.Merge(low.JAREnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.JARIsRequired, err = high.JARIsRequired.Merge(low.JARIsRequired); err != nil {
+	if high.JARRequired, err = high.JARRequired.Merge(low.JARRequired); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
@@ -1505,11 +1505,11 @@ func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy)
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.JARByReferenceIsEnabled, err = high.JARByReferenceIsEnabled.Merge(low.JARByReferenceIsEnabled); err != nil {
+	if high.JARByReferenceEnabled, err = high.JARByReferenceEnabled.Merge(low.JARByReferenceEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.JARRequestURIRegistrationIsRequired, err = high.JARRequestURIRegistrationIsRequired.Merge(low.JARRequestURIRegistrationIsRequired); err != nil {
+	if high.JARRequestURIRegistrationRequired, err = high.JARRequestURIRegistrationRequired.Merge(low.JARRequestURIRegistrationRequired); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
@@ -1525,15 +1525,15 @@ func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy)
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.IssuerResponseParamIsEnabled, err = high.IssuerResponseParamIsEnabled.Merge(low.IssuerResponseParamIsEnabled); err != nil {
+	if high.IssuerResponseParamEnabled, err = high.IssuerResponseParamEnabled.Merge(low.IssuerResponseParamEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.ClaimsParamIsEnabled, err = high.ClaimsParamIsEnabled.Merge(low.ClaimsParamIsEnabled); err != nil {
+	if high.ClaimsParamEnabled, err = high.ClaimsParamEnabled.Merge(low.ClaimsParamEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.AuthDetailsIsEnabled, err = high.AuthDetailsIsEnabled.Merge(low.AuthDetailsIsEnabled); err != nil {
+	if high.AuthDetailsEnabled, err = high.AuthDetailsEnabled.Merge(low.AuthDetailsEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
@@ -1585,11 +1585,11 @@ func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy)
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.CIBAUserCodeIsEnabled, err = high.CIBAUserCodeIsEnabled.Merge(low.CIBAUserCodeIsEnabled); err != nil {
+	if high.CIBAUserCodeEnabled, err = high.CIBAUserCodeEnabled.Merge(low.CIBAUserCodeEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
-	if high.TLSBoundTokensIsEnabled, err = high.TLSBoundTokensIsEnabled.Merge(low.TLSBoundTokensIsEnabled); err != nil {
+	if high.TLSBoundTokensEnabled, err = high.TLSBoundTokensEnabled.Merge(low.TLSBoundTokensEnabled); err != nil {
 		return openIDProviderMetadataPolicy{}, err
 	}
 
@@ -1663,7 +1663,7 @@ func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Config
 		return goidc.Configuration{}, err
 	}
 
-	if c.PARIsRequired, err = p.PARIsRequired.Apply(c.PARIsRequired); err != nil {
+	if c.PARRequired, err = p.PARRequired.Apply(c.PARRequired); err != nil {
 		return goidc.Configuration{}, err
 	}
 
@@ -1727,11 +1727,11 @@ func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Config
 		return goidc.Configuration{}, err
 	}
 
-	if c.JARIsEnabled, err = p.JARIsEnabled.Apply(c.JARIsEnabled); err != nil {
+	if c.JAREnabled, err = p.JAREnabled.Apply(c.JAREnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
-	if c.JARIsRequired, err = p.JARIsRequired.Apply(c.JARIsRequired); err != nil {
+	if c.JARRequired, err = p.JARRequired.Apply(c.JARRequired); err != nil {
 		return goidc.Configuration{}, err
 	}
 
@@ -1747,11 +1747,11 @@ func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Config
 		return goidc.Configuration{}, err
 	}
 
-	if c.JARByReferenceIsEnabled, err = p.JARByReferenceIsEnabled.Apply(c.JARByReferenceIsEnabled); err != nil {
+	if c.JARByReferenceEnabled, err = p.JARByReferenceEnabled.Apply(c.JARByReferenceEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
-	if c.JARRequestURIRegistrationIsRequired, err = p.JARRequestURIRegistrationIsRequired.Apply(c.JARRequestURIRegistrationIsRequired); err != nil {
+	if c.JARRequestURIRegistrationRequired, err = p.JARRequestURIRegistrationRequired.Apply(c.JARRequestURIRegistrationRequired); err != nil {
 		return goidc.Configuration{}, err
 	}
 
@@ -1767,15 +1767,15 @@ func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Config
 		return goidc.Configuration{}, err
 	}
 
-	if c.IssuerResponseParamIsEnabled, err = p.IssuerResponseParamIsEnabled.Apply(c.IssuerResponseParamIsEnabled); err != nil {
+	if c.IssuerResponseParamEnabled, err = p.IssuerResponseParamEnabled.Apply(c.IssuerResponseParamEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
-	if c.ClaimsParamIsEnabled, err = p.ClaimsParamIsEnabled.Apply(c.ClaimsParamIsEnabled); err != nil {
+	if c.ClaimsParamEnabled, err = p.ClaimsParamEnabled.Apply(c.ClaimsParamEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
-	if c.AuthDetailsIsEnabled, err = p.AuthDetailsIsEnabled.Apply(c.AuthDetailsIsEnabled); err != nil {
+	if c.AuthDetailsEnabled, err = p.AuthDetailsEnabled.Apply(c.AuthDetailsEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
@@ -1827,11 +1827,11 @@ func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Config
 		return goidc.Configuration{}, err
 	}
 
-	if c.CIBAUserCodeIsEnabled, err = p.CIBAUserCodeIsEnabled.Apply(c.CIBAUserCodeIsEnabled); err != nil {
+	if c.CIBAUserCodeEnabled, err = p.CIBAUserCodeEnabled.Apply(c.CIBAUserCodeEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 
-	if c.TLSBoundTokensIsEnabled, err = p.TLSBoundTokensIsEnabled.Apply(c.TLSBoundTokensIsEnabled); err != nil {
+	if c.TLSBoundTokensEnabled, err = p.TLSBoundTokensEnabled.Apply(c.TLSBoundTokensEnabled); err != nil {
 		return goidc.Configuration{}, err
 	}
 

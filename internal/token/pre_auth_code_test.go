@@ -29,18 +29,18 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
-				ctx.VCPreAuthCodeAnonymousAccessIsEnabled = true
-				ctx.VCIsEnabled = true
+				ctx.VCIPreAuthCodeAnonymousAccessEnabled = true
+				ctx.VCIEnabled = true
 				ctx.Scopes = []goidc.Scope{goidc.NewScope("vc_scope1")}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
-				ctx.VCHandlePreAuthCodeFunc = func(_ context.Context, code string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+				ctx.VCIPreAuthCodeHandleFunc = func(_ context.Context, code string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					if code != "pre_auth_code" {
 						t.Fatalf("code = %q, want %q", code, "pre_auth_code")
 					}
@@ -80,19 +80,19 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
-				ctx.VCPreAuthCodeAnonymousAccessIsEnabled = true
-				ctx.VCIsEnabled = true
-				ctx.RARIsEnabled = true
+				ctx.VCIPreAuthCodeAnonymousAccessEnabled = true
+				ctx.VCIEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential, "other_type"}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
-				ctx.VCHandlePreAuthCodeFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+				ctx.VCIPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
 						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
@@ -119,17 +119,17 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
-				ctx.VCPreAuthCodeAnonymousAccessIsEnabled = true
-				ctx.VCIsEnabled = true
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIPreAuthCodeAnonymousAccessEnabled = true
+				ctx.VCIEnabled = true
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
-				ctx.VCHandlePreAuthCodeFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+				ctx.VCIPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
 						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
@@ -148,19 +148,19 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, request) {
 				ctx := oidctest.NewContext(t)
 				ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
-				ctx.VCPreAuthCodeAnonymousAccessIsEnabled = true
-				ctx.VCIsEnabled = true
+				ctx.VCIPreAuthCodeAnonymousAccessEnabled = true
+				ctx.VCIEnabled = true
 				ctx.Scopes = []goidc.Scope{goidc.NewScope("vc_scope1"), goidc.NewScope("vc_scope2")}
-				ctx.VCIssuers = []goidc.VCIssuer{
+				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
-						ID: "https://issuer.example.com",
+						Issuer: "https://issuer.example.com",
 						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
 							"cred1": {Scope: goidc.NewScope("vc_scope1")},
 							"cred2": {Scope: goidc.NewScope("vc_scope2")},
 						},
 					},
 				}
-				ctx.VCHandlePreAuthCodeFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+				ctx.VCIPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
 						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{

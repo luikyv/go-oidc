@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
-	if !config.LogoutIsEnabled {
+	if !config.LogoutEnabled {
 		return
 	}
 

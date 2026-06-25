@@ -12,56 +12,56 @@ import (
 )
 
 type Configuration struct {
-	Issuer                              string                       `json:"issuer"`
-	ClientRegistrationEndpoint          string                       `json:"registration_endpoint,omitempty"`
-	AuthorizationEndpoint               string                       `json:"authorization_endpoint"`
-	TokenEndpoint                       string                       `json:"token_endpoint"`
-	UserInfoEndpoint                    string                       `json:"userinfo_endpoint"`
-	JWKSEndpoint                        string                       `json:"jwks_uri,omitempty"`
-	PAREndpoint                         string                       `json:"pushed_authorization_request_endpoint,omitempty"`
-	PARIsRequired                       bool                         `json:"require_pushed_authorization_requests,omitempty"`
-	ResponseTypes                       []ResponseType               `json:"response_types_supported,omitempty"`
-	ResponseModes                       []ResponseMode               `json:"response_modes_supported,omitempty"`
-	GrantTypes                          []GrantType                  `json:"grant_types_supported,omitempty"`
-	Scopes                              []string                     `json:"scopes_supported"`
-	UserClaimsSupported                 []string                     `json:"claims_supported,omitempty"`
-	ClaimTypesSupported                 []ClaimType                  `json:"claim_types_supported,omitempty"`
-	SubIdentifierTypes                  []SubIdentifierType          `json:"subject_types_supported,omitempty"`
-	IDTokenSigAlgs                      []SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
-	IDTokenKeyEncAlgs                   []KeyEncryptionAlgorithm     `json:"id_token_encryption_alg_values_supported,omitempty"`
-	IDTokenContentEncAlgs               []ContentEncryptionAlgorithm `json:"id_token_encryption_enc_values_supported,omitempty"`
-	UserInfoKeyEncAlgs                  []KeyEncryptionAlgorithm     `json:"userinfo_encryption_alg_values_supported,omitempty"`
-	UserInfoContentEncAlgs              []ContentEncryptionAlgorithm `json:"userinfo_encryption_enc_values_supported,omitempty"`
-	UserInfoSigAlgs                     []SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported,omitempty"`
-	TokenAuthnMethods                   []AuthnMethod                `json:"token_endpoint_auth_methods_supported,omitempty"`
-	TokenAuthnSigAlgs                   []SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
-	JARIsEnabled                        bool                         `json:"request_parameter_supported,omitempty"`
-	JARIsRequired                       bool                         `json:"require_signed_request_object,omitempty"`
-	JARAlgs                             []SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
-	JARKeyEncAlgs                       []KeyEncryptionAlgorithm     `json:"request_object_encryption_alg_values_supported,omitempty"`
-	JARContentEncAlgs                   []ContentEncryptionAlgorithm `json:"request_object_encryption_enc_values_supported,omitempty"`
-	JARByReferenceIsEnabled             bool                         `json:"request_uri_parameter_supported,omitempty"`
-	JARRequestURIRegistrationIsRequired bool                         `json:"require_request_uri_registration,omitempty"`
-	JARMAlgs                            []SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
-	JARMKeyEncAlgs                      []KeyEncryptionAlgorithm     `json:"authorization_encryption_alg_values_supported,omitempty"`
-	JARMContentEncAlgs                  []ContentEncryptionAlgorithm `json:"authorization_encryption_enc_values_supported,omitempty"`
-	IssuerResponseParamIsEnabled        bool                         `json:"authorization_response_iss_parameter_supported,omitempty"`
-	ClaimsParamIsEnabled                bool                         `json:"claims_parameter_supported,omitempty"`
-	AuthDetailsIsEnabled                bool                         `json:"authorization_details_supported,omitempty"`
-	AuthDetailTypesSupported            []AuthDetailType             `json:"authorization_details_types_supported,omitempty"`
-	DPoPSigAlgs                         []SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
-	TokenIntrospectionEndpoint          string                       `json:"introspection_endpoint,omitempty"`
-	TokenIntrospectionAuthnMethods      []AuthnMethod                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
-	TokenIntrospectionAuthnSigAlgs      []SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
-	TokenRevocationEndpoint             string                       `json:"revocation_endpoint,omitempty"`
-	TokenRevocationAuthnMethods         []AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
-	TokenRevocationAuthnSigAlgs         []SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
-	DeviceAuthorizationEndpoint         string                       `json:"device_authorization_endpoint,omitempty"`
-	CIBATokenDeliveryModes              []CIBATokenDeliveryMode      `json:"backchannel_token_delivery_modes_supported,omitempty"`
-	CIBAEndpoint                        string                       `json:"backchannel_authentication_endpoint,omitempty"`
-	CIBAJARSigAlgs                      []SignatureAlgorithm         `json:"backchannel_authentication_request_signing_alg_values_supported,omitempty"`
-	CIBAUserCodeIsEnabled               bool                         `json:"backchannel_user_code_parameter_supported,omitempty"`
-	MTLSAliases                         *struct {
+	Issuer                            string                       `json:"issuer"`
+	ClientRegistrationEndpoint        string                       `json:"registration_endpoint,omitempty"`
+	AuthorizationEndpoint             string                       `json:"authorization_endpoint"`
+	TokenEndpoint                     string                       `json:"token_endpoint"`
+	UserInfoEndpoint                  string                       `json:"userinfo_endpoint"`
+	JWKSEndpoint                      string                       `json:"jwks_uri,omitempty"`
+	PAREndpoint                       string                       `json:"pushed_authorization_request_endpoint,omitempty"`
+	PARRequired                       bool                         `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                     []ResponseType               `json:"response_types_supported,omitempty"`
+	ResponseModes                     []ResponseMode               `json:"response_modes_supported,omitempty"`
+	GrantTypes                        []GrantType                  `json:"grant_types_supported,omitempty"`
+	Scopes                            []string                     `json:"scopes_supported"`
+	UserClaimsSupported               []string                     `json:"claims_supported,omitempty"`
+	ClaimTypesSupported               []ClaimType                  `json:"claim_types_supported,omitempty"`
+	SubIdentifierTypes                []SubIdentifierType          `json:"subject_types_supported,omitempty"`
+	IDTokenSigAlgs                    []SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	IDTokenKeyEncAlgs                 []KeyEncryptionAlgorithm     `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IDTokenContentEncAlgs             []ContentEncryptionAlgorithm `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoKeyEncAlgs                []KeyEncryptionAlgorithm     `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoContentEncAlgs            []ContentEncryptionAlgorithm `json:"userinfo_encryption_enc_values_supported,omitempty"`
+	UserInfoSigAlgs                   []SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported,omitempty"`
+	TokenAuthnMethods                 []AuthnMethod                `json:"token_endpoint_auth_methods_supported,omitempty"`
+	TokenAuthnSigAlgs                 []SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
+	JAREnabled                        bool                         `json:"request_parameter_supported,omitempty"`
+	JARRequired                       bool                         `json:"require_signed_request_object,omitempty"`
+	JARAlgs                           []SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
+	JARKeyEncAlgs                     []KeyEncryptionAlgorithm     `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JARContentEncAlgs                 []ContentEncryptionAlgorithm `json:"request_object_encryption_enc_values_supported,omitempty"`
+	JARByReferenceEnabled             bool                         `json:"request_uri_parameter_supported,omitempty"`
+	JARRequestURIRegistrationRequired bool                         `json:"require_request_uri_registration,omitempty"`
+	JARMAlgs                          []SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
+	JARMKeyEncAlgs                    []KeyEncryptionAlgorithm     `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JARMContentEncAlgs                []ContentEncryptionAlgorithm `json:"authorization_encryption_enc_values_supported,omitempty"`
+	IssuerResponseParamEnabled        bool                         `json:"authorization_response_iss_parameter_supported,omitempty"`
+	ClaimsParamEnabled                bool                         `json:"claims_parameter_supported,omitempty"`
+	AuthDetailsEnabled                bool                         `json:"authorization_details_supported,omitempty"`
+	AuthDetailTypesSupported          []AuthDetailType             `json:"authorization_details_types_supported,omitempty"`
+	DPoPSigAlgs                       []SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
+	TokenIntrospectionEndpoint        string                       `json:"introspection_endpoint,omitempty"`
+	TokenIntrospectionAuthnMethods    []AuthnMethod                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	TokenIntrospectionAuthnSigAlgs    []SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
+	TokenRevocationEndpoint           string                       `json:"revocation_endpoint,omitempty"`
+	TokenRevocationAuthnMethods       []AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
+	TokenRevocationAuthnSigAlgs       []SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
+	DeviceAuthorizationEndpoint       string                       `json:"device_authorization_endpoint,omitempty"`
+	CIBATokenDeliveryModes            []CIBATokenDeliveryMode      `json:"backchannel_token_delivery_modes_supported,omitempty"`
+	CIBAEndpoint                      string                       `json:"backchannel_authentication_endpoint,omitempty"`
+	CIBAJARSigAlgs                    []SignatureAlgorithm         `json:"backchannel_authentication_request_signing_alg_values_supported,omitempty"`
+	CIBAUserCodeEnabled               bool                         `json:"backchannel_user_code_parameter_supported,omitempty"`
+	MTLSAliases                       *struct {
 		TokenEndpoint              string `json:"token_endpoint"`
 		ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
 		UserInfoEndpoint           string `json:"userinfo_endpoint"`
@@ -70,8 +70,8 @@ type Configuration struct {
 		TokenRevocationEndpoint    string `json:"revocation_endpoint,omitempty"`
 		CIBAEndpoint               string `json:"backchannel_authentication_endpoint,omitempty"`
 	} `json:"mtls_endpoint_aliases,omitempty"`
-	// TLSBoundTokensIsEnabled signals support for certificate bound tokens.
-	TLSBoundTokensIsEnabled        bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	// TLSBoundTokensEnabled signals support for certificate bound tokens.
+	TLSBoundTokensEnabled          bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	ACRs                           []ACR                    `json:"acr_values_supported,omitempty"`
 	DisplayValues                  []DisplayValue           `json:"display_values_supported,omitempty"`
 	CodeChallengeMethods           []CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
@@ -494,6 +494,10 @@ type Scope struct {
 	ID string
 	// Matches validates if a requested scope matches the current scope.
 	Matches MatchScopeFunc
+}
+
+func (s Scope) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.ID)
 }
 
 // NewScope creates a scope where the validation logic is simple string comparison.

@@ -18,7 +18,6 @@ import (
 	"github.com/go-jose/go-jose/v4/jwt"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/joseutil"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
@@ -137,66 +136,13 @@ func TestHandleDynamicClient(t *testing.T) {
 
 func TestPolicy(t *testing.T) {
 	ctx := newContext()
-	ctx.Policies = []goidc.AuthnPolicy{
+	policies := []goidc.AuthnPolicy{
 		goidc.NewPolicy("policy_1", nil, nil),
 	}
 
-	policy := ctx.Policy("policy_1")
+	policy := ctx.Policy(policies, "policy_1")
 	if policy.ID != "policy_1" {
 		t.Fatalf("Policy().ID = %q, want %q", policy.ID, "policy_1")
-	}
-}
-
-func TestAvailablePolicy(t *testing.T) {
-	tests := []struct {
-		name     string
-		policies []goidc.AuthnPolicy
-		validate func(*testing.T, goidc.AuthnPolicy, bool)
-	}{
-		{
-			name: "returns first available policy",
-			policies: []goidc.AuthnPolicy{
-				goidc.NewPolicy("unavailable", func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
-					return false
-				}, nil),
-				goidc.NewPolicy("available", func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
-					return true
-				}, nil),
-			},
-			validate: func(t *testing.T, policy goidc.AuthnPolicy, ok bool) {
-				t.Helper()
-				if !ok {
-					t.Fatal("AvailablePolicy() did not find the available policy")
-				}
-				if policy.ID != "available" {
-					t.Fatalf("AvailablePolicy().ID = %q, want %q", policy.ID, "available")
-				}
-			},
-		},
-		{
-			name: "returns false when none available",
-			policies: []goidc.AuthnPolicy{
-				goidc.NewPolicy("unavailable", func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
-					return false
-				}, nil),
-			},
-			validate: func(t *testing.T, policy goidc.AuthnPolicy, ok bool) {
-				t.Helper()
-				if ok {
-					t.Fatalf("AvailablePolicy() found unexpected policy %q", policy.ID)
-				}
-			},
-		},
-	}
-
-	for _, test := range tests {
-		t.Run(test.name, func(t *testing.T) {
-			ctx := newContext()
-			ctx.Policies = test.policies
-
-			policy, ok := ctx.AvailablePolicy(&goidc.AuthnSession{}, &goidc.Client{})
-			test.validate(t, policy, ok)
-		})
 	}
 }
 
@@ -225,25 +171,6 @@ func TestLogoutPolicyHelpers(t *testing.T) {
 		}
 	})
 
-	t.Run("available logout policy", func(t *testing.T) {
-		ctx := newContext()
-		ctx.LogoutPolicies = []goidc.LogoutPolicy{
-			goidc.NewLogoutPolicy("unavailable", func(_ *http.Request, _ *goidc.LogoutSession) bool {
-				return false
-			}, nil),
-			goidc.NewLogoutPolicy("available", func(_ *http.Request, _ *goidc.LogoutSession) bool {
-				return true
-			}, nil),
-		}
-
-		policy, ok := ctx.AvailableLogoutPolicy(&goidc.LogoutSession{})
-		if !ok {
-			t.Fatal("AvailableLogoutPolicy() = false, want true")
-		}
-		if policy.ID != "available" {
-			t.Fatalf("AvailableLogoutPolicy().ID = %q, want %q", policy.ID, "available")
-		}
-	})
 }
 
 func TestBaseURL(t *testing.T) {
@@ -1662,9 +1589,6 @@ func newContext() oidc.Context {
 			},
 			CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
 				return errors.New("ciba init back auth function is not set")
-			},
-			VCIssuerStateFunc: func(context.Context) string {
-				return uuid.NewString()
 			},
 		},
 		Request:  httptest.NewRequest(http.MethodGet, "https://example.com", nil),

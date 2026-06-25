@@ -237,7 +237,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 				client.UserInfoContentEncAlg = goidc.A128CBC_HS256
 				client.JWKS = &goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{encJWK.Public()}}
 
-				ctx.UserInfoEncIsEnabled = true
+				ctx.UserInfoEncEnabled = true
 				ctx.UserInfoKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP}
 				ctx.UserInfoDefaultContentEncAlg = goidc.A128CBC_HS256
 				ctx.UserInfoContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
@@ -284,7 +284,7 @@ func TestHandleUserInfoRequest(t *testing.T) {
 			name: "tls bound token without cert",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client) {
 				ctx, c := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
 					ID: "tls_grant", ClientID: c.ID, Subject: "random_subject",

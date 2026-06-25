@@ -54,7 +54,7 @@ type ClientMeta struct {
 	UserInfoSigAlg                SignatureAlgorithm         `json:"userinfo_signed_response_alg,omitempty"`
 	UserInfoKeyEncAlg             KeyEncryptionAlgorithm     `json:"userinfo_encrypted_response_alg,omitempty"`
 	UserInfoContentEncAlg         ContentEncryptionAlgorithm `json:"userinfo_encrypted_response_enc,omitempty"`
-	JARIsRequired                 bool                       `json:"require_signed_request_object,omitempty"`
+	JARRequired                   bool                       `json:"require_signed_request_object,omitempty"`
 	JARSigAlg                     SignatureAlgorithm         `json:"request_object_signing_alg,omitempty"`
 	JARKeyEncAlg                  KeyEncryptionAlgorithm     `json:"request_object_encryption_alg,omitempty"`
 	JARContentEncAlg              ContentEncryptionAlgorithm `json:"request_object_encryption_enc,omitempty"`
@@ -67,20 +67,20 @@ type ClientMeta struct {
 	TokenIntrospectionAuthnSigAlg SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg,omitempty"`
 	TokenRevocationAuthnMethod    AuthnMethod                `json:"revocation_endpoint_auth_method,omitempty"`
 	TokenRevocationAuthnSigAlg    SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg,omitempty"`
-	DPoPTokenBindingIsRequired    bool                       `json:"dpop_bound_access_tokens,omitempty"`
+	DPoPTokenBindingRequired      bool                       `json:"dpop_bound_access_tokens,omitempty"`
 	TLSSubjectDistinguishedName   string                     `json:"tls_client_auth_subject_dn,omitempty"`
 	// TLSSubjectAlternativeName represents a DNS name.
 	TLSSubjectAlternativeName   string                   `json:"tls_client_auth_san_dns,omitempty"`
 	TLSSubjectAlternativeNameIP string                   `json:"tls_client_auth_san_ip,omitempty"`
-	TLSTokenBindingIsRequired   bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	TLSTokenBindingRequired     bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
 	AuthDetailTypes             []AuthDetailType         `json:"authorization_details_types,omitempty"`
 	DefaultMaxAgeSecs           *int                     `json:"default_max_age,omitempty"`
 	DefaultACRValues            string                   `json:"default_acr_values,omitempty"`
-	PARIsRequired               bool                     `json:"require_pushed_authorization_requests,omitempty"`
+	PARRequired                 bool                     `json:"require_pushed_authorization_requests,omitempty"`
 	CIBATokenDeliveryMode       CIBATokenDeliveryMode    `json:"backchannel_token_delivery_mode,omitempty"`
 	CIBANotificationEndpoint    string                   `json:"backchannel_client_notification_endpoint,omitempty"`
 	CIBAJARSigAlg               SignatureAlgorithm       `json:"backchannel_authentication_request_signing_alg,omitempty"`
-	CIBAUserCodeIsEnabled       bool                     `json:"backchannel_user_code_parameter,omitempty"`
+	CIBAUserCodeEnabled         bool                     `json:"backchannel_user_code_parameter,omitempty"`
 	OrganizationName            string                   `json:"organization_name,omitempty"`
 	PostLogoutRedirectURIs      []string                 `json:"post_logout_redirect_uris,omitempty"`
 	ClientRegistrationTypes     []ClientRegistrationType `json:"client_registration_types,omitempty"`

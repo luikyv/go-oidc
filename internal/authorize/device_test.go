@@ -55,7 +55,7 @@ func TestInitDeviceAuth(t *testing.T) {
 					ClientID:   client.ID,
 					DeviceCode: "random_device_code",
 					UserCode:   "random_user_code",
-					PolicyID:   ctx.Policies[0].ID,
+					PolicyID:   ctx.DevicePolicies[0].ID,
 					ExpiresAt:  session.ExpiresAt,
 					CreatedAt:  session.CreatedAt,
 					Store:      session.Store,
@@ -91,7 +91,7 @@ func TestInitDeviceAuth(t *testing.T) {
 			name: "verification uri complete",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.DeviceAuthVerificationURICompleteIsEnabled = true
+				ctx.DeviceAuthVerificationURICompleteEnabled = true
 				req := request{
 					ClientID: client.ID,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -141,7 +141,7 @@ func TestInitDeviceAuth(t *testing.T) {
 			name: "openid required",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.OpenIDIsRequired = true
+				ctx.OpenIDRequired = true
 				req := request{
 					ClientID: client.ID,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -158,7 +158,7 @@ func TestInitDeviceAuth(t *testing.T) {
 			name: "no policy available",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.Policies = nil
+				ctx.DevicePolicies = nil
 				req := request{
 					ClientID: client.ID,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -374,7 +374,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 			name: "authn in progress keeps the session",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, string) {
 				ctx, client := setUpDevice(t)
-				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
+				ctx.DevicePolicies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 					return goidc.StatusPending, nil
 				}
 				session := saveDeviceSession(t, ctx, client, nil)
@@ -444,7 +444,7 @@ func TestContinueDeviceAuth(t *testing.T) {
 				ctx, client := setUpDevice(t)
 				ctx.AuthManager = storage.NewManager(100)
 				ctx.DeviceAuthManager = storage.NewManager(100)
-				ctx.Policies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
+				ctx.DevicePolicies[0].Authenticate = func(_ http.ResponseWriter, _ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) (goidc.Status, error) {
 					return goidc.StatusFailure, nil
 				}
 				session := saveDeviceSession(t, ctx, client, nil)
@@ -558,7 +558,7 @@ func setUpDevice(t *testing.T) (oidc.Context, *goidc.Client) {
 		"client_secret": {secret},
 	}
 
-	ctx.Policies = []goidc.AuthnPolicy{
+	ctx.DevicePolicies = []goidc.AuthnPolicy{
 		goidc.NewPolicy(
 			"random_policy_id",
 			func(_ *http.Request, _ *goidc.AuthnSession, _ *goidc.Client) bool {
@@ -584,7 +584,7 @@ func saveDeviceSession(t *testing.T, ctx oidc.Context, client *goidc.Client, mut
 	session := newAuthnSession(ctx, goidc.AuthorizationParameters{
 		Scopes: client.ScopeIDs,
 	}, client)
-	session.PolicyID = ctx.Policies[0].ID
+	session.PolicyID = ctx.DevicePolicies[0].ID
 	session.DeviceCode = "random_device_code"
 	session.UserCode = "random_user_code"
 	session.ExpiresAt = session.CreatedAt + ctx.DeviceAuthLifetimeSecs

@@ -32,7 +32,7 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the device_code grant type"))
 	}
 
-	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
+	if ctx.OpenIDRequired && !strutil.ContainsOpenID(req.Scopes) {
 		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "scope openid is required", errors.New("scope openid is required"))
 	}
 
@@ -41,8 +41,14 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 	}
 
 	as := newAuthnSession(ctx, req.AuthorizationParameters, c)
-	policy, ok := ctx.AvailablePolicy(as, c)
-	if !ok {
+	var policy goidc.AuthnPolicy
+	for _, candidate := range ctx.DevicePolicies {
+		if candidate.Setup(ctx.Request, as, c) {
+			policy = candidate
+			break
+		}
+	}
+	if policy.ID == "" {
 		return deviceResponse{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("no authentication policy is available for the device request"))
 	}
 
@@ -61,7 +67,7 @@ func initDeviceAuth(ctx oidc.Context, req request) (deviceResponse, error) {
 		ExpiresIn:       ctx.DeviceAuthLifetimeSecs,
 		Interval:        ctx.DeviceAuthPollingIntervalSecs,
 	}
-	if ctx.DeviceAuthVerificationURICompleteIsEnabled {
+	if ctx.DeviceAuthVerificationURICompleteEnabled {
 		resp.VerificationURIComplete = resp.VerificationURI + "?user_code=" + as.UserCode
 	}
 	return resp, nil
@@ -117,7 +123,7 @@ func authenticateDevice(ctx oidc.Context, as *goidc.AuthnSession) error {
 		return fmt.Errorf("could not load the client for the device session: %w", err)
 	}
 
-	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
+	switch status, authErr := ctx.Policy(ctx.DevicePolicies, as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
 		as.Status = goidc.StatusSuccess
 		if err := ctx.DeviceSaveSession(as); err != nil {

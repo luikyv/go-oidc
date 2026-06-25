@@ -303,7 +303,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 			name: "handler receives request fields",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com"}
 				req.resources = []string{"https://resource.com"}
 				req.audience = []string{"audience1"}
@@ -370,7 +370,7 @@ func TestGenerateExchangeToken(t *testing.T) {
 			name: "client auth required",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)
-				ctx.TokenExchangeClientAuthnIsRequired = true
+				ctx.TokenExchangeClientAuthnRequired = true
 				ctx.Request.PostForm = map[string][]string{}
 				return ctx, req, c
 			},

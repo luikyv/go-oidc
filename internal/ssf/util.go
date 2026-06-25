@@ -109,7 +109,7 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverIsEnabled && len(streams) > 0 {
+	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverEnabled && len(streams) > 0 {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("multiple streams per receiver are not allowed")).WithStatusCode(http.StatusConflict)
 	}
 

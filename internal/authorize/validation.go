@@ -13,7 +13,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/vc"
+	vcutil "github.com/luikyv/go-oidc/internal/vc/util"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -37,7 +37,7 @@ func validateRequestWithPAR(ctx oidc.Context, req request, as *goidc.AuthnSessio
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the request_uri has expired"))
 	}
 
-	if ctx.PARUnregisteredRedirectURIIsEnabled && as.RedirectURI != "" {
+	if ctx.PARUnregisteredRedirectURIEnabled && as.RedirectURI != "" {
 		c = clientWithRedirectURI(c, as.RedirectURI)
 	}
 
@@ -122,7 +122,7 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request_uri is not allowed during PAR"))
 	}
 
-	if ctx.PARUnregisteredRedirectURIIsEnabled && req.RedirectURI != "" {
+	if ctx.PARUnregisteredRedirectURIEnabled && req.RedirectURI != "" {
 		c = clientWithRedirectURI(c, req.RedirectURI)
 	}
 
@@ -141,7 +141,7 @@ func validatePushedRequest(ctx oidc.Context, req request, c *goidc.Client) error
 			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("public clients are not allowed to use pushed authorization requests"))
 		}
 
-		if ctx.PKCEIsEnabled && req.CodeChallenge == "" {
+		if ctx.PKCEEnabled && req.CodeChallenge == "" {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("code_challenge is required for PAR in this profile"))
 		}
 	}
@@ -193,12 +193,12 @@ func validateParams(ctx oidc.Context, params goidc.AuthorizationParameters, c *g
 			errors.New("response_type is required"))
 	}
 
-	if ctx.ResourceIndicatorsIsRequired && params.Resources == nil {
+	if ctx.ResourceIndicatorsRequired && params.Resources == nil {
 		return wrapRedirectionError(goidc.ErrorCodeInvalidTarget, "invalid target", params,
 			errors.New("the resource parameter is required"))
 	}
 
-	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
+	if ctx.OpenIDRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "scope openid is required", params,
 			errors.New("scope openid is required"))
 	}
@@ -341,11 +341,11 @@ func validateRequestURIAsOptional(ctx oidc.Context, params goidc.AuthorizationPa
 		return nil
 	}
 
-	if !ctx.JARByReferenceIsEnabled {
+	if !ctx.JARByReferenceEnabled {
 		return goidc.WrapError(goidc.ErrorCodeRequestURINotSupported, "request_uri_not_supported", errors.New("request_uri is not supported"))
 	}
 
-	if !ctx.JARByReferenceUnregisteredURIIsEnabled && !slices.Contains(c.RequestURIs, params.RequestURI) {
+	if !ctx.JARByReferenceUnregisteredURIEnabled && !slices.Contains(c.RequestURIs, params.RequestURI) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request_uri", errors.New("request_uri is not registered for the client"))
 	}
 
@@ -398,7 +398,7 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 		}
 	}
 
-	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(params.Scopes) {
+	if ctx.OpenIDRequired && !strutil.ContainsOpenID(params.Scopes) {
 		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "scope openid is required", params,
 			errors.New("scope openid is required"))
 	}
@@ -407,12 +407,12 @@ func validateScopesAsOptional(ctx oidc.Context, params goidc.AuthorizationParame
 }
 
 func validatePKCE(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-	if ctx.PKCEIsEnabled && c.IsPublic() && params.CodeChallenge == "" {
+	if ctx.PKCEEnabled && c.IsPublic() && params.CodeChallenge == "" {
 		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request", params,
 			errors.New("pkce is required for public clients"))
 	}
 
-	if ctx.PKCEIsRequired && params.CodeChallenge == "" {
+	if ctx.PKCERequired && params.CodeChallenge == "" {
 		return wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request", params,
 			errors.New("code_challenge is required"))
 	}
@@ -471,7 +471,7 @@ func validateResponseModeAsOptional(ctx oidc.Context, params goidc.Authorization
 }
 
 func validateAuthDetailsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, c *goidc.Client) error {
-	if !ctx.RARIsEnabled || params.AuthDetails == nil {
+	if !ctx.RAREnabled || params.AuthDetails == nil {
 		return nil
 	}
 
@@ -516,7 +516,7 @@ func validateACRValuesAsOptional(ctx oidc.Context, params goidc.AuthorizationPar
 }
 
 func validateResourcesAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
-	if !ctx.ResourceIndicatorsIsEnabled || params.Resources == nil {
+	if !ctx.ResourceIndicatorsEnabled || params.Resources == nil {
 		return nil
 	}
 
@@ -550,7 +550,7 @@ func validateIDTokenHintAsOptional(ctx oidc.Context, params goidc.AuthorizationP
 }
 
 func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParameters) error {
-	if !ctx.DPoPIsEnabled {
+	if !ctx.DPoPEnabled {
 		return nil
 	}
 
@@ -567,11 +567,11 @@ func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParamet
 }
 
 func validateVerifiableCredentialsAsOptional(ctx oidc.Context, params goidc.AuthorizationParameters, _ *goidc.Client) error {
-	if !ctx.VCIsEnabled {
+	if !ctx.VCIEnabled {
 		return nil
 	}
 
-	if _, _, err := vc.Resolve(ctx, vc.Request{
+	if _, _, err := vcutil.Resolve(ctx, vcutil.Request{
 		Scopes:    params.Scopes,
 		Details:   params.AuthDetails,
 		Resources: params.Resources,

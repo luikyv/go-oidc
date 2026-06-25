@@ -95,7 +95,7 @@ func TestValidatePKCE(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := oidctest.NewContext(t)
-			ctx.PKCEIsEnabled = test.name != "disabled"
+			ctx.PKCEEnabled = test.name != "disabled"
 			ctx.PKCEDefaultChallengeMethod = goidc.CodeChallengeMethodSHA256
 			ctx.PKCEChallengeMethods = []goidc.CodeChallengeMethod{
 				goidc.CodeChallengeMethodPlain,
@@ -140,9 +140,9 @@ func TestValidateBindingRequirement(t *testing.T) {
 		{
 			name: "required without binding",
 			config: func(ctx *oidc.Context) {
-				ctx.TokenBindingIsRequired = true
-				ctx.DPoPIsEnabled = false
-				ctx.MTLSTokenBindingIsEnabled = false
+				ctx.TokenBindingRequired = true
+				ctx.DPoPEnabled = false
+				ctx.MTLSTokenBindingEnabled = false
 			},
 			wantErr: goidc.ErrorCodeInvalidRequest,
 		},
@@ -186,9 +186,9 @@ func TestValidateBinding_DisabledFeatureForBoundGrant(t *testing.T) {
 		{
 			name: "dpop bound grant with dpop disabled",
 			config: func(ctx *oidc.Context, c *goidc.Client) bindindValidationOptions {
-				ctx.DPoPIsEnabled = false
+				ctx.DPoPEnabled = false
 				return bindindValidationOptions{
-					dpopIsRequired:    true,
+					dpopRequired:      true,
 					dpopJWKThumbprint: "bound_thumbprint",
 				}
 			},
@@ -197,9 +197,9 @@ func TestValidateBinding_DisabledFeatureForBoundGrant(t *testing.T) {
 		{
 			name: "mtls bound grant with mtls disabled",
 			config: func(ctx *oidc.Context, c *goidc.Client) bindindValidationOptions {
-				ctx.MTLSTokenBindingIsEnabled = false
+				ctx.MTLSTokenBindingEnabled = false
 				return bindindValidationOptions{
-					tlsIsRequired:     true,
+					tlsRequired:       true,
 					tlsCertThumbprint: "bound_thumbprint",
 				}
 			},
@@ -289,14 +289,14 @@ func TestValidateResources(t *testing.T) {
 		{
 			name: "disabled",
 			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
-				ctx.ResourceIndicatorsIsEnabled = false
+				ctx.ResourceIndicatorsEnabled = false
 				return request{resources: []string{"https://resource.com"}}, nil
 			},
 		},
 		{
 			name: "valid resource",
 			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com", "https://other.com"}
 				return request{resources: []string{"https://resource.com"}}, goidc.Resources{"https://resource.com", "https://other.com"}
 			},
@@ -304,7 +304,7 @@ func TestValidateResources(t *testing.T) {
 		{
 			name: "invalid resource",
 			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				return request{resources: []string{"https://unknown.com"}}, goidc.Resources{"https://resource.com"}
 			},
 			wantErr: goidc.ErrorCodeInvalidTarget,

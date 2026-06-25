@@ -152,7 +152,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			name: "resource indicators",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
-				ctx.ResourceIndicatorsIsEnabled = true
+				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com"}
 				req.resources = []string{"https://resource.com"}
 				return ctx, req, c
@@ -183,7 +183,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			name: "auth details",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				req.authDetails = []goidc.AuthDetail{
 					{
@@ -226,7 +226,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			name: "mtls binding",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: []byte("test_client_cert")}, nil
 				}
@@ -275,7 +275,7 @@ func TestGenerateJWTBearerToken(t *testing.T) {
 			name: "client auth required",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t, "random_subject")
-				ctx.JWTBearerClientAuthnIsRequired = true
+				ctx.JWTBearerClientAuthnRequired = true
 				ctx.Request.PostForm = map[string][]string{}
 				return ctx, req, c
 			},

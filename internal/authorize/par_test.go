@@ -65,7 +65,7 @@ func TestPushAuth(t *testing.T) {
 		manager := oidctest.Manager(t, ctx)
 		ctx.AuthManager = manager
 		ctx.PARManager = manager
-		ctx.OpenIDFedIsEnabled = true
+		ctx.OpenIDFedEnabled = true
 		ctx.OpenIDFedManager = manager
 		ctx.OpenIDFedTrustedAnchors = []string{federationTrustAnchorID}
 		ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
@@ -74,7 +74,7 @@ func TestPushAuth(t *testing.T) {
 		ctx.OpenIDFedJWKSFunc = func(context.Context) (goidc.JSONWebKeySet, error) {
 			return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{federationOPJWK}}, nil
 		}
-		ctx.JARIsEnabled = true
+		ctx.JAREnabled = true
 		ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 		ctx.AuthSessionIDFunc = func(_ context.Context) string {
 			return "random_authn_session_id"
@@ -243,7 +243,7 @@ func TestPushAuth(t *testing.T) {
 			name: "with jar",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -309,8 +309,8 @@ func TestPushAuth(t *testing.T) {
 			name: "jar required without request object",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.JARIsEnabled = true
-				ctx.JARIsRequired = true
+				ctx.JAREnabled = true
+				ctx.JARRequired = true
 				req := request{
 					ClientID: client.ID,
 					AuthorizationParameters: goidc.AuthorizationParameters{
@@ -332,7 +332,7 @@ func TestPushAuth(t *testing.T) {
 			name: "invalid jar request object",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
 				client.JWKS = &goidc.JSONWebKeySet{
@@ -357,7 +357,7 @@ func TestPushAuth(t *testing.T) {
 			name: "jar validation error",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)
@@ -653,7 +653,7 @@ func TestPushAuth(t *testing.T) {
 				ctx.PARIDFunc = func(_ context.Context) string {
 					return "random_pushed_auth_req_id"
 				}
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = manager
 				ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeExplicit}
 				ctx.AuthnMethodPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
@@ -694,7 +694,7 @@ func TestPushAuth(t *testing.T) {
 				ctx.PARIDFunc = func(_ context.Context) string {
 					return "random_pushed_auth_req_id"
 				}
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = manager
 				ctx.OpenIDFedClientRegTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic}
 				ctx.AuthnMethodPrivateKeyJWTSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}

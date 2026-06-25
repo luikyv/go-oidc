@@ -896,7 +896,7 @@ func TestFetchStream_NotFound(t *testing.T) {
 func TestFetchStreams(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFMultipleStreamsPerReceiverIsEnabled = true
+	ctx.SSFMultipleStreamsPerReceiverEnabled = true
 	_ = createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 	_ = createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
@@ -1266,7 +1266,7 @@ func TestPublishEvent_StreamNotFound(t *testing.T) {
 func TestCreateStream_MultipleStreamsNotAllowed(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFMultipleStreamsPerReceiverIsEnabled = false
+	ctx.SSFMultipleStreamsPerReceiverEnabled = false
 	_ = createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	// When - try to create a second stream.

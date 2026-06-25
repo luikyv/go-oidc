@@ -71,7 +71,7 @@ func Introspect(ctx oidc.Context, tkn string, c *goidc.Client) (goidc.TokenInfo,
 	}
 
 	info, grant, err := func() (goidc.TokenInfo, *goidc.Grant, error) {
-		if !ctx.OpaqueTokenIsEnabled {
+		if !ctx.OpaqueTokenEnabled {
 			return goidc.TokenInfo{}, nil, goidc.ErrNotFound
 		}
 

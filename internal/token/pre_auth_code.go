@@ -7,7 +7,7 @@ import (
 
 	"github.com/luikyv/go-oidc/internal/client"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/vc"
+	vcutil "github.com/luikyv/go-oidc/internal/vc/util"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -21,7 +21,7 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
-	if err != nil && (!ctx.VCPreAuthCodeAnonymousAccessIsEnabled || !errors.Is(err, client.ErrClientNotIdentified)) {
+	if err != nil && (!ctx.VCIPreAuthCodeAnonymousAccessEnabled || !errors.Is(err, client.ErrClientNotIdentified)) {
 		return response{}, err
 	}
 
@@ -29,7 +29,7 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 	// required settings to proceed with the execution.
 	if c == nil {
 		var scopes []string
-		for _, iss := range ctx.VCIssuers {
+		for _, iss := range ctx.VCIIssuers {
 			for _, config := range iss.Configurations {
 				if config.Scope.ID != "" {
 					scopes = append(scopes, config.Scope.ID)
@@ -64,7 +64,7 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	issuer, _, err := vc.Resolve(ctx, vc.Request{
+	issuer, _, err := vcutil.Resolve(ctx, vcutil.Request{
 		Scopes:    req.scopes,
 		Details:   req.authDetails,
 		Resources: req.resources,
@@ -73,10 +73,11 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	result, err := ctx.VCHandlePreAuthCode(req.preAuthCode, goidc.VCPreAuthCodeOptions{
-		Issuer: issuer.ID,
+	opts := goidc.VCPreAuthCodeOptions{
+		Issuer: issuer.Issuer,
 		TxCode: req.txCode,
-	})
+	}
+	result, err := ctx.VCIPreAuthCodeHandle(req.preAuthCode, opts)
 	if err != nil {
 		return response{}, err
 	}

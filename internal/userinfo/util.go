@@ -78,7 +78,7 @@ func handleUserInfoRequest(ctx oidc.Context) (response, error) {
 	}
 
 	// If the client doesn't require the user info to be encrypted, just return the claims as a signed JWT.
-	if !ctx.UserInfoEncIsEnabled || c.UserInfoKeyEncAlg == "" {
+	if !ctx.UserInfoEncEnabled || c.UserInfoKeyEncAlg == "" {
 		return response{
 			jwtClaims: claimsJWS,
 		}, nil

@@ -56,10 +56,10 @@ func NewGrant(ctx oidc.Context, c *goidc.Client, opts GrantOptions) (*goidc.Gran
 		AuthParams:          opts.AuthParams,
 		CreatedAt:           timeutil.TimestampNow(),
 	}
-	if ctx.RARIsEnabled {
+	if ctx.RAREnabled {
 		grant.AuthDetails = opts.AuthDetails
 	}
-	if ctx.ResourceIndicatorsIsEnabled {
+	if ctx.ResourceIndicatorsEnabled {
 		grant.Resources = opts.Resources
 	}
 	if err := ctx.HandleGrant(opts.Type, grant); err != nil {
@@ -191,8 +191,8 @@ func newQueryRequest(req *http.Request) queryRequest {
 }
 
 type bindindValidationOptions struct {
-	tlsIsRequired     bool
+	tlsRequired       bool
 	tlsCertThumbprint string
-	dpopIsRequired    bool
+	dpopRequired      bool
 	dpopJWKThumbprint string
 }

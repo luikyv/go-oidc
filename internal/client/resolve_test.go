@@ -88,7 +88,7 @@ func TestResolve(t *testing.T) {
 		"openid scope required when server enforces it": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.OpenIDIsRequired = true
+				ctx.OpenIDRequired = true
 				c, _ := oidctest.NewClient(t)
 				c.ScopeIDs = "scope1" // no openid
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -220,7 +220,7 @@ func TestResolve(t *testing.T) {
 		"introspection authn must match token authn": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.TokenIntrospectionIsEnabled = true
+				ctx.TokenIntrospectionEnabled = true
 				c, _ := oidctest.NewClient(t)
 				// c.TokenAuthnMethod is secret_post; introspection uses a different method.
 				c.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretBasic
@@ -232,7 +232,7 @@ func TestResolve(t *testing.T) {
 		"revocation authn must match token authn": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.TokenRevocationIsEnabled = true
+				ctx.TokenRevocationEnabled = true
 				c, _ := oidctest.NewClient(t)
 				c.TokenRevocationAuthnMethod = goidc.AuthnMethodSecretBasic
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -243,7 +243,7 @@ func TestResolve(t *testing.T) {
 		"introspection fields cleared when introspection disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.TokenIntrospectionIsEnabled is false by default.
+				// ctx.TokenIntrospectionEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.TokenIntrospectionAuthnMethod = goidc.AuthnMethodSecretPost
 				c.TokenIntrospectionAuthnSigAlg = goidc.PS256
@@ -350,7 +350,7 @@ func TestResolve(t *testing.T) {
 		"native app: localhost allowed when server permits": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.LocalhostRedirectURIIsEnabled = true
+				ctx.LocalhostRedirectURIEnabled = true
 				c, _ := oidctest.NewClient(t)
 				c.ApplicationType = goidc.ApplicationTypeNative
 				c.RedirectURIs = []string{"http://localhost/cb"}
@@ -439,7 +439,7 @@ func TestResolve(t *testing.T) {
 		"jar sig alg not supported": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 				c, _ := oidctest.NewClient(t)
 				c.JARSigAlg = goidc.PS256 // not in [RS256]
@@ -451,18 +451,18 @@ func TestResolve(t *testing.T) {
 		"jar fields cleared when jar disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.JARIsEnabled is false by default.
+				// ctx.JAREnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.JARSigAlg = goidc.RS256
-				c.JARIsRequired = true
+				c.JARRequired = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
 				if c.JARSigAlg != "" {
 					t.Errorf("got %s, want empty", c.JARSigAlg)
 				}
-				if c.JARIsRequired {
-					t.Errorf("got %v, want false", c.JARIsRequired)
+				if c.JARRequired {
+					t.Errorf("got %v, want false", c.JARRequired)
 				}
 			},
 		},
@@ -470,9 +470,9 @@ func TestResolve(t *testing.T) {
 		"jar enc fields cleared when jar enc disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.JARIsEnabled = true
+				ctx.JAREnabled = true
 				ctx.JARSigAlgs = []goidc.SignatureAlgorithm{goidc.PS256}
-				// ctx.JAREncIsEnabled is false by default.
+				// ctx.JAREncEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.JARKeyEncAlg = goidc.RSA_OAEP
 				c.JARContentEncAlg = goidc.A256GCM
@@ -491,7 +491,7 @@ func TestResolve(t *testing.T) {
 		"jarm fields cleared when jarm disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.JARMIsEnabled is false by default.
+				// ctx.JARMEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.JARMSigAlg = goidc.RS256
 				c.JARMKeyEncAlg = goidc.RSA_OAEP
@@ -514,7 +514,7 @@ func TestResolve(t *testing.T) {
 		"jarm sig alg not supported": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.JARMIsEnabled = true
+				ctx.JARMEnabled = true
 				ctx.JARMSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 				c, _ := oidctest.NewClient(t)
 				c.JARMSigAlg = goidc.PS256 // not in [RS256]
@@ -528,7 +528,7 @@ func TestResolve(t *testing.T) {
 		"id token enc requires key enc alg when enc alg set": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.IDTokenEncIsEnabled = true
+				ctx.IDTokenEncEnabled = true
 				c, _ := oidctest.NewClient(t)
 				// Set content enc alg without key enc alg.
 				c.IDTokenContentEncAlg = goidc.A256GCM
@@ -540,7 +540,7 @@ func TestResolve(t *testing.T) {
 		"id token enc fields cleared when enc disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.IDTokenEncIsEnabled is false by default.
+				// ctx.IDTokenEncEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.IDTokenKeyEncAlg = goidc.RSA_OAEP
 				c.IDTokenContentEncAlg = goidc.A256GCM
@@ -559,7 +559,7 @@ func TestResolve(t *testing.T) {
 		"unsupported auth detail type": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1"}
 				c, _ := oidctest.NewClient(t)
 				c.AuthDetailTypes = []goidc.AuthDetailType{"invalid_type"}
@@ -571,7 +571,7 @@ func TestResolve(t *testing.T) {
 		"auth detail types cleared when rar disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.RARIsEnabled is false by default.
+				// ctx.RAREnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.AuthDetailTypes = []goidc.AuthDetailType{"type1"}
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -588,14 +588,14 @@ func TestResolve(t *testing.T) {
 		"dpop binding cleared when dpop disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.DPoPIsEnabled is false by default.
+				// ctx.DPoPEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
-				c.DPoPTokenBindingIsRequired = true
+				c.DPoPTokenBindingRequired = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
-				if c.DPoPTokenBindingIsRequired {
-					t.Errorf("got %v, want false", c.DPoPTokenBindingIsRequired)
+				if c.DPoPTokenBindingRequired {
+					t.Errorf("got %v, want false", c.DPoPTokenBindingRequired)
 				}
 			},
 		},
@@ -603,14 +603,14 @@ func TestResolve(t *testing.T) {
 		"tls binding cleared when mtls disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.MTLSIsEnabled is false by default.
+				// ctx.MTLSEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
-				c.TLSTokenBindingIsRequired = true
+				c.TLSTokenBindingRequired = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
-				if c.TLSTokenBindingIsRequired {
-					t.Errorf("got %v, want false", c.TLSTokenBindingIsRequired)
+				if c.TLSTokenBindingRequired {
+					t.Errorf("got %v, want false", c.TLSTokenBindingRequired)
 				}
 			},
 		},
@@ -618,7 +618,7 @@ func TestResolve(t *testing.T) {
 		"post logout uris cleared when logout disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.LogoutIsEnabled is false by default.
+				// ctx.LogoutEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.PostLogoutRedirectURIs = []string{"https://example.com/logout"}
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -633,7 +633,7 @@ func TestResolve(t *testing.T) {
 		"post logout uris validated when logout enabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.LogoutIsEnabled = true
+				ctx.LogoutEnabled = true
 				c, _ := oidctest.NewClient(t)
 				c.PostLogoutRedirectURIs = []string{"http://example.com/logout"} // not https
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -644,7 +644,7 @@ func TestResolve(t *testing.T) {
 		"credential offer endpoint cleared when vc disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.VCIsEnabled is false by default.
+				// ctx.VCIEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.CredentialOfferEndpoint = "https://example.com/offer"
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
@@ -659,14 +659,14 @@ func TestResolve(t *testing.T) {
 		"par required cleared when par disabled": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				// ctx.PARIsEnabled is false by default.
+				// ctx.PAREnabled is false by default.
 				c, _ := oidctest.NewClient(t)
-				c.PARIsRequired = true
+				c.PARRequired = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
-				if c.PARIsRequired {
-					t.Errorf("got %v, want false", c.PARIsRequired)
+				if c.PARRequired {
+					t.Errorf("got %v, want false", c.PARRequired)
 				}
 			},
 		},
@@ -840,16 +840,16 @@ func TestResolve(t *testing.T) {
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
 				}
-				// ctx.CIBAUserCodeIsEnabled is false by default.
+				// ctx.CIBAUserCodeEnabled is false by default.
 				c, _ := oidctest.NewClient(t)
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
 				c.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
-				c.CIBAUserCodeIsEnabled = true
+				c.CIBAUserCodeEnabled = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
-				if c.CIBAUserCodeIsEnabled {
-					t.Errorf("got %v, want false (server does not support user codes)", c.CIBAUserCodeIsEnabled)
+				if c.CIBAUserCodeEnabled {
+					t.Errorf("got %v, want false (server does not support user codes)", c.CIBAUserCodeEnabled)
 				}
 			},
 		},
@@ -863,7 +863,7 @@ func TestResolve(t *testing.T) {
 					goidc.CIBADeliveryModePoll,
 					goidc.CIBADeliveryModePush,
 				}
-				ctx.CIBAJARIsEnabled = true
+				ctx.CIBAJAREnabled = true
 				ctx.CIBAJARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 				c, _ := oidctest.NewClient(t)
 				c.GrantTypes = append(c.GrantTypes, goidc.GrantCIBA)
@@ -883,7 +883,7 @@ func TestResolve(t *testing.T) {
 				c.CIBATokenDeliveryMode = goidc.CIBADeliveryModePoll
 				c.CIBANotificationEndpoint = "https://example.com/notify"
 				c.CIBAJARSigAlg = goidc.RS256
-				c.CIBAUserCodeIsEnabled = true
+				c.CIBAUserCodeEnabled = true
 				return ctx, &client.Meta{ClientMeta: c.ClientMeta}
 			},
 			validate: func(t *testing.T, c *client.Meta) {
@@ -896,8 +896,8 @@ func TestResolve(t *testing.T) {
 				if c.CIBAJARSigAlg != "" {
 					t.Errorf("got %s, want empty", c.CIBAJARSigAlg)
 				}
-				if c.CIBAUserCodeIsEnabled {
-					t.Errorf("got %v, want false", c.CIBAUserCodeIsEnabled)
+				if c.CIBAUserCodeEnabled {
+					t.Errorf("got %v, want false", c.CIBAUserCodeEnabled)
 				}
 			},
 		},
@@ -1036,7 +1036,7 @@ func TestResolve(t *testing.T) {
 		"choice resolved to first server-supported value": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.RPMetadataChoicesIsEnabled = true
+				ctx.RPMetadataChoicesEnabled = true
 				c, _ := oidctest.NewClient(t)
 				cc := &client.Meta{ClientMeta: c.ClientMeta}
 				// Offer PS256 as the choices list; server supports PS256.
@@ -1053,7 +1053,7 @@ func TestResolve(t *testing.T) {
 		"current value must be in choices list": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.RPMetadataChoicesIsEnabled = true
+				ctx.RPMetadataChoicesEnabled = true
 				c, _ := oidctest.NewClient(t)
 				cc := &client.Meta{ClientMeta: c.ClientMeta}
 				// Current is PS256 but choices list only contains RS256.
@@ -1067,7 +1067,7 @@ func TestResolve(t *testing.T) {
 		"no supported choice returns error": {
 			setup: func() (oidc.Context, *client.Meta) {
 				ctx := oidctest.NewContext(t)
-				ctx.RPMetadataChoicesIsEnabled = true
+				ctx.RPMetadataChoicesEnabled = true
 				// ctx.IDTokenSigAlgs = [PS256]; client offers only RS256.
 				c, _ := oidctest.NewClient(t)
 				cc := &client.Meta{ClientMeta: c.ClientMeta}

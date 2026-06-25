@@ -34,8 +34,8 @@ import (
 )
 
 type Provider struct {
-	config                     oidc.Configuration
-	profileValidationIsEnabled bool
+	config                   oidc.Configuration
+	profileValidationEnabled bool
 }
 
 type Config struct {
@@ -97,25 +97,25 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		return nil, fmt.Errorf("default authn method %q is not among the enabled authn methods", op.config.AuthnMethodDefault)
 	}
 
-	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
+	if !op.config.MTLSEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
 		return nil, errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
 	}
 
-	if op.config.MTLSTokenBindingIsEnabled && !op.config.MTLSIsEnabled {
+	if op.config.MTLSTokenBindingEnabled && !op.config.MTLSEnabled {
 		return nil, errors.New("mtls must be enabled if tls token binding is enabled")
 	}
 
-	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
+	if op.config.TokenBindingRequired && !op.config.DPoPEnabled && !op.config.MTLSTokenBindingEnabled {
 		return nil, errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}
 
-	if op.config.PARIsEnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+	if op.config.PAREnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		return nil, errors.New("par cannot be enabled without authorization code grant")
 	}
 
-	if op.config.JARByReferenceUnregisteredURIIsEnabled && !op.config.JARByReferenceIsEnabled {
+	if op.config.JARByReferenceUnregisteredURIEnabled && !op.config.JARByReferenceEnabled {
 		return nil, errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
 	}
 
@@ -125,7 +125,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		return nil, errors.New("dcr secret lifetime requires a secret-based token authentication method")
 	}
 
-	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
+	if op.config.DCRSecretRotationEnabled && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
@@ -138,7 +138,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
 
 	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(inmemoryManager))
-	if op.config.OpaqueTokenIsEnabled {
+	if op.config.OpaqueTokenEnabled {
 		op.config.OpaqueTokenManager = nonZeroOrDefault(op.config.OpaqueTokenManager, goidc.OpaqueTokenManager(inmemoryManager))
 		op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
 	}
@@ -206,7 +206,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 
 	op.config.AuthnMethods = nonZeroOrDefault(op.config.AuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
 
-	if op.config.DCRIsEnabled {
+	if op.config.DCREnabled {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(inmemoryManager))
 		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
 		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
@@ -215,7 +215,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.DCRRegistrationTokenFunc = nonZeroOrDefault(op.config.DCRRegistrationTokenFunc, goidc.RandomFunc(defaultDCRRegistrationTokenFunc))
 	}
 
-	if op.config.PARIsEnabled {
+	if op.config.PAREnabled {
 		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(inmemoryManager))
 		op.config.PARHandleSessionFunc = nonZeroOrDefault(op.config.PARHandleSessionFunc, goidc.HandleSessionFunc(defaultPARHandleSessionFunc))
 		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
@@ -223,11 +223,11 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
 
-	if op.config.JAREncIsEnabled {
+	if op.config.JAREncEnabled {
 		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.JARMIsEnabled {
+	if op.config.JARMEnabled {
 		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
 		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
 		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
@@ -235,28 +235,28 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		}
 	}
 
-	if op.config.JARMEncIsEnabled {
+	if op.config.JARMEncEnabled {
 		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
 		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
 			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.TokenIntrospectionIsEnabled {
+	if op.config.TokenIntrospectionEnabled {
 		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
 		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenIntrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
 	}
 
-	if op.config.TokenRevocationIsEnabled {
+	if op.config.TokenRevocationEnabled {
 		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
 		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
 	}
 
-	if op.config.IDTokenEncIsEnabled {
+	if op.config.IDTokenEncEnabled {
 		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
 		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.UserInfoEncIsEnabled {
+	if op.config.UserInfoEncEnabled {
 		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
 		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
@@ -288,7 +288,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
 	}
 
-	if op.config.OpenIDFedIsEnabled {
+	if op.config.OpenIDFedEnabled {
 		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(inmemoryManager))
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{op.config.OpenIDFedSigAlg})
@@ -306,14 +306,14 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		}
 	}
 
-	if op.config.LogoutIsEnabled {
+	if op.config.LogoutEnabled {
 		op.config.LogoutManager = nonZeroOrDefault(op.config.LogoutManager, goidc.LogoutManager(inmemoryManager))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
 	}
 
-	if op.config.SSFIsEnabled {
+	if op.config.SSFEnabled {
 		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
@@ -339,22 +339,27 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		}
 	}
 
-	if op.config.RARIsEnabled {
+	if op.config.RAREnabled {
 		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
 		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
 	}
 
-	if op.config.MTLSIsEnabled {
+	if op.config.MTLSEnabled {
 		op.config.ClientCertFunc = nonZeroOrDefault(op.config.ClientCertFunc, goidc.ClientCertFunc(defaultClientCertFunc))
 	}
 
-	if op.config.VCIsEnabled {
-		op.config.VCOfferIDFunc = nonZeroOrDefault(op.config.VCOfferIDFunc, defaultSessionIDFunc)
-		op.config.VCIssuerStateFunc = nonZeroOrDefault(op.config.VCIssuerStateFunc, defaultSessionIDFunc)
-		op.config.VCHandlePreAuthCodeFunc = nonZeroOrDefault(op.config.VCHandlePreAuthCodeFunc, goidc.VCHandlePreAuthCodeFunc(defaultVCHandlePreAuthCodeFunc))
+	if op.config.VCIEnabled {
+		if op.config.VCISelfOffersEnabled {
+			op.config.VCISelfOfferManager = nonZeroOrDefault(op.config.VCISelfOfferManager, goidc.VCOfferManager(inmemoryManager))
+			op.config.VCISelfOfferIDFunc = nonZeroOrDefault(op.config.VCISelfOfferIDFunc, defaultSessionIDFunc)
+		}
+
+		if op.config.VCIIssuerStateEnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+			return nil, errors.New("WithVCIIssuerState requires the authorization code grant to be enabled")
+		}
 	}
 
-	if !op.profileValidationIsEnabled {
+	if !op.profileValidationEnabled {
 		return op, nil
 	}
 
@@ -375,7 +380,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 			return nil, errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
 		}
 
-		if !op.config.TokenBindingIsRequired && !op.config.DPoPIsRequired && !op.config.MTLSTokenBindingIsRequired {
+		if !op.config.TokenBindingRequired && !op.config.DPoPRequired && !op.config.MTLSTokenBindingRequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
 		}
 
@@ -397,11 +402,11 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 			return nil, errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
 		}
 
-		if !op.config.PARIsRequired {
+		if !op.config.PARRequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
 		}
 
-		if !op.config.PKCEIsRequired {
+		if !op.config.PKCERequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be required")
 		}
 
@@ -411,7 +416,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 			return nil, errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
 		}
 
-		if !op.config.IssuerRespParamIsEnabled {
+		if !op.config.IssuerRespParamEnabled {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
 		}
 
@@ -464,10 +469,9 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 	return client.Client(oidc.NewContext(ctx, &op.config), id)
 }
 
-func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
+func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	info, _, err := token.Introspect(oidcCtx, tkn, nil)
-	return info, err
+	return token.Introspect(oidcCtx, tkn, nil)
 }
 
 // IDToken parses and validates an ID token issued by this provider, returning

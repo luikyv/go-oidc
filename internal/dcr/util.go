@@ -85,7 +85,7 @@ func update(ctx oidc.Context, id, tkn string, req request) (response, error) {
 	c.ClientMeta = req.ClientMeta
 
 	var regToken string
-	if ctx.DCRTokenRotationIsEnabled {
+	if ctx.DCRTokenRotationEnabled {
 		regToken = ctx.RegistrationAccessToken()
 		c.RegistrationToken = regToken
 	}
@@ -93,7 +93,7 @@ func update(ctx oidc.Context, id, tkn string, req request) (response, error) {
 	var secret string
 	var secretExpiresAt *int
 	if c.TokenAuthnMethod == goidc.AuthnMethodSecretBasic || c.TokenAuthnMethod == goidc.AuthnMethodSecretPost || c.TokenAuthnMethod == goidc.AuthnMethodSecretJWT {
-		if c.Secret == "" || ctx.DCRSecretRotationIsEnabled {
+		if c.Secret == "" || ctx.DCRSecretRotationEnabled {
 			secret = ctx.ClientSecret()
 			c.Secret = secret
 
@@ -132,14 +132,14 @@ func fetch(ctx oidc.Context, id, tkn string) (response, error) {
 	}
 
 	var regToken string
-	if ctx.DCRTokenRotationIsEnabled {
+	if ctx.DCRTokenRotationEnabled {
 		regToken = ctx.RegistrationAccessToken()
 		c.RegistrationToken = regToken
 	}
 
 	var secret string
 	var secretExpiresAt *int
-	if (c.TokenAuthnMethod == goidc.AuthnMethodSecretBasic || c.TokenAuthnMethod == goidc.AuthnMethodSecretPost || c.TokenAuthnMethod == goidc.AuthnMethodSecretJWT) && ctx.DCRSecretRotationIsEnabled {
+	if (c.TokenAuthnMethod == goidc.AuthnMethodSecretBasic || c.TokenAuthnMethod == goidc.AuthnMethodSecretPost || c.TokenAuthnMethod == goidc.AuthnMethodSecretJWT) && ctx.DCRSecretRotationEnabled {
 		secret = ctx.ClientSecret()
 		c.Secret = secret
 

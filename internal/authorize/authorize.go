@@ -13,7 +13,7 @@ import (
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/internal/token"
-	"github.com/luikyv/go-oidc/internal/vc"
+	vcutil "github.com/luikyv/go-oidc/internal/vc/util"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -24,7 +24,7 @@ func initAuth(ctx oidc.Context, req request) error {
 
 	var shouldRegisterFedClient bool
 	c, err := func() (*goidc.Client, error) {
-		if !ctx.OpenIDFedIsEnabled {
+		if !ctx.OpenIDFedEnabled {
 			return client.Client(ctx, req.ClientID)
 		}
 
@@ -65,7 +65,7 @@ func initAuth(ctx oidc.Context, req request) error {
 	}
 
 	as, err := func() (*goidc.AuthnSession, error) {
-		par := ctx.PARIsEnabled && (ctx.PARIsRequired || c.PARIsRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
+		par := ctx.PAREnabled && (ctx.PARRequired || c.PARRequired || strings.HasPrefix(req.RequestURI, parRequestURIPrefix))
 		if par {
 			if req.RequestURI == "" {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request_uri is required"))
@@ -100,7 +100,7 @@ func initAuth(ctx oidc.Context, req request) error {
 		}
 
 		// The jar requirement comes after the par one, because the client may have sent the jar during par.
-		jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "" || (ctx.JARByReferenceIsEnabled && req.RequestURI != ""))
+		jar := ctx.JAREnabled && (ctx.JARRequired || c.JARRequired || req.RequestObject != "" || (ctx.JARByReferenceEnabled && req.RequestURI != ""))
 		if jar {
 			var jar request
 			switch {
@@ -111,7 +111,7 @@ func initAuth(ctx oidc.Context, req request) error {
 				if err != nil {
 					return nil, err
 				}
-			case ctx.JARByReferenceIsEnabled && req.RequestURI != "":
+			case ctx.JARByReferenceEnabled && req.RequestURI != "":
 				jar, err = jarFromRequestURI(ctx, req.RequestURI, c)
 				if err != nil {
 					return nil, err
@@ -145,8 +145,14 @@ func initAuth(ctx oidc.Context, req request) error {
 		return redirectError(ctx, err, c)
 	}
 
-	policy, ok := ctx.AvailablePolicy(as, c)
-	if !ok {
+	var policy goidc.AuthnPolicy
+	for _, candidate := range ctx.AuthPolicies {
+		if candidate.Setup(ctx.Request, as, c) {
+			policy = candidate
+			break
+		}
+	}
+	if policy.ID == "" {
 		return redirectError(ctx, wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request", as.AuthorizationParameters,
 			errors.New("no authentication policy is available for the authorization request")), c)
 	}
@@ -159,8 +165,8 @@ func initAuth(ctx oidc.Context, req request) error {
 		as.IDTokenHintClaims = &idTkn
 	}
 
-	if ctx.VCIsEnabled {
-		issuer, configIDs, err := vc.Resolve(ctx, vc.Request{
+	if ctx.VCIEnabled {
+		issuer, configIDs, err := vcutil.Resolve(ctx, vcutil.Request{
 			Scopes:    as.Scopes,
 			Details:   as.AuthDetails,
 			Resources: as.Resources,
@@ -172,12 +178,32 @@ func initAuth(ctx oidc.Context, req request) error {
 			}
 			return fmt.Errorf("could not resolve verifiable credential metadata for the authorization request: %w", err)
 		}
+
 		if len(configIDs) > 0 {
+			if ctx.VCIIssuerStateEnabled && as.IssuerState != "" {
+				result, err := ctx.VCIIssuerStateHandle(as.IssuerState, goidc.VCIssuerOptions{Issuer: issuer.Issuer})
+				if err != nil {
+					return redirectError(ctx, wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request", as.AuthorizationParameters, err), c)
+				}
+				as.Store = result.Store
+
+				authorizedIDs := make(map[goidc.VCConfigurationID]struct{}, len(result.ConfigurationIDs))
+				for _, id := range result.ConfigurationIDs {
+					authorizedIDs[id] = struct{}{}
+				}
+				for _, id := range configIDs {
+					if _, ok := authorizedIDs[id]; !ok {
+						return redirectError(ctx, wrapRedirectionError(goidc.ErrorCodeInvalidRequest, "invalid request",
+							as.AuthorizationParameters, fmt.Errorf("credential configuration %q is not authorized by issuer_state", id)), c)
+					}
+				}
+			}
+
 			as.VCInfo = &struct {
 				Issuer           string                    `json:"issuer"`
 				ConfigurationIDs []goidc.VCConfigurationID `json:"configuration_ids"`
 			}{
-				Issuer:           issuer.ID,
+				Issuer:           issuer.Issuer,
 				ConfigurationIDs: configIDs,
 			}
 		}
@@ -239,7 +265,7 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 		return fmt.Errorf("the authentication session is missing the policy id")
 	}
 
-	switch status, authErr := ctx.Policy(as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
+	switch status, authErr := ctx.Policy(ctx.AuthPolicies, as.PolicyID).Authenticate(ctx.Response, ctx.Request, as, c); status {
 	case goidc.StatusSuccess:
 		as.Status = goidc.StatusSuccess
 		if err := ctx.AuthSaveSession(as); err != nil {
@@ -261,7 +287,7 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 			AuthDetails: as.GrantedAuthDetails,
 			Resources:   as.GrantedResources,
 			JWKThumbprint: func() string {
-				if !ctx.DPoPIsEnabled {
+				if !ctx.DPoPEnabled {
 					return ""
 				}
 				// Default to the JWK thumbprint stored in the session (e.g., from a previous PAR).
@@ -349,7 +375,7 @@ func authenticate(ctx oidc.Context, as *goidc.AuthnSession, c *goidc.Client) err
 }
 
 func federationClient(ctx oidc.Context, req request) (*goidc.Client, error) {
-	jwksIsUsed := ctx.JARIsEnabled && req.RequestObject != ""
+	jwksIsUsed := ctx.JAREnabled && req.RequestObject != ""
 	if !jwksIsUsed {
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied",
 			errors.New("automatic federation registration requires a signed request object"))

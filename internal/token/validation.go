@@ -29,8 +29,8 @@ func ValidateBinding(ctx oidc.Context, c *goidc.Client, opts *bindindValidationO
 }
 
 func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidationOptions) error {
-	if !ctx.DPoPIsEnabled {
-		if opts.dpopIsRequired || opts.dpopJWKThumbprint != "" {
+	if !ctx.DPoPEnabled {
+		if opts.dpopRequired || opts.dpopJWKThumbprint != "" {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
 				errors.New("the request requires DPoP token binding, but DPoP support is disabled"))
 		}
@@ -44,7 +44,7 @@ func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidati
 		// 	* DPoP is required as a general configuration.
 		// 	* The client requires DPoP.
 		// 	* DPoP is required as a validation option.
-		if ctx.DPoPIsRequired || c.DPoPTokenBindingIsRequired || opts.dpopIsRequired {
+		if ctx.DPoPRequired || c.DPoPTokenBindingRequired || opts.dpopRequired {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("a DPoP proof is required for this token request"))
 		}
 		return nil
@@ -56,8 +56,8 @@ func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidati
 }
 
 func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidationOptions) error {
-	if !ctx.MTLSTokenBindingIsEnabled {
-		if opts.tlsIsRequired || opts.tlsCertThumbprint != "" {
+	if !ctx.MTLSTokenBindingEnabled {
+		if opts.tlsRequired || opts.tlsCertThumbprint != "" {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request",
 				errors.New("the request requires mutual TLS token binding, but mutual TLS token binding support is disabled"))
 		}
@@ -71,7 +71,7 @@ func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidatio
 		// 	* TLS binding is required as a general configuration.
 		// 	* The client requires TLS binding.
 		// 	* TLS binding is required as a validation option.
-		if ctx.MTLSTokenBindingIsRequired || c.TLSTokenBindingIsRequired || opts.tlsIsRequired {
+		if ctx.MTLSTokenBindingRequired || c.TLSTokenBindingRequired || opts.tlsRequired {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", err)
 		}
 		return nil
@@ -85,18 +85,18 @@ func validateBindingTLS(ctx oidc.Context, c *goidc.Client, opts bindindValidatio
 }
 
 func validateBindingRequirement(ctx oidc.Context) error {
-	if !ctx.TokenBindingIsRequired {
+	if !ctx.TokenBindingRequired {
 		return nil
 	}
 
 	tokenWillBeBound := false
 
 	_, ok := dpop.JWT(ctx)
-	if ctx.DPoPIsEnabled && ok {
+	if ctx.DPoPEnabled && ok {
 		tokenWillBeBound = true
 	}
 
-	if ctx.MTLSTokenBindingIsEnabled {
+	if ctx.MTLSTokenBindingEnabled {
 		if _, err := ctx.ClientCert(); err == nil {
 			tokenWillBeBound = true
 		}
@@ -110,7 +110,7 @@ func validateBindingRequirement(ctx oidc.Context) error {
 }
 
 func validateResources(ctx oidc.Context, req request, granted goidc.Resources) error {
-	if !ctx.ResourceIndicatorsIsEnabled {
+	if !ctx.ResourceIndicatorsEnabled {
 		return nil
 	}
 
@@ -131,7 +131,7 @@ func validateResources(ctx oidc.Context, req request, granted goidc.Resources) e
 // Parameters:
 //   - granted: The granted auth details. If nil, no auth details were previouly granted.
 func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthDetail) error {
-	if !ctx.RARIsEnabled || req.authDetails == nil {
+	if !ctx.RAREnabled || req.authDetails == nil {
 		return nil
 	}
 
@@ -182,7 +182,7 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 }
 
 func validatePKCE(ctx oidc.Context, req request, grant *goidc.Grant) error {
-	if !ctx.PKCEIsEnabled {
+	if !ctx.PKCEEnabled {
 		return nil
 	}
 

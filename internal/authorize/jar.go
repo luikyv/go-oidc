@@ -63,7 +63,7 @@ func jarFromRequestObject(ctx oidc.Context, reqObject string, c *goidc.Client, o
 		opts = &jarOptions{}
 	}
 
-	if ctx.JAREncIsEnabled && joseutil.IsJWE(reqObject) {
+	if ctx.JAREncEnabled && joseutil.IsJWE(reqObject) {
 		contentEncAlgs := ctx.JARContentEncAlgs
 		if c.JARContentEncAlg != "" && slices.Contains(ctx.JARContentEncAlgs, c.JARContentEncAlg) {
 			contentEncAlgs = []goidc.ContentEncryptionAlgorithm{c.JARContentEncAlg}
