@@ -15,15 +15,14 @@ type LogoutManager interface {
 }
 
 type LogoutSession struct {
-	ID       string `json:"id"`
-	Status   Status `json:"status"`
-	ClientID string `json:"client_id,omitempty"`
-	PolicyID string `json:"policy_id,omitempty"`
-	StepID   string `json:"step_id,omitempty"`
-
-	ExpiresAt         int            `json:"expires_at"`
-	CreatedAt         int            `json:"created_at"`
-	IDTokenHintClaims map[string]any `json:"id_token_hint_claims,omitempty"`
+	ID                string   `json:"id"`
+	Status            Status   `json:"status"`
+	ClientID          string   `json:"client_id,omitempty"`
+	PolicyID          string   `json:"policy_id,omitempty"`
+	StepID            string   `json:"step_id,omitempty"`
+	ExpiresAt         int      `json:"expires_at"`
+	CreatedAt         int      `json:"created_at"`
+	IDTokenHintClaims *IDToken `json:"id_token_hint_claims,omitempty"`
 	LogoutParameters
 }
 

@@ -20,7 +20,7 @@ const (
 )
 
 func Resolve(ctx oidc.Context, c *Meta) (err error) {
-	if ctx.RPMetadataChoicesIsEnabled {
+	if ctx.RPMetadataChoicesEnabled {
 		c.SubIdentifierType, err = resolveChoice(c.SubIdentifierTypes, c.SubIdentifierType, ctx.SubIdentifierTypes, "subject_types_supported")
 		if err != nil {
 			return err
@@ -31,7 +31,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			return err
 		}
 
-		if ctx.IDTokenEncIsEnabled {
+		if ctx.IDTokenEncEnabled {
 			c.IDTokenKeyEncAlg, err = resolveChoice(c.IDTokenKeyEncAlgs, c.IDTokenKeyEncAlg, ctx.IDTokenKeyEncAlgs, "id_token_encryption_alg_values_supported")
 			if err != nil {
 				return err
@@ -51,7 +51,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			return err
 		}
 
-		if ctx.UserInfoEncIsEnabled {
+		if ctx.UserInfoEncEnabled {
 			c.UserInfoKeyEncAlg, err = resolveChoice(c.UserInfoKeyEncAlgs, c.UserInfoKeyEncAlg, ctx.UserInfoKeyEncAlgs, "userinfo_encryption_alg_values_supported")
 			if err != nil {
 				return err
@@ -66,13 +66,13 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			c.UserInfoContentEncAlgs = nil
 		}
 
-		if ctx.JARIsEnabled {
+		if ctx.JAREnabled {
 			c.JARSigAlg, err = resolveChoice(c.JARSigAlgs, c.JARSigAlg, ctx.JARSigAlgs, "request_object_signing_alg_values_supported")
 			if err != nil {
 				return err
 			}
 
-			if ctx.JAREncIsEnabled {
+			if ctx.JAREncEnabled {
 				c.JARKeyEncAlg, err = resolveChoice(c.JARKeyEncAlgs, c.JARKeyEncAlg, ctx.JARKeyEncAlgs, "request_object_encryption_alg_values_supported")
 				if err != nil {
 					return err
@@ -113,13 +113,13 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			c.CIBAJARSigAlgs = nil
 		}
 
-		if ctx.JARMIsEnabled {
+		if ctx.JARMEnabled {
 			c.JARMSigAlg, err = resolveChoice(c.JARMSigAlgs, c.JARMSigAlg, ctx.JARMSigAlgs, "authorization_signing_alg_values_supported")
 			if err != nil {
 				return err
 			}
 
-			if ctx.JARMEncIsEnabled {
+			if ctx.JARMEncEnabled {
 				c.JARMKeyEncAlg, err = resolveChoice(c.JARMKeyEncAlgs, c.JARMKeyEncAlg, ctx.JARMKeyEncAlgs, "authorization_encryption_alg_values_supported")
 				if err != nil {
 					return err
@@ -148,7 +148,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	if ctx.OpenIDIsRequired && c.ScopeIDs != "" && !strutil.ContainsOpenID(c.ScopeIDs) {
+	if ctx.OpenIDRequired && c.ScopeIDs != "" && !strutil.ContainsOpenID(c.ScopeIDs) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 			errors.New("scope openid is required"))
 	}
@@ -181,7 +181,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 				fmt.Errorf("token_endpoint_auth_signing_alg %s is not allowed", c.TokenAuthnSigAlg))
 		}
 
-		if c.JWKS == nil && c.JWKSURI == "" && (!ctx.OpenIDFedIsEnabled || c.SignedJWKSURI == "") {
+		if c.JWKS == nil && c.JWKSURI == "" && (!ctx.OpenIDFedEnabled || c.SignedJWKSURI == "") {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				errors.New("jwks or jwks_uri is required for private_key_jwt"))
 		}
@@ -195,7 +195,6 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				errors.New("jwks or jwks_uri is required for self_signed_tls_client_auth"))
 		}
-		c.TokenAuthnSigAlg = ""
 	case goidc.AuthnMethodTLS:
 		numberOfIdentifiers := 0
 		if c.TLSSubjectDistinguishedName != "" {
@@ -223,7 +222,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.TLSSubjectAlternativeNameIP = ""
 	}
 
-	if ctx.TokenIntrospectionIsEnabled {
+	if ctx.TokenIntrospectionEnabled {
 		if c.TokenIntrospectionAuthnMethod != "" {
 			if c.TokenIntrospectionAuthnMethod != c.TokenAuthnMethod {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
@@ -252,7 +251,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.TokenIntrospectionAuthnSigAlg = ""
 	}
 
-	if ctx.TokenRevocationIsEnabled {
+	if ctx.TokenRevocationEnabled {
 		if c.TokenRevocationAuthnMethod != "" {
 			if c.TokenRevocationAuthnMethod != c.TokenAuthnMethod {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
@@ -298,8 +297,8 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.ApplicationType = goidc.ApplicationTypeWeb
 	}
 
-	if !ctx.PARIsEnabled {
-		c.PARIsRequired = false
+	if !ctx.PAREnabled {
+		c.PARRequired = false
 	}
 
 	if c.DefaultMaxAgeSecs != nil && *c.DefaultMaxAgeSecs < 0 {
@@ -315,7 +314,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			fmt.Errorf("id_token_signed_response_alg %s is not allowed", c.IDTokenSigAlg))
 	}
 
-	if ctx.IDTokenEncIsEnabled {
+	if ctx.IDTokenEncEnabled {
 		if c.IDTokenContentEncAlg != "" && c.IDTokenKeyEncAlg == "" {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				errors.New("id_token_encrypted_response_alg is required when id_token_encrypted_response_enc is set"))
@@ -346,7 +345,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			fmt.Errorf("userinfo_signed_response_alg %s is not allowed", c.UserInfoSigAlg))
 	}
 
-	if ctx.UserInfoEncIsEnabled {
+	if ctx.UserInfoEncEnabled {
 		if c.UserInfoContentEncAlg != "" && c.UserInfoKeyEncAlg == "" {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				errors.New("userinfo_encrypted_response_alg is required when userinfo_encrypted_response_enc is set"))
@@ -372,13 +371,13 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.UserInfoContentEncAlg = ""
 	}
 
-	if ctx.JARIsEnabled {
+	if ctx.JAREnabled {
 		if c.JARSigAlg != "" && !slices.Contains(ctx.JARSigAlgs, c.JARSigAlg) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("request_object_signing_alg %s is not allowed", c.JARSigAlg))
 		}
 
-		if ctx.JAREncIsEnabled {
+		if ctx.JAREncEnabled {
 			if c.JARContentEncAlg != "" && c.JARKeyEncAlg == "" {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 					errors.New("request_object_encryption_alg is required when request_object_encryption_enc is set"))
@@ -400,19 +399,19 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			c.JARContentEncAlg = ""
 		}
 	} else {
-		c.JARIsRequired = false
+		c.JARRequired = false
 		c.JARSigAlg = ""
 		c.JARKeyEncAlg = ""
 		c.JARContentEncAlg = ""
 	}
 
-	if ctx.JARMIsEnabled {
+	if ctx.JARMEnabled {
 		if c.JARMSigAlg != "" && !slices.Contains(ctx.JARMSigAlgs, c.JARMSigAlg) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 				fmt.Errorf("authorization_signed_response_alg %s is not allowed", c.JARMSigAlg))
 		}
 
-		if ctx.JARMEncIsEnabled {
+		if ctx.JARMEncEnabled {
 			if c.JARMContentEncAlg != "" && c.JARMKeyEncAlg == "" {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 					errors.New("authorization_encrypted_response_alg is required when authorization_encrypted_response_enc is set"))
@@ -460,7 +459,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			// RFC 8252: Native apps can use http loopback or private-use URI schemes.
 			switch parsedURI.Scheme {
 			case "http": // Loopback interface redirection.
-				if ctx.LocalhostRedirectURIIsEnabled && parsedURI.Hostname() == "localhost" {
+				if ctx.LocalhostRedirectURIEnabled && parsedURI.Hostname() == "localhost" {
 					continue
 				} else if !strings.HasPrefix(parsedURI.Host, "127.") && parsedURI.Hostname() != "::1" {
 					return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
@@ -485,7 +484,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	if ctx.JARByReferenceIsEnabled {
+	if ctx.JARByReferenceEnabled {
 		for _, ru := range c.RequestURIs {
 			if err := validateURL("request_uri", ru); err != nil {
 				return err
@@ -541,7 +540,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	if ctx.RARIsEnabled {
+	if ctx.RAREnabled {
 		for _, dt := range c.AuthDetailTypes {
 			if !slices.Contains(ctx.RARDetailTypes, dt) {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
@@ -552,18 +551,18 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.AuthDetailTypes = nil
 	}
 
-	if !ctx.DPoPIsEnabled {
-		c.DPoPTokenBindingIsRequired = false
+	if !ctx.DPoPEnabled {
+		c.DPoPTokenBindingRequired = false
 	}
 
-	if !ctx.MTLSIsEnabled {
+	if !ctx.MTLSEnabled {
 		c.TLSSubjectDistinguishedName = ""
 		c.TLSSubjectAlternativeName = ""
 		c.TLSSubjectAlternativeNameIP = ""
-		c.TLSTokenBindingIsRequired = false
+		c.TLSTokenBindingRequired = false
 	}
 
-	if !ctx.VCIsEnabled {
+	if !ctx.VCIEnabled {
 		c.CredentialOfferEndpoint = ""
 	}
 
@@ -585,7 +584,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		}
 	}
 
-	if ctx.LogoutIsEnabled {
+	if ctx.LogoutEnabled {
 		for _, uri := range c.PostLogoutRedirectURIs {
 			if err := validateURL("post_logout_redirect_uris", uri); err != nil {
 				return err
@@ -657,11 +656,11 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			c.CIBANotificationEndpoint = ""
 		}
 
-		if !ctx.CIBAUserCodeIsEnabled {
-			c.CIBAUserCodeIsEnabled = false
+		if !ctx.CIBAUserCodeEnabled {
+			c.CIBAUserCodeEnabled = false
 		}
 
-		if ctx.CIBAJARIsEnabled {
+		if ctx.CIBAJAREnabled {
 			if c.CIBAJARSigAlg != "" && !slices.Contains(ctx.CIBAJARSigAlgs, c.CIBAJARSigAlg) {
 				return goidc.WrapError(goidc.ErrorCodeInvalidClientMetadata, "invalid client metadata",
 					fmt.Errorf("backchannel_authentication_request_signing_alg %s is not allowed", c.CIBAJARSigAlg))
@@ -706,7 +705,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 		c.CIBATokenDeliveryMode = ""
 		c.CIBANotificationEndpoint = ""
 		c.CIBAJARSigAlg = ""
-		c.CIBAUserCodeIsEnabled = false
+		c.CIBAUserCodeEnabled = false
 		c.CIBAJARSigAlgs = nil
 	}
 

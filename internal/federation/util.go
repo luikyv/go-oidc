@@ -25,6 +25,56 @@ const (
 	maxResponseByteSize int64 = 1_000_000 // 1 MB.
 )
 
+func Resolve(ctx oidc.Context, id string) (goidc.EntityStatement, error) {
+	resolved, _, err := resolve(ctx, id)
+	if err != nil {
+		return goidc.EntityStatement{}, err
+	}
+
+	return goidc.EntityStatement{
+		Issuer:         resolved.Issuer,
+		Subject:        resolved.Subject,
+		IssuedAt:       resolved.IssuedAt,
+		ExpiresAt:      resolved.ExpiresAt,
+		JWKS:           resolved.JWKS,
+		AuthorityHints: resolved.AuthorityHints,
+		Critical:       resolved.Critical,
+		Metadata: struct {
+			FederationAuthority *goidc.FederationAuthority `json:"federation_entity,omitempty"`
+			OpenIDProvider      *goidc.Configuration       `json:"openid_provider,omitempty"`
+			OpenIDClient        *goidc.ClientMeta          `json:"openid_relying_party,omitempty"`
+		}{
+			FederationAuthority: resolved.Metadata.FederationAuthority,
+			OpenIDProvider:      resolved.Metadata.OpenIDProvider,
+			OpenIDClient: func() *goidc.ClientMeta {
+				if resolved.Metadata.OpenIDClient == nil {
+					return nil
+				}
+				return &resolved.Metadata.OpenIDClient.ClientMeta
+			}(),
+		},
+		TrustMarks: func() []struct {
+			Type      goidc.TrustMark `json:"trust_mark_type"`
+			TrustMark string          `json:"trust_mark"`
+		} {
+			marks := make([]struct {
+				Type      goidc.TrustMark `json:"trust_mark_type"`
+				TrustMark string          `json:"trust_mark"`
+			}, len(resolved.TrustMarks))
+			for i, mark := range resolved.TrustMarks {
+				marks[i] = struct {
+					Type      goidc.TrustMark `json:"trust_mark_type"`
+					TrustMark string          `json:"trust_mark"`
+				}{
+					Type:      mark.Type,
+					TrustMark: mark.TrustMark,
+				}
+			}
+			return marks
+		}(),
+	}, nil
+}
+
 func FetchEntityConfigurationJWKS(ctx oidc.Context, id string) (goidc.JSONWebKeySet, error) {
 	config, err := fetchEntityConfiguration(ctx, id)
 	if err != nil {
@@ -111,7 +161,7 @@ func resolveClient(ctx oidc.Context, chain trustChain) (*goidc.Client, error) {
 }
 
 func newEntityConfiguration(ctx oidc.Context) (string, error) {
-	config := discovery.NewOpenIDConfiguration(ctx)
+	config := discovery.NewConfiguration(ctx)
 	if !slices.Contains(ctx.OpenIDFedJWKSRepresentations, goidc.JWKSRepresentationURI) {
 		config.JWKSEndpoint = ""
 	}
@@ -182,9 +232,9 @@ func signedJWKS(ctx oidc.Context) (string, error) {
 	}, (&jose.SignerOptions{}).WithType(jwtTypeJWKS))
 }
 
-// buildAndResolveTrustChain builds a trust chain and then resolves it to obtain
-// the final entity statement for the given entity ID.
-func buildAndResolveTrustChain(ctx oidc.Context, id string) (entityStatement, trustChain, error) {
+// resolve builds a trust chain and then resolves it to obtain the final entity
+// statement for the given entity ID.
+func resolve(ctx oidc.Context, id string) (entityStatement, trustChain, error) {
 	entityConfig, err := fetchEntityConfiguration(ctx, id)
 	if err != nil {
 		return entityStatement{}, nil, err
@@ -764,7 +814,7 @@ func parseTrustMark(ctx oidc.Context, signedMark string, opts parseTrustMarkOpti
 		return trustMark{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark", err)
 	}
 
-	trustMarkIssuer, chain, err := buildAndResolveTrustChain(ctx, mark.Issuer)
+	trustMarkIssuer, chain, err := resolve(ctx, mark.Issuer)
 	if err != nil {
 		return trustMark{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid trust mark", err)
 	}

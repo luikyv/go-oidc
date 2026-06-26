@@ -211,7 +211,7 @@ func TestMakeIDToken(t *testing.T) {
 			name: "encrypted",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Client, IDTokenOptions) {
 				ctx := oidctest.NewContext(t)
-				ctx.IDTokenEncIsEnabled = true
+				ctx.IDTokenEncEnabled = true
 				ctx.IDTokenKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256}
 				ctx.IDTokenDefaultContentEncAlg = goidc.A128CBC_HS256
 				ctx.IDTokenContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
@@ -336,7 +336,7 @@ func TestIssue(t *testing.T) {
 			name: "opaque",
 			setup: func(t *testing.T) (oidc.Context, *goidc.Grant, *goidc.Client) {
 				ctx := oidctest.NewContext(t)
-				ctx.OpaqueTokenIsEnabled = true
+				ctx.OpaqueTokenEnabled = true
 				ctx.OpaqueTokenManager = oidctest.Manager(t, ctx)
 				ctx.TokenOptionsFunc = func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 					return goidc.NewOpaqueTokenOptions(60)
@@ -537,7 +537,7 @@ func TestGenerateToken(t *testing.T) {
 				}
 
 				ctx.Host = "https://example.com"
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.JWTLifetimeSecs = 9999999999999
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Header.Set(goidc.HeaderDPoP, "eyJ0eXAiOiJkcG9wK2p3dCIsImFsZyI6IkVTMjU2IiwiandrIjp7Imt0eSI6IkVDIiwiY3J2IjoiUC0yNTYiLCJ4IjoiYVRtMk95eXFmaHFfZk5GOVVuZXlrZG0yX0dCZnpZVldDNEI1Wlo1SzNGUSIsInkiOiI4eFRhUERFTVRtNXM1d1MzYmFvVVNNcU01R0VJWDFINzMwX1hqV2lRaGxRIn19.eyJqdGkiOiItQndDM0VTYzZhY2MybFRjIiwiaHRtIjoiUE9TVCIsImh0dSI6Imh0dHBzOi8vZXhhbXBsZS5jb20vdG9rZW4iLCJpYXQiOjE1NjIyNjUyOTZ9.AzzSCVYIimNZyJQefZq7cF252PukDvRrxMqrrcH6FFlHLvpXyk9j8ybtS36GHlnyH_uuy2djQphfyHGeDfxidQ")

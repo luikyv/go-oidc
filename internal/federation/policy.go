@@ -11,10 +11,17 @@ import (
 )
 
 type metadataPolicy struct {
-	OpenIDClient *openIDClientMetadataPolicy `json:"openid_relying_party,omitempty"`
+	OpenIDProvider *openIDProviderMetadataPolicy `json:"openid_provider,omitempty"`
+	OpenIDClient   *openIDClientMetadataPolicy   `json:"openid_relying_party,omitempty"`
 }
 
 func (policy metadataPolicy) Validate() error {
+	if policy.OpenIDProvider != nil {
+		if err := policy.OpenIDProvider.Validate(); err != nil {
+			return err
+		}
+	}
+
 	if policy.OpenIDClient != nil {
 		if err := policy.OpenIDClient.Validate(); err != nil {
 			return err
@@ -25,6 +32,20 @@ func (policy metadataPolicy) Validate() error {
 }
 
 func (highPolicy metadataPolicy) Merge(lowPolicy metadataPolicy) (metadataPolicy, error) {
+	if lowPolicy.OpenIDProvider != nil {
+		var highOpenIDProvider openIDProviderMetadataPolicy
+		if highPolicy.OpenIDProvider != nil {
+			highOpenIDProvider = *highPolicy.OpenIDProvider
+		}
+
+		result, err := highOpenIDProvider.Merge(*lowPolicy.OpenIDProvider)
+		if err != nil {
+			return metadataPolicy{}, err
+		}
+
+		highPolicy.OpenIDProvider = &result
+	}
+
 	if lowPolicy.OpenIDClient != nil {
 		var highOpenIDClient openIDClientMetadataPolicy
 		if highPolicy.OpenIDClient != nil {
@@ -43,6 +64,14 @@ func (highPolicy metadataPolicy) Merge(lowPolicy metadataPolicy) (metadataPolicy
 }
 
 func (policy metadataPolicy) Apply(ctx oidc.Context, statement entityStatement) (entityStatement, error) {
+	if original, policy := statement.Metadata.OpenIDProvider, policy.OpenIDProvider; original != nil && policy != nil {
+		modified, err := policy.Apply(*original)
+		if err != nil {
+			return entityStatement{}, err
+		}
+		statement.Metadata.OpenIDProvider = &modified
+	}
+
 	if original, policy := statement.Metadata.OpenIDClient, policy.OpenIDClient; original != nil && policy != nil {
 		modified, err := policy.Apply(*original)
 		if err != nil {
@@ -76,7 +105,7 @@ type openIDClientMetadataPolicy struct {
 	UserInfoSigAlg                metadataOperators[goidc.SignatureAlgorithm]           `json:"userinfo_signed_response_alg"`
 	UserInfoKeyEncAlg             metadataOperators[goidc.KeyEncryptionAlgorithm]       `json:"userinfo_encrypted_response_alg"`
 	UserInfoContentEncAlg         metadataOperators[goidc.ContentEncryptionAlgorithm]   `json:"userinfo_encrypted_response_enc"`
-	JARIsRequired                 metadataOperators[bool]                               `json:"require_signed_request_object"`
+	JARRequired                   metadataOperators[bool]                               `json:"require_signed_request_object"`
 	JARSigAlg                     metadataOperators[goidc.SignatureAlgorithm]           `json:"request_object_signing_alg"`
 	JARKeyEncAlg                  metadataOperators[goidc.KeyEncryptionAlgorithm]       `json:"request_object_encryption_alg"`
 	JARContentEncAlg              metadataOperators[goidc.ContentEncryptionAlgorithm]   `json:"request_object_encryption_enc"`
@@ -89,19 +118,19 @@ type openIDClientMetadataPolicy struct {
 	TokenIntrospectionAuthnSigAlg metadataOperators[goidc.SignatureAlgorithm]           `json:"introspection_endpoint_auth_signing_alg"`
 	TokenRevocationAuthnMethod    metadataOperators[goidc.AuthnMethod]                  `json:"revocation_endpoint_auth_method"`
 	TokenRevocationAuthnSigAlg    metadataOperators[goidc.SignatureAlgorithm]           `json:"revocation_endpoint_auth_signing_alg"`
-	DPoPTokenBindingIsRequired    metadataOperators[bool]                               `json:"dpop_bound_access_tokens"`
+	DPoPTokenBindingRequired      metadataOperators[bool]                               `json:"dpop_bound_access_tokens"`
 	TLSSubDistinguishedName       metadataOperators[string]                             `json:"tls_client_auth_subject_dn"`
 	TLSSubAlternativeName         metadataOperators[string]                             `json:"tls_client_auth_san_dns"`
 	TLSSubAlternativeNameIp       metadataOperators[string]                             `json:"tls_client_auth_san_ip"`
-	TLSTokenBindingIsRequired     metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
+	TLSTokenBindingRequired       metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
 	AuthDetailTypes               metadataOperators[[]goidc.AuthDetailType]             `json:"authorization_details_types"`
 	DefaultMaxAgeSecs             metadataOperators[*int]                               `json:"default_max_age"`
 	DefaultACRValues              metadataOperators[string]                             `json:"default_acr_values"`
-	PARIsRequired                 metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
+	PARRequired                   metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
 	CIBATokenDeliveryMode         metadataOperators[goidc.CIBATokenDeliveryMode]        `json:"backchannel_token_delivery_mode"`
 	CIBANotificationEndpoint      metadataOperators[string]                             `json:"backchannel_client_notification_endpoint"`
 	CIBAJARSigAlg                 metadataOperators[goidc.SignatureAlgorithm]           `json:"backchannel_authentication_request_signing_alg"`
-	CIBAUserCodeIsEnabled         metadataOperators[bool]                               `json:"backchannel_user_code_parameter"`
+	CIBAUserCodeEnabled           metadataOperators[bool]                               `json:"backchannel_user_code_parameter"`
 	SignedJWKSURI                 metadataOperators[string]                             `json:"signed_jwks_uri"`
 	OrganizationName              metadataOperators[string]                             `json:"organization_name"`
 	ClientRegistrationTypes       metadataOperators[[]goidc.ClientRegistrationType]     `json:"client_registration_types"`
@@ -251,7 +280,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.JARIsRequired.Validate(); err != nil {
+	if err := p.JARRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -303,7 +332,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.DPoPTokenBindingIsRequired.Validate(); err != nil {
+	if err := p.DPoPTokenBindingRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -319,7 +348,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.TLSTokenBindingIsRequired.Validate(); err != nil {
+	if err := p.TLSTokenBindingRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -335,7 +364,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.PARIsRequired.Validate(); err != nil {
+	if err := p.PARRequired.Validate(); err != nil {
 		return err
 	}
 
@@ -351,7 +380,7 @@ func (p openIDClientMetadataPolicy) Validate() error {
 		return err
 	}
 
-	if err := p.CIBAUserCodeIsEnabled.Validate(); err != nil {
+	if err := p.CIBAUserCodeEnabled.Validate(); err != nil {
 		return err
 	}
 
@@ -595,11 +624,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.UserInfoContentEncAlg = opUserInfoContentEncAlg
 
-	opJARIsRequired, err := high.JARIsRequired.Merge(low.JARIsRequired)
+	opJARRequired, err := high.JARRequired.Merge(low.JARRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.JARIsRequired = opJARIsRequired
+	high.JARRequired = opJARRequired
 
 	opJARSigAlg, err := high.JARSigAlg.Merge(low.JARSigAlg)
 	if err != nil {
@@ -673,11 +702,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.TokenRevocationAuthnSigAlg = opTokenRevocationAuthnSigAlg
 
-	opDPoPTokenBindingIsRequired, err := high.DPoPTokenBindingIsRequired.Merge(low.DPoPTokenBindingIsRequired)
+	opDPoPTokenBindingRequired, err := high.DPoPTokenBindingRequired.Merge(low.DPoPTokenBindingRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.DPoPTokenBindingIsRequired = opDPoPTokenBindingIsRequired
+	high.DPoPTokenBindingRequired = opDPoPTokenBindingRequired
 
 	opTLSSubDistinguishedName, err := high.TLSSubDistinguishedName.Merge(low.TLSSubDistinguishedName)
 	if err != nil {
@@ -697,11 +726,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.TLSSubAlternativeNameIp = opTLSSubAlternativeNameIp
 
-	opTLSTokenBindingIsRequired, err := high.TLSTokenBindingIsRequired.Merge(low.TLSTokenBindingIsRequired)
+	opTLSTokenBindingRequired, err := high.TLSTokenBindingRequired.Merge(low.TLSTokenBindingRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.TLSTokenBindingIsRequired = opTLSTokenBindingIsRequired
+	high.TLSTokenBindingRequired = opTLSTokenBindingRequired
 
 	opAuthDetailTypes, err := high.AuthDetailTypes.Merge(low.AuthDetailTypes)
 	if err != nil {
@@ -721,11 +750,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.DefaultACRValues = opDefaultACRValues
 
-	opPARIsRequired, err := high.PARIsRequired.Merge(low.PARIsRequired)
+	opPARRequired, err := high.PARRequired.Merge(low.PARRequired)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.PARIsRequired = opPARIsRequired
+	high.PARRequired = opPARRequired
 
 	opCIBATokenDeliveryMode, err := high.CIBATokenDeliveryMode.Merge(low.CIBATokenDeliveryMode)
 	if err != nil {
@@ -745,11 +774,11 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 	}
 	high.CIBAJARSigAlg = opCIBAJARSigAlg
 
-	opCIBAUserCodeIsEnabled, err := high.CIBAUserCodeIsEnabled.Merge(low.CIBAUserCodeIsEnabled)
+	opCIBAUserCodeEnabled, err := high.CIBAUserCodeEnabled.Merge(low.CIBAUserCodeEnabled)
 	if err != nil {
 		return openIDClientMetadataPolicy{}, err
 	}
-	high.CIBAUserCodeIsEnabled = opCIBAUserCodeIsEnabled
+	high.CIBAUserCodeEnabled = opCIBAUserCodeEnabled
 
 	opSignedJWKSURI, err := high.SignedJWKSURI.Merge(low.SignedJWKSURI)
 	if err != nil {
@@ -919,454 +948,927 @@ func (high openIDClientMetadataPolicy) Merge(low openIDClientMetadataPolicy) (op
 }
 
 func (policy openIDClientMetadataPolicy) Apply(c client.Meta) (client.Meta, error) {
-	name, err := policy.Name.Apply(c.Name)
-	if err != nil {
-		return client.Meta{}, err
-	}
-	c.Name = name
+	var err error
 
-	applicationType, err := policy.ApplicationType.Apply(c.ApplicationType)
-	if err != nil {
+	if c.Name, err = policy.Name.Apply(c.Name); err != nil {
 		return client.Meta{}, err
 	}
-	c.ApplicationType = applicationType
 
-	logoURI, err := policy.LogoURI.Apply(c.LogoURI)
-	if err != nil {
+	if c.ApplicationType, err = policy.ApplicationType.Apply(c.ApplicationType); err != nil {
 		return client.Meta{}, err
 	}
-	c.LogoURI = logoURI
 
-	contacts, err := policy.Contacts.Apply(c.Contacts)
-	if err != nil {
+	if c.LogoURI, err = policy.LogoURI.Apply(c.LogoURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.Contacts = contacts
 
-	policyURI, err := policy.PolicyURI.Apply(c.PolicyURI)
-	if err != nil {
+	if c.Contacts, err = policy.Contacts.Apply(c.Contacts); err != nil {
 		return client.Meta{}, err
 	}
-	c.PolicyURI = policyURI
 
-	termsOfServiceURI, err := policy.TermsOfServiceURI.Apply(c.TermsOfServiceURI)
-	if err != nil {
+	if c.PolicyURI, err = policy.PolicyURI.Apply(c.PolicyURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.TermsOfServiceURI = termsOfServiceURI
 
-	redirectURIs, err := policy.RedirectURIs.Apply(c.RedirectURIs)
-	if err != nil {
+	if c.TermsOfServiceURI, err = policy.TermsOfServiceURI.Apply(c.TermsOfServiceURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.RedirectURIs = redirectURIs
 
-	requestURIs, err := policy.RequestURIs.Apply(c.RequestURIs)
-	if err != nil {
+	if c.RedirectURIs, err = policy.RedirectURIs.Apply(c.RedirectURIs); err != nil {
 		return client.Meta{}, err
 	}
-	c.RequestURIs = requestURIs
 
-	grantTypes, err := policy.GrantTypes.Apply(c.GrantTypes)
-	if err != nil {
+	if c.RequestURIs, err = policy.RequestURIs.Apply(c.RequestURIs); err != nil {
 		return client.Meta{}, err
 	}
-	c.GrantTypes = grantTypes
 
-	responseTypes, err := policy.ResponseTypes.Apply(c.ResponseTypes)
-	if err != nil {
+	if c.GrantTypes, err = policy.GrantTypes.Apply(c.GrantTypes); err != nil {
 		return client.Meta{}, err
 	}
-	c.ResponseTypes = responseTypes
 
-	jwksURI, err := policy.JWKSURI.Apply(c.JWKSURI)
-	if err != nil {
+	if c.ResponseTypes, err = policy.ResponseTypes.Apply(c.ResponseTypes); err != nil {
 		return client.Meta{}, err
 	}
-	c.JWKSURI = jwksURI
 
-	jwks, err := policy.JWKS.Apply(c.JWKS)
-	if err != nil {
+	if c.JWKSURI, err = policy.JWKSURI.Apply(c.JWKSURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.JWKS = jwks
+
+	if c.JWKS, err = policy.JWKS.Apply(c.JWKS); err != nil {
+		return client.Meta{}, err
+	}
 
 	scopeIDs := strings.Fields(c.ScopeIDs)
-	scopeIDs, err = policy.ScopeIDs.Apply(scopeIDs)
-	if err != nil {
+	if scopeIDs, err = policy.ScopeIDs.Apply(scopeIDs); err != nil {
 		return client.Meta{}, err
 	}
 	c.ScopeIDs = strings.Join(scopeIDs, " ")
 
-	subIdentifierType, err := policy.SubIdentifierType.Apply(c.SubIdentifierType)
-	if err != nil {
+	if c.SubIdentifierType, err = policy.SubIdentifierType.Apply(c.SubIdentifierType); err != nil {
 		return client.Meta{}, err
 	}
-	c.SubIdentifierType = subIdentifierType
 
-	sectorIdentifierURI, err := policy.SectorIdentifierURI.Apply(c.SectorIdentifierURI)
-	if err != nil {
+	if c.SectorIdentifierURI, err = policy.SectorIdentifierURI.Apply(c.SectorIdentifierURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.SectorIdentifierURI = sectorIdentifierURI
 
-	idTokenSigAlg, err := policy.IDTokenSigAlg.Apply(c.IDTokenSigAlg)
-	if err != nil {
+	if c.IDTokenSigAlg, err = policy.IDTokenSigAlg.Apply(c.IDTokenSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenSigAlg = idTokenSigAlg
 
-	idTokenKeyEncAlg, err := policy.IDTokenKeyEncAlg.Apply(c.IDTokenKeyEncAlg)
-	if err != nil {
+	if c.IDTokenKeyEncAlg, err = policy.IDTokenKeyEncAlg.Apply(c.IDTokenKeyEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenKeyEncAlg = idTokenKeyEncAlg
 
-	idTokenContentEncAlg, err := policy.IDTokenContentEncAlg.Apply(c.IDTokenContentEncAlg)
-	if err != nil {
+	if c.IDTokenContentEncAlg, err = policy.IDTokenContentEncAlg.Apply(c.IDTokenContentEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenContentEncAlg = idTokenContentEncAlg
 
-	userInfoSigAlg, err := policy.UserInfoSigAlg.Apply(c.UserInfoSigAlg)
-	if err != nil {
+	if c.UserInfoSigAlg, err = policy.UserInfoSigAlg.Apply(c.UserInfoSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoSigAlg = userInfoSigAlg
 
-	userInfoKeyEncAlg, err := policy.UserInfoKeyEncAlg.Apply(c.UserInfoKeyEncAlg)
-	if err != nil {
+	if c.UserInfoKeyEncAlg, err = policy.UserInfoKeyEncAlg.Apply(c.UserInfoKeyEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoKeyEncAlg = userInfoKeyEncAlg
 
-	userInfoContentEncAlg, err := policy.UserInfoContentEncAlg.Apply(c.UserInfoContentEncAlg)
-	if err != nil {
+	if c.UserInfoContentEncAlg, err = policy.UserInfoContentEncAlg.Apply(c.UserInfoContentEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoContentEncAlg = userInfoContentEncAlg
 
-	jarIsRequired, err := policy.JARIsRequired.Apply(c.JARIsRequired)
-	if err != nil {
+	if c.JARRequired, err = policy.JARRequired.Apply(c.JARRequired); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARIsRequired = jarIsRequired
 
-	jarSigAlg, err := policy.JARSigAlg.Apply(c.JARSigAlg)
-	if err != nil {
+	if c.JARSigAlg, err = policy.JARSigAlg.Apply(c.JARSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARSigAlg = jarSigAlg
 
-	jarKeyEncAlg, err := policy.JARKeyEncAlg.Apply(c.JARKeyEncAlg)
-	if err != nil {
+	if c.JARKeyEncAlg, err = policy.JARKeyEncAlg.Apply(c.JARKeyEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARKeyEncAlg = jarKeyEncAlg
 
-	jarContentEncAlg, err := policy.JARContentEncAlg.Apply(c.JARContentEncAlg)
-	if err != nil {
+	if c.JARContentEncAlg, err = policy.JARContentEncAlg.Apply(c.JARContentEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARContentEncAlg = jarContentEncAlg
 
-	jarmSigAlg, err := policy.JARMSigAlg.Apply(c.JARMSigAlg)
-	if err != nil {
+	if c.JARMSigAlg, err = policy.JARMSigAlg.Apply(c.JARMSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMSigAlg = jarmSigAlg
 
-	jarmKeyEncAlg, err := policy.JARMKeyEncAlg.Apply(c.JARMKeyEncAlg)
-	if err != nil {
+	if c.JARMKeyEncAlg, err = policy.JARMKeyEncAlg.Apply(c.JARMKeyEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMKeyEncAlg = jarmKeyEncAlg
 
-	jarmContentEncAlg, err := policy.JARMContentEncAlg.Apply(c.JARMContentEncAlg)
-	if err != nil {
+	if c.JARMContentEncAlg, err = policy.JARMContentEncAlg.Apply(c.JARMContentEncAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMContentEncAlg = jarmContentEncAlg
 
-	tokenAuthnMethod, err := policy.TokenAuthnMethod.Apply(c.TokenAuthnMethod)
-	if err != nil {
+	if c.TokenAuthnMethod, err = policy.TokenAuthnMethod.Apply(c.TokenAuthnMethod); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenAuthnMethod = tokenAuthnMethod
 
-	tokenAuthnSigAlg, err := policy.TokenAuthnSigAlg.Apply(c.TokenAuthnSigAlg)
-	if err != nil {
+	if c.TokenAuthnSigAlg, err = policy.TokenAuthnSigAlg.Apply(c.TokenAuthnSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenAuthnSigAlg = tokenAuthnSigAlg
 
-	tokenIntrospectionAuthnMethod, err := policy.TokenIntrospectionAuthnMethod.Apply(c.TokenIntrospectionAuthnMethod)
-	if err != nil {
+	if c.TokenIntrospectionAuthnMethod, err = policy.TokenIntrospectionAuthnMethod.Apply(c.TokenIntrospectionAuthnMethod); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenIntrospectionAuthnMethod = tokenIntrospectionAuthnMethod
 
-	tokenIntrospectionAuthnSigAlg, err := policy.TokenIntrospectionAuthnSigAlg.Apply(c.TokenIntrospectionAuthnSigAlg)
-	if err != nil {
+	if c.TokenIntrospectionAuthnSigAlg, err = policy.TokenIntrospectionAuthnSigAlg.Apply(c.TokenIntrospectionAuthnSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenIntrospectionAuthnSigAlg = tokenIntrospectionAuthnSigAlg
 
-	tokenRevocationAuthnMethod, err := policy.TokenRevocationAuthnMethod.Apply(c.TokenRevocationAuthnMethod)
-	if err != nil {
+	if c.TokenRevocationAuthnMethod, err = policy.TokenRevocationAuthnMethod.Apply(c.TokenRevocationAuthnMethod); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenRevocationAuthnMethod = tokenRevocationAuthnMethod
 
-	tokenRevocationAuthnSigAlg, err := policy.TokenRevocationAuthnSigAlg.Apply(c.TokenRevocationAuthnSigAlg)
-	if err != nil {
+	if c.TokenRevocationAuthnSigAlg, err = policy.TokenRevocationAuthnSigAlg.Apply(c.TokenRevocationAuthnSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenRevocationAuthnSigAlg = tokenRevocationAuthnSigAlg
 
-	dPoPTokenBindingIsRequired, err := policy.DPoPTokenBindingIsRequired.Apply(c.DPoPTokenBindingIsRequired)
-	if err != nil {
+	if c.DPoPTokenBindingRequired, err = policy.DPoPTokenBindingRequired.Apply(c.DPoPTokenBindingRequired); err != nil {
 		return client.Meta{}, err
 	}
-	c.DPoPTokenBindingIsRequired = dPoPTokenBindingIsRequired
 
-	tlsSubDistinguishedName, err := policy.TLSSubDistinguishedName.Apply(c.TLSSubjectDistinguishedName)
-	if err != nil {
+	if c.TLSSubjectDistinguishedName, err = policy.TLSSubDistinguishedName.Apply(c.TLSSubjectDistinguishedName); err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubjectDistinguishedName = tlsSubDistinguishedName
 
-	tlsSubAlternativeName, err := policy.TLSSubAlternativeName.Apply(c.TLSSubjectAlternativeName)
-	if err != nil {
+	if c.TLSSubjectAlternativeName, err = policy.TLSSubAlternativeName.Apply(c.TLSSubjectAlternativeName); err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubjectAlternativeName = tlsSubAlternativeName
 
-	tlsSubAlternativeNameIp, err := policy.TLSSubAlternativeNameIp.Apply(c.TLSSubjectAlternativeNameIP)
-	if err != nil {
+	if c.TLSSubjectAlternativeNameIP, err = policy.TLSSubAlternativeNameIp.Apply(c.TLSSubjectAlternativeNameIP); err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSSubjectAlternativeNameIP = tlsSubAlternativeNameIp
 
-	tlsTokenBindingIsRequired, err := policy.TLSTokenBindingIsRequired.Apply(c.TLSTokenBindingIsRequired)
-	if err != nil {
+	if c.TLSTokenBindingRequired, err = policy.TLSTokenBindingRequired.Apply(c.TLSTokenBindingRequired); err != nil {
 		return client.Meta{}, err
 	}
-	c.TLSTokenBindingIsRequired = tlsTokenBindingIsRequired
 
-	authDetailTypes, err := policy.AuthDetailTypes.Apply(c.AuthDetailTypes)
-	if err != nil {
+	if c.AuthDetailTypes, err = policy.AuthDetailTypes.Apply(c.AuthDetailTypes); err != nil {
 		return client.Meta{}, err
 	}
-	c.AuthDetailTypes = authDetailTypes
 
-	defaultMaxAgeSecs, err := policy.DefaultMaxAgeSecs.Apply(c.DefaultMaxAgeSecs)
-	if err != nil {
+	if c.DefaultMaxAgeSecs, err = policy.DefaultMaxAgeSecs.Apply(c.DefaultMaxAgeSecs); err != nil {
 		return client.Meta{}, err
 	}
-	c.DefaultMaxAgeSecs = defaultMaxAgeSecs
 
-	defaultACRValues, err := policy.DefaultACRValues.Apply(c.DefaultACRValues)
-	if err != nil {
+	if c.DefaultACRValues, err = policy.DefaultACRValues.Apply(c.DefaultACRValues); err != nil {
 		return client.Meta{}, err
 	}
-	c.DefaultACRValues = defaultACRValues
 
-	parIsRequired, err := policy.PARIsRequired.Apply(c.PARIsRequired)
-	if err != nil {
+	if c.PARRequired, err = policy.PARRequired.Apply(c.PARRequired); err != nil {
 		return client.Meta{}, err
 	}
-	c.PARIsRequired = parIsRequired
 
-	cibaTokenDeliveryMode, err := policy.CIBATokenDeliveryMode.Apply(c.CIBATokenDeliveryMode)
-	if err != nil {
+	if c.CIBATokenDeliveryMode, err = policy.CIBATokenDeliveryMode.Apply(c.CIBATokenDeliveryMode); err != nil {
 		return client.Meta{}, err
 	}
-	c.CIBATokenDeliveryMode = cibaTokenDeliveryMode
 
-	cibaNotificationEndpoint, err := policy.CIBANotificationEndpoint.Apply(c.CIBANotificationEndpoint)
-	if err != nil {
+	if c.CIBANotificationEndpoint, err = policy.CIBANotificationEndpoint.Apply(c.CIBANotificationEndpoint); err != nil {
 		return client.Meta{}, err
 	}
-	c.CIBANotificationEndpoint = cibaNotificationEndpoint
 
-	cibaJARSigAlg, err := policy.CIBAJARSigAlg.Apply(c.CIBAJARSigAlg)
-	if err != nil {
+	if c.CIBAJARSigAlg, err = policy.CIBAJARSigAlg.Apply(c.CIBAJARSigAlg); err != nil {
 		return client.Meta{}, err
 	}
-	c.CIBAJARSigAlg = cibaJARSigAlg
 
-	cibaUserCodeIsEnabled, err := policy.CIBAUserCodeIsEnabled.Apply(c.CIBAUserCodeIsEnabled)
-	if err != nil {
+	if c.CIBAUserCodeEnabled, err = policy.CIBAUserCodeEnabled.Apply(c.CIBAUserCodeEnabled); err != nil {
 		return client.Meta{}, err
 	}
-	c.CIBAUserCodeIsEnabled = cibaUserCodeIsEnabled
 
-	signedJWKSURI, err := policy.SignedJWKSURI.Apply(c.SignedJWKSURI)
-	if err != nil {
+	if c.SignedJWKSURI, err = policy.SignedJWKSURI.Apply(c.SignedJWKSURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.SignedJWKSURI = signedJWKSURI
 
-	organizationName, err := policy.OrganizationName.Apply(c.OrganizationName)
-	if err != nil {
+	if c.OrganizationName, err = policy.OrganizationName.Apply(c.OrganizationName); err != nil {
 		return client.Meta{}, err
 	}
-	c.OrganizationName = organizationName
 
-	clientRegistrationTypes, err := policy.ClientRegistrationTypes.Apply(c.ClientRegistrationTypes)
-	if err != nil {
+	if c.ClientRegistrationTypes, err = policy.ClientRegistrationTypes.Apply(c.ClientRegistrationTypes); err != nil {
 		return client.Meta{}, err
 	}
-	c.ClientRegistrationTypes = clientRegistrationTypes
 
-	postLogoutRedirectURIs, err := policy.PostLogoutRedirectURIs.Apply(c.PostLogoutRedirectURIs)
-	if err != nil {
+	if c.PostLogoutRedirectURIs, err = policy.PostLogoutRedirectURIs.Apply(c.PostLogoutRedirectURIs); err != nil {
 		return client.Meta{}, err
 	}
-	c.PostLogoutRedirectURIs = postLogoutRedirectURIs
 
-	displayName, err := policy.DisplayName.Apply(c.DisplayName)
-	if err != nil {
+	if c.DisplayName, err = policy.DisplayName.Apply(c.DisplayName); err != nil {
 		return client.Meta{}, err
 	}
-	c.DisplayName = displayName
 
-	description, err := policy.Description.Apply(c.Description)
-	if err != nil {
+	if c.Description, err = policy.Description.Apply(c.Description); err != nil {
 		return client.Meta{}, err
 	}
-	c.Description = description
 
-	keywords, err := policy.Keywords.Apply(c.Keywords)
-	if err != nil {
+	if c.Keywords, err = policy.Keywords.Apply(c.Keywords); err != nil {
 		return client.Meta{}, err
 	}
-	c.Keywords = keywords
 
-	informationURI, err := policy.InformationURI.Apply(c.InformationURI)
-	if err != nil {
+	if c.InformationURI, err = policy.InformationURI.Apply(c.InformationURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.InformationURI = informationURI
 
-	organizationURI, err := policy.OrganizationURI.Apply(c.OrganizationURI)
-	if err != nil {
+	if c.OrganizationURI, err = policy.OrganizationURI.Apply(c.OrganizationURI); err != nil {
 		return client.Meta{}, err
 	}
-	c.OrganizationURI = organizationURI
 
-	credentialOfferEndpoint, err := policy.CredentialOfferEndpoint.Apply(c.CredentialOfferEndpoint)
-	if err != nil {
+	if c.CredentialOfferEndpoint, err = policy.CredentialOfferEndpoint.Apply(c.CredentialOfferEndpoint); err != nil {
 		return client.Meta{}, err
 	}
-	c.CredentialOfferEndpoint = credentialOfferEndpoint
 
-	subIdentifierTypes, err := policy.SubIdentifierTypes.Apply(c.SubIdentifierTypes)
-	if err != nil {
+	if c.SubIdentifierTypes, err = policy.SubIdentifierTypes.Apply(c.SubIdentifierTypes); err != nil {
 		return client.Meta{}, err
 	}
-	c.SubIdentifierTypes = subIdentifierTypes
 
-	idTokenSigAlgs, err := policy.IDTokenSigAlgs.Apply(c.IDTokenSigAlgs)
-	if err != nil {
+	if c.IDTokenSigAlgs, err = policy.IDTokenSigAlgs.Apply(c.IDTokenSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenSigAlgs = idTokenSigAlgs
 
-	idTokenKeyEncAlgs, err := policy.IDTokenKeyEncAlgs.Apply(c.IDTokenKeyEncAlgs)
-	if err != nil {
+	if c.IDTokenKeyEncAlgs, err = policy.IDTokenKeyEncAlgs.Apply(c.IDTokenKeyEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenKeyEncAlgs = idTokenKeyEncAlgs
 
-	idTokenContentEncAlgs, err := policy.IDTokenContentEncAlgs.Apply(c.IDTokenContentEncAlgs)
-	if err != nil {
+	if c.IDTokenContentEncAlgs, err = policy.IDTokenContentEncAlgs.Apply(c.IDTokenContentEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.IDTokenContentEncAlgs = idTokenContentEncAlgs
 
-	userInfoSigAlgs, err := policy.UserInfoSigAlgs.Apply(c.UserInfoSigAlgs)
-	if err != nil {
+	if c.UserInfoSigAlgs, err = policy.UserInfoSigAlgs.Apply(c.UserInfoSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoSigAlgs = userInfoSigAlgs
 
-	userInfoKeyEncAlgs, err := policy.UserInfoKeyEncAlgs.Apply(c.UserInfoKeyEncAlgs)
-	if err != nil {
+	if c.UserInfoKeyEncAlgs, err = policy.UserInfoKeyEncAlgs.Apply(c.UserInfoKeyEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoKeyEncAlgs = userInfoKeyEncAlgs
 
-	userInfoContentEncAlgs, err := policy.UserInfoContentEncAlgs.Apply(c.UserInfoContentEncAlgs)
-	if err != nil {
+	if c.UserInfoContentEncAlgs, err = policy.UserInfoContentEncAlgs.Apply(c.UserInfoContentEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.UserInfoContentEncAlgs = userInfoContentEncAlgs
 
-	jarSigAlgs, err := policy.JARSigAlgs.Apply(c.JARSigAlgs)
-	if err != nil {
+	if c.JARSigAlgs, err = policy.JARSigAlgs.Apply(c.JARSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARSigAlgs = jarSigAlgs
 
-	jarKeyEncAlgs, err := policy.JARKeyEncAlgs.Apply(c.JARKeyEncAlgs)
-	if err != nil {
+	if c.JARKeyEncAlgs, err = policy.JARKeyEncAlgs.Apply(c.JARKeyEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARKeyEncAlgs = jarKeyEncAlgs
 
-	jarContentEncAlgs, err := policy.JARContentEncAlgs.Apply(c.JARContentEncAlgs)
-	if err != nil {
+	if c.JARContentEncAlgs, err = policy.JARContentEncAlgs.Apply(c.JARContentEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARContentEncAlgs = jarContentEncAlgs
 
-	tokenAuthnMethods, err := policy.TokenAuthnMethods.Apply(c.TokenAuthnMethods)
-	if err != nil {
+	if c.TokenAuthnMethods, err = policy.TokenAuthnMethods.Apply(c.TokenAuthnMethods); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenAuthnMethods = tokenAuthnMethods
 
-	tokenAuthnSigAlgs, err := policy.TokenAuthnSigAlgs.Apply(c.TokenAuthnSigAlgs)
-	if err != nil {
+	if c.TokenAuthnSigAlgs, err = policy.TokenAuthnSigAlgs.Apply(c.TokenAuthnSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.TokenAuthnSigAlgs = tokenAuthnSigAlgs
 
-	cibaJARSigAlgs, err := policy.CIBAJARSigAlgs.Apply(c.CIBAJARSigAlgs)
-	if err != nil {
+	if c.CIBAJARSigAlgs, err = policy.CIBAJARSigAlgs.Apply(c.CIBAJARSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.CIBAJARSigAlgs = cibaJARSigAlgs
 
-	jarmSigAlgs, err := policy.JARMSigAlgs.Apply(c.JARMSigAlgs)
-	if err != nil {
+	if c.JARMSigAlgs, err = policy.JARMSigAlgs.Apply(c.JARMSigAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMSigAlgs = jarmSigAlgs
 
-	jarmKeyEncAlgs, err := policy.JARMKeyEncAlgs.Apply(c.JARMKeyEncAlgs)
-	if err != nil {
+	if c.JARMKeyEncAlgs, err = policy.JARMKeyEncAlgs.Apply(c.JARMKeyEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMKeyEncAlgs = jarmKeyEncAlgs
 
-	jarmContentEncAlgs, err := policy.JARMContentEncAlgs.Apply(c.JARMContentEncAlgs)
-	if err != nil {
+	if c.JARMContentEncAlgs, err = policy.JARMContentEncAlgs.Apply(c.JARMContentEncAlgs); err != nil {
 		return client.Meta{}, err
 	}
-	c.JARMContentEncAlgs = jarmContentEncAlgs
 
 	if c.CustomAttributes == nil {
 		c.CustomAttributes = make(map[string]any)
 	}
 	for att, ops := range policy.CustomAttributes {
-		attValue, err := ops.Apply(c.CustomAttributes[att])
-		if err != nil {
+		if c.CustomAttributes[att], err = ops.Apply(c.CustomAttributes[att]); err != nil {
 			return client.Meta{}, err
 		}
-		c.CustomAttributes[att] = attValue
+	}
+
+	return c, nil
+}
+
+type openIDProviderMetadataPolicy struct {
+	Issuer                            metadataOperators[string]                             `json:"issuer"`
+	ClientRegistrationEndpoint        metadataOperators[string]                             `json:"registration_endpoint"`
+	AuthorizationEndpoint             metadataOperators[string]                             `json:"authorization_endpoint"`
+	TokenEndpoint                     metadataOperators[string]                             `json:"token_endpoint"`
+	UserInfoEndpoint                  metadataOperators[string]                             `json:"userinfo_endpoint"`
+	JWKSEndpoint                      metadataOperators[string]                             `json:"jwks_uri"`
+	PAREndpoint                       metadataOperators[string]                             `json:"pushed_authorization_request_endpoint"`
+	PARRequired                       metadataOperators[bool]                               `json:"require_pushed_authorization_requests"`
+	ResponseTypes                     metadataOperators[[]goidc.ResponseType]               `json:"response_types_supported"`
+	ResponseModes                     metadataOperators[[]goidc.ResponseMode]               `json:"response_modes_supported"`
+	GrantTypes                        metadataOperators[[]goidc.GrantType]                  `json:"grant_types_supported"`
+	Scopes                            metadataOperators[[]string]                           `json:"scopes_supported"`
+	UserClaimsSupported               metadataOperators[[]string]                           `json:"claims_supported"`
+	ClaimTypesSupported               metadataOperators[[]goidc.ClaimType]                  `json:"claim_types_supported"`
+	SubIdentifierTypes                metadataOperators[[]goidc.SubIdentifierType]          `json:"subject_types_supported"`
+	IDTokenSigAlgs                    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"id_token_signing_alg_values_supported"`
+	IDTokenKeyEncAlgs                 metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"id_token_encryption_alg_values_supported"`
+	IDTokenContentEncAlgs             metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"id_token_encryption_enc_values_supported"`
+	UserInfoKeyEncAlgs                metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"userinfo_encryption_alg_values_supported"`
+	UserInfoContentEncAlgs            metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"userinfo_encryption_enc_values_supported"`
+	UserInfoSigAlgs                   metadataOperators[[]goidc.SignatureAlgorithm]         `json:"userinfo_signing_alg_values_supported"`
+	TokenAuthnMethods                 metadataOperators[[]goidc.AuthnMethod]                `json:"token_endpoint_auth_methods_supported"`
+	TokenAuthnSigAlgs                 metadataOperators[[]goidc.SignatureAlgorithm]         `json:"token_endpoint_auth_signing_alg_values_supported"`
+	JAREnabled                        metadataOperators[bool]                               `json:"request_parameter_supported"`
+	JARRequired                       metadataOperators[bool]                               `json:"require_signed_request_object"`
+	JARAlgs                           metadataOperators[[]goidc.SignatureAlgorithm]         `json:"request_object_signing_alg_values_supported"`
+	JARKeyEncAlgs                     metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"request_object_encryption_alg_values_supported"`
+	JARContentEncAlgs                 metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"request_object_encryption_enc_values_supported"`
+	JARByReferenceEnabled             metadataOperators[bool]                               `json:"request_uri_parameter_supported"`
+	JARRequestURIRegistrationRequired metadataOperators[bool]                               `json:"require_request_uri_registration"`
+	JARMAlgs                          metadataOperators[[]goidc.SignatureAlgorithm]         `json:"authorization_signing_alg_values_supported"`
+	JARMKeyEncAlgs                    metadataOperators[[]goidc.KeyEncryptionAlgorithm]     `json:"authorization_encryption_alg_values_supported"`
+	JARMContentEncAlgs                metadataOperators[[]goidc.ContentEncryptionAlgorithm] `json:"authorization_encryption_enc_values_supported"`
+	IssuerResponseParamEnabled        metadataOperators[bool]                               `json:"authorization_response_iss_parameter_supported"`
+	ClaimsParamEnabled                metadataOperators[bool]                               `json:"claims_parameter_supported"`
+	AuthDetailsEnabled                metadataOperators[bool]                               `json:"authorization_details_supported"`
+	AuthDetailTypesSupported          metadataOperators[[]goidc.AuthDetailType]             `json:"authorization_details_types_supported"`
+	DPoPSigAlgs                       metadataOperators[[]goidc.SignatureAlgorithm]         `json:"dpop_signing_alg_values_supported"`
+	TokenIntrospectionEndpoint        metadataOperators[string]                             `json:"introspection_endpoint"`
+	TokenIntrospectionAuthnMethods    metadataOperators[[]goidc.AuthnMethod]                `json:"introspection_endpoint_auth_methods_supported"`
+	TokenIntrospectionAuthnSigAlgs    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"introspection_endpoint_auth_signing_alg_values_supported"`
+	TokenRevocationEndpoint           metadataOperators[string]                             `json:"revocation_endpoint"`
+	TokenRevocationAuthnMethods       metadataOperators[[]goidc.AuthnMethod]                `json:"revocation_endpoint_auth_methods_supported"`
+	TokenRevocationAuthnSigAlgs       metadataOperators[[]goidc.SignatureAlgorithm]         `json:"revocation_endpoint_auth_signing_alg_values_supported"`
+	DeviceAuthorizationEndpoint       metadataOperators[string]                             `json:"device_authorization_endpoint"`
+	CIBATokenDeliveryModes            metadataOperators[[]goidc.CIBATokenDeliveryMode]      `json:"backchannel_token_delivery_modes_supported"`
+	CIBAEndpoint                      metadataOperators[string]                             `json:"backchannel_authentication_endpoint"`
+	CIBAJARSigAlgs                    metadataOperators[[]goidc.SignatureAlgorithm]         `json:"backchannel_authentication_request_signing_alg_values_supported"`
+	CIBAUserCodeEnabled               metadataOperators[bool]                               `json:"backchannel_user_code_parameter_supported"`
+	TLSBoundTokensEnabled             metadataOperators[bool]                               `json:"tls_client_certificate_bound_access_tokens"`
+	ACRs                              metadataOperators[[]goidc.ACR]                        `json:"acr_values_supported"`
+	DisplayValues                     metadataOperators[[]goidc.DisplayValue]               `json:"display_values_supported"`
+	CodeChallengeMethods              metadataOperators[[]goidc.CodeChallengeMethod]        `json:"code_challenge_methods_supported"`
+	EndSessionEndpoint                metadataOperators[string]                             `json:"end_session_endpoint"`
+	ClientRegistrationTypes           metadataOperators[[]goidc.ClientRegistrationType]     `json:"client_registration_types_supported"`
+	OrganizationName                  metadataOperators[string]                             `json:"organization_name"`
+	FederationRegistrationEndpoint    metadataOperators[string]                             `json:"federation_registration_endpoint"`
+	SignedJWKSEndpoint                metadataOperators[string]                             `json:"signed_jwks_uri"`
+	PreAuthCodeAnonymousAccess        metadataOperators[bool]                               `json:"pre-authorized_grant_anonymous_access_supported"`
+}
+
+func (p openIDProviderMetadataPolicy) Validate() error {
+	validators := []func() error{
+		p.Issuer.Validate,
+		p.ClientRegistrationEndpoint.Validate,
+		p.AuthorizationEndpoint.Validate,
+		p.TokenEndpoint.Validate,
+		p.UserInfoEndpoint.Validate,
+		p.JWKSEndpoint.Validate,
+		p.PAREndpoint.Validate,
+		p.PARRequired.Validate,
+		p.ResponseTypes.Validate,
+		p.ResponseModes.Validate,
+		p.GrantTypes.Validate,
+		p.Scopes.Validate,
+		p.UserClaimsSupported.Validate,
+		p.ClaimTypesSupported.Validate,
+		p.SubIdentifierTypes.Validate,
+		p.IDTokenSigAlgs.Validate,
+		p.IDTokenKeyEncAlgs.Validate,
+		p.IDTokenContentEncAlgs.Validate,
+		p.UserInfoKeyEncAlgs.Validate,
+		p.UserInfoContentEncAlgs.Validate,
+		p.UserInfoSigAlgs.Validate,
+		p.TokenAuthnMethods.Validate,
+		p.TokenAuthnSigAlgs.Validate,
+		p.JAREnabled.Validate,
+		p.JARRequired.Validate,
+		p.JARAlgs.Validate,
+		p.JARKeyEncAlgs.Validate,
+		p.JARContentEncAlgs.Validate,
+		p.JARByReferenceEnabled.Validate,
+		p.JARRequestURIRegistrationRequired.Validate,
+		p.JARMAlgs.Validate,
+		p.JARMKeyEncAlgs.Validate,
+		p.JARMContentEncAlgs.Validate,
+		p.IssuerResponseParamEnabled.Validate,
+		p.ClaimsParamEnabled.Validate,
+		p.AuthDetailsEnabled.Validate,
+		p.AuthDetailTypesSupported.Validate,
+		p.DPoPSigAlgs.Validate,
+		p.TokenIntrospectionEndpoint.Validate,
+		p.TokenIntrospectionAuthnMethods.Validate,
+		p.TokenIntrospectionAuthnSigAlgs.Validate,
+		p.TokenRevocationEndpoint.Validate,
+		p.TokenRevocationAuthnMethods.Validate,
+		p.TokenRevocationAuthnSigAlgs.Validate,
+		p.DeviceAuthorizationEndpoint.Validate,
+		p.CIBATokenDeliveryModes.Validate,
+		p.CIBAEndpoint.Validate,
+		p.CIBAJARSigAlgs.Validate,
+		p.CIBAUserCodeEnabled.Validate,
+		p.TLSBoundTokensEnabled.Validate,
+		p.ACRs.Validate,
+		p.DisplayValues.Validate,
+		p.CodeChallengeMethods.Validate,
+		p.EndSessionEndpoint.Validate,
+		p.ClientRegistrationTypes.Validate,
+		p.OrganizationName.Validate,
+		p.FederationRegistrationEndpoint.Validate,
+		p.SignedJWKSEndpoint.Validate,
+		p.PreAuthCodeAnonymousAccess.Validate,
+	}
+
+	for _, validate := range validators {
+		if err := validate(); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (high openIDProviderMetadataPolicy) Merge(low openIDProviderMetadataPolicy) (openIDProviderMetadataPolicy, error) {
+	var err error
+
+	if high.Issuer, err = high.Issuer.Merge(low.Issuer); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ClientRegistrationEndpoint, err = high.ClientRegistrationEndpoint.Merge(low.ClientRegistrationEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.AuthorizationEndpoint, err = high.AuthorizationEndpoint.Merge(low.AuthorizationEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenEndpoint, err = high.TokenEndpoint.Merge(low.TokenEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.UserInfoEndpoint, err = high.UserInfoEndpoint.Merge(low.UserInfoEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JWKSEndpoint, err = high.JWKSEndpoint.Merge(low.JWKSEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.PAREndpoint, err = high.PAREndpoint.Merge(low.PAREndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.PARRequired, err = high.PARRequired.Merge(low.PARRequired); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ResponseTypes, err = high.ResponseTypes.Merge(low.ResponseTypes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ResponseModes, err = high.ResponseModes.Merge(low.ResponseModes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.GrantTypes, err = high.GrantTypes.Merge(low.GrantTypes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.Scopes, err = high.Scopes.Merge(low.Scopes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.UserClaimsSupported, err = high.UserClaimsSupported.Merge(low.UserClaimsSupported); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ClaimTypesSupported, err = high.ClaimTypesSupported.Merge(low.ClaimTypesSupported); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.SubIdentifierTypes, err = high.SubIdentifierTypes.Merge(low.SubIdentifierTypes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.IDTokenSigAlgs, err = high.IDTokenSigAlgs.Merge(low.IDTokenSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.IDTokenKeyEncAlgs, err = high.IDTokenKeyEncAlgs.Merge(low.IDTokenKeyEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.IDTokenContentEncAlgs, err = high.IDTokenContentEncAlgs.Merge(low.IDTokenContentEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.UserInfoKeyEncAlgs, err = high.UserInfoKeyEncAlgs.Merge(low.UserInfoKeyEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.UserInfoContentEncAlgs, err = high.UserInfoContentEncAlgs.Merge(low.UserInfoContentEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.UserInfoSigAlgs, err = high.UserInfoSigAlgs.Merge(low.UserInfoSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenAuthnMethods, err = high.TokenAuthnMethods.Merge(low.TokenAuthnMethods); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenAuthnSigAlgs, err = high.TokenAuthnSigAlgs.Merge(low.TokenAuthnSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JAREnabled, err = high.JAREnabled.Merge(low.JAREnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARRequired, err = high.JARRequired.Merge(low.JARRequired); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARAlgs, err = high.JARAlgs.Merge(low.JARAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARKeyEncAlgs, err = high.JARKeyEncAlgs.Merge(low.JARKeyEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARContentEncAlgs, err = high.JARContentEncAlgs.Merge(low.JARContentEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARByReferenceEnabled, err = high.JARByReferenceEnabled.Merge(low.JARByReferenceEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARRequestURIRegistrationRequired, err = high.JARRequestURIRegistrationRequired.Merge(low.JARRequestURIRegistrationRequired); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARMAlgs, err = high.JARMAlgs.Merge(low.JARMAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARMKeyEncAlgs, err = high.JARMKeyEncAlgs.Merge(low.JARMKeyEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.JARMContentEncAlgs, err = high.JARMContentEncAlgs.Merge(low.JARMContentEncAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.IssuerResponseParamEnabled, err = high.IssuerResponseParamEnabled.Merge(low.IssuerResponseParamEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ClaimsParamEnabled, err = high.ClaimsParamEnabled.Merge(low.ClaimsParamEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.AuthDetailsEnabled, err = high.AuthDetailsEnabled.Merge(low.AuthDetailsEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.AuthDetailTypesSupported, err = high.AuthDetailTypesSupported.Merge(low.AuthDetailTypesSupported); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.DPoPSigAlgs, err = high.DPoPSigAlgs.Merge(low.DPoPSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenIntrospectionEndpoint, err = high.TokenIntrospectionEndpoint.Merge(low.TokenIntrospectionEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenIntrospectionAuthnMethods, err = high.TokenIntrospectionAuthnMethods.Merge(low.TokenIntrospectionAuthnMethods); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenIntrospectionAuthnSigAlgs, err = high.TokenIntrospectionAuthnSigAlgs.Merge(low.TokenIntrospectionAuthnSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenRevocationEndpoint, err = high.TokenRevocationEndpoint.Merge(low.TokenRevocationEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenRevocationAuthnMethods, err = high.TokenRevocationAuthnMethods.Merge(low.TokenRevocationAuthnMethods); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TokenRevocationAuthnSigAlgs, err = high.TokenRevocationAuthnSigAlgs.Merge(low.TokenRevocationAuthnSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.DeviceAuthorizationEndpoint, err = high.DeviceAuthorizationEndpoint.Merge(low.DeviceAuthorizationEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.CIBATokenDeliveryModes, err = high.CIBATokenDeliveryModes.Merge(low.CIBATokenDeliveryModes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.CIBAEndpoint, err = high.CIBAEndpoint.Merge(low.CIBAEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.CIBAJARSigAlgs, err = high.CIBAJARSigAlgs.Merge(low.CIBAJARSigAlgs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.CIBAUserCodeEnabled, err = high.CIBAUserCodeEnabled.Merge(low.CIBAUserCodeEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.TLSBoundTokensEnabled, err = high.TLSBoundTokensEnabled.Merge(low.TLSBoundTokensEnabled); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ACRs, err = high.ACRs.Merge(low.ACRs); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.DisplayValues, err = high.DisplayValues.Merge(low.DisplayValues); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.CodeChallengeMethods, err = high.CodeChallengeMethods.Merge(low.CodeChallengeMethods); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.EndSessionEndpoint, err = high.EndSessionEndpoint.Merge(low.EndSessionEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.ClientRegistrationTypes, err = high.ClientRegistrationTypes.Merge(low.ClientRegistrationTypes); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.OrganizationName, err = high.OrganizationName.Merge(low.OrganizationName); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.FederationRegistrationEndpoint, err = high.FederationRegistrationEndpoint.Merge(low.FederationRegistrationEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.SignedJWKSEndpoint, err = high.SignedJWKSEndpoint.Merge(low.SignedJWKSEndpoint); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	if high.PreAuthCodeAnonymousAccess, err = high.PreAuthCodeAnonymousAccess.Merge(low.PreAuthCodeAnonymousAccess); err != nil {
+		return openIDProviderMetadataPolicy{}, err
+	}
+
+	return high, nil
+}
+
+func (p openIDProviderMetadataPolicy) Apply(c goidc.Configuration) (goidc.Configuration, error) {
+	var err error
+
+	if c.Issuer, err = p.Issuer.Apply(c.Issuer); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ClientRegistrationEndpoint, err = p.ClientRegistrationEndpoint.Apply(c.ClientRegistrationEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.AuthorizationEndpoint, err = p.AuthorizationEndpoint.Apply(c.AuthorizationEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenEndpoint, err = p.TokenEndpoint.Apply(c.TokenEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.UserInfoEndpoint, err = p.UserInfoEndpoint.Apply(c.UserInfoEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JWKSEndpoint, err = p.JWKSEndpoint.Apply(c.JWKSEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.PAREndpoint, err = p.PAREndpoint.Apply(c.PAREndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.PARRequired, err = p.PARRequired.Apply(c.PARRequired); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ResponseTypes, err = p.ResponseTypes.Apply(c.ResponseTypes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ResponseModes, err = p.ResponseModes.Apply(c.ResponseModes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.GrantTypes, err = p.GrantTypes.Apply(c.GrantTypes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.Scopes, err = p.Scopes.Apply(c.Scopes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.UserClaimsSupported, err = p.UserClaimsSupported.Apply(c.UserClaimsSupported); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ClaimTypesSupported, err = p.ClaimTypesSupported.Apply(c.ClaimTypesSupported); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.SubIdentifierTypes, err = p.SubIdentifierTypes.Apply(c.SubIdentifierTypes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.IDTokenSigAlgs, err = p.IDTokenSigAlgs.Apply(c.IDTokenSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.IDTokenKeyEncAlgs, err = p.IDTokenKeyEncAlgs.Apply(c.IDTokenKeyEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.IDTokenContentEncAlgs, err = p.IDTokenContentEncAlgs.Apply(c.IDTokenContentEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.UserInfoKeyEncAlgs, err = p.UserInfoKeyEncAlgs.Apply(c.UserInfoKeyEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.UserInfoContentEncAlgs, err = p.UserInfoContentEncAlgs.Apply(c.UserInfoContentEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.UserInfoSigAlgs, err = p.UserInfoSigAlgs.Apply(c.UserInfoSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenAuthnMethods, err = p.TokenAuthnMethods.Apply(c.TokenAuthnMethods); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenAuthnSigAlgs, err = p.TokenAuthnSigAlgs.Apply(c.TokenAuthnSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JAREnabled, err = p.JAREnabled.Apply(c.JAREnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARRequired, err = p.JARRequired.Apply(c.JARRequired); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARAlgs, err = p.JARAlgs.Apply(c.JARAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARKeyEncAlgs, err = p.JARKeyEncAlgs.Apply(c.JARKeyEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARContentEncAlgs, err = p.JARContentEncAlgs.Apply(c.JARContentEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARByReferenceEnabled, err = p.JARByReferenceEnabled.Apply(c.JARByReferenceEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARRequestURIRegistrationRequired, err = p.JARRequestURIRegistrationRequired.Apply(c.JARRequestURIRegistrationRequired); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARMAlgs, err = p.JARMAlgs.Apply(c.JARMAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARMKeyEncAlgs, err = p.JARMKeyEncAlgs.Apply(c.JARMKeyEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.JARMContentEncAlgs, err = p.JARMContentEncAlgs.Apply(c.JARMContentEncAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.IssuerResponseParamEnabled, err = p.IssuerResponseParamEnabled.Apply(c.IssuerResponseParamEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ClaimsParamEnabled, err = p.ClaimsParamEnabled.Apply(c.ClaimsParamEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.AuthDetailsEnabled, err = p.AuthDetailsEnabled.Apply(c.AuthDetailsEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.AuthDetailTypesSupported, err = p.AuthDetailTypesSupported.Apply(c.AuthDetailTypesSupported); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.DPoPSigAlgs, err = p.DPoPSigAlgs.Apply(c.DPoPSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenIntrospectionEndpoint, err = p.TokenIntrospectionEndpoint.Apply(c.TokenIntrospectionEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenIntrospectionAuthnMethods, err = p.TokenIntrospectionAuthnMethods.Apply(c.TokenIntrospectionAuthnMethods); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenIntrospectionAuthnSigAlgs, err = p.TokenIntrospectionAuthnSigAlgs.Apply(c.TokenIntrospectionAuthnSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenRevocationEndpoint, err = p.TokenRevocationEndpoint.Apply(c.TokenRevocationEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenRevocationAuthnMethods, err = p.TokenRevocationAuthnMethods.Apply(c.TokenRevocationAuthnMethods); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TokenRevocationAuthnSigAlgs, err = p.TokenRevocationAuthnSigAlgs.Apply(c.TokenRevocationAuthnSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.DeviceAuthorizationEndpoint, err = p.DeviceAuthorizationEndpoint.Apply(c.DeviceAuthorizationEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.CIBATokenDeliveryModes, err = p.CIBATokenDeliveryModes.Apply(c.CIBATokenDeliveryModes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.CIBAEndpoint, err = p.CIBAEndpoint.Apply(c.CIBAEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.CIBAJARSigAlgs, err = p.CIBAJARSigAlgs.Apply(c.CIBAJARSigAlgs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.CIBAUserCodeEnabled, err = p.CIBAUserCodeEnabled.Apply(c.CIBAUserCodeEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.TLSBoundTokensEnabled, err = p.TLSBoundTokensEnabled.Apply(c.TLSBoundTokensEnabled); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ACRs, err = p.ACRs.Apply(c.ACRs); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.DisplayValues, err = p.DisplayValues.Apply(c.DisplayValues); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.CodeChallengeMethods, err = p.CodeChallengeMethods.Apply(c.CodeChallengeMethods); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.EndSessionEndpoint, err = p.EndSessionEndpoint.Apply(c.EndSessionEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.ClientRegistrationTypes, err = p.ClientRegistrationTypes.Apply(c.ClientRegistrationTypes); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.OrganizationName, err = p.OrganizationName.Apply(c.OrganizationName); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.FederationRegistrationEndpoint, err = p.FederationRegistrationEndpoint.Apply(c.FederationRegistrationEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.SignedJWKSEndpoint, err = p.SignedJWKSEndpoint.Apply(c.SignedJWKSEndpoint); err != nil {
+		return goidc.Configuration{}, err
+	}
+
+	if c.PreAuthCodeAnonymousAccess, err = p.PreAuthCodeAnonymousAccess.Apply(c.PreAuthCodeAnonymousAccess); err != nil {
+		return goidc.Configuration{}, err
 	}
 
 	return c, nil

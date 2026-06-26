@@ -34,34 +34,56 @@ import (
 )
 
 type Provider struct {
-	config                     oidc.Configuration
-	profileValidationIsEnabled bool
+	config                   oidc.Configuration
+	profileValidationEnabled bool
+}
+
+type Config struct {
+	Issuer      string
+	Manager     goidc.GrantManager
+	JWKSFunc    goidc.JWKSFunc
+	IDTokenAlgs []goidc.SignatureAlgorithm
 }
 
 // New creates a new openid provider.
 //
-// The "jwksFunc" parameter provides the server's JSON Web Key Set (JWKS),
+// The cfg.JWKSFunc parameter provides the server's JSON Web Key Set (JWKS),
 // used for signing, decryption, and exposure via the JWKS endpoint.
 // Typically, it should return both private and public key material.
 // If private keys are unavailable or granular control over signing is required,
-// "jwksFunc" can be configured to return only public key material. In such cases,
+// cfg.JWKSFunc can be configured to return only public key material. In such cases,
 // the [WithSigner] option must be provided to handle signing operations.
 // Similarly, if server-side encryption (e.g., JAR encryption) is enabled,
 // the [WithDecrypter] option must also be configured for decryption support.
 // For operations like signature verification, only the public key material is
-// needed, which can be retrieved using "jwksFunc".
+// needed, which can be retrieved using cfg.JWKSFunc.
 //
-// Default Settings:
-//   - ID tokens are signed using [defaultAsymmetricSigAlg]. Ensure a JWK supporting [defaultAsymmetricSigAlg] is
-//     available in the server's JWKS.
-//     This algorithm can be overridden with [WithIDTokenSignatureAlgs].
-//   - Access tokens are issued as JWTs signed with the ID token default algorithm.
-func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opts ...Option) (*Provider, error) {
+// cfg.IDTokenAlgs must contain at least one algorithm; the first element is
+// used as the default signing algorithm. Ensure the JWKS contains keys
+// supporting all declared algorithms.
+//
+// cfg.Manager is optional and defaults to an in-memory implementation.
+// Access tokens are issued as JWTs signed with the first ID token algorithm.
+func New(cfg Config, opts ...Option) (*Provider, error) {
+	if cfg.Issuer == "" {
+		return nil, errors.New("issuer cannot be empty")
+	}
+
+	if cfg.JWKSFunc == nil {
+		return nil, errors.New("the jwks function cannot be empty")
+	}
+
+	if len(cfg.IDTokenAlgs) == 0 {
+		return nil, errors.New("at least one ID token signature algorithm must be provided")
+	}
+
 	op := &Provider{
 		config: oidc.Configuration{
-			GrantManager: manager,
-			Host:         issuer,
-			JWKSFunc:     jwksFunc,
+			GrantManager:         cfg.Manager,
+			Host:                 cfg.Issuer,
+			JWKSFunc:             cfg.JWKSFunc,
+			IDTokenDefaultSigAlg: cfg.IDTokenAlgs[0],
+			IDTokenSigAlgs:       cfg.IDTokenAlgs,
 		},
 	}
 
@@ -75,25 +97,25 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		return nil, fmt.Errorf("default authn method %q is not among the enabled authn methods", op.config.AuthnMethodDefault)
 	}
 
-	if !op.config.MTLSIsEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
+	if !op.config.MTLSEnabled && slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodTLS || method == goidc.AuthnMethodSelfSignedTLS
 	}) {
 		return nil, errors.New("mtls must be enabled for tls_client_auth or self_signed_tls_client_auth")
 	}
 
-	if op.config.MTLSTokenBindingIsEnabled && !op.config.MTLSIsEnabled {
+	if op.config.MTLSTokenBindingEnabled && !op.config.MTLSEnabled {
 		return nil, errors.New("mtls must be enabled if tls token binding is enabled")
 	}
 
-	if op.config.TokenBindingIsRequired && !op.config.DPoPIsEnabled && !op.config.MTLSTokenBindingIsEnabled {
+	if op.config.TokenBindingRequired && !op.config.DPoPEnabled && !op.config.MTLSTokenBindingEnabled {
 		return nil, errors.New("either dpop or tls binding must be enabled if sender constraining tokens is required")
 	}
 
-	if op.config.PARIsEnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+	if op.config.PAREnabled && !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		return nil, errors.New("par cannot be enabled without authorization code grant")
 	}
 
-	if op.config.JARByReferenceUnregisteredURIIsEnabled && !op.config.JARByReferenceIsEnabled {
+	if op.config.JARByReferenceUnregisteredURIEnabled && !op.config.JARByReferenceEnabled {
 		return nil, errors.New("jar by-reference unregistered uris cannot be enabled without jar by-reference")
 	}
 
@@ -103,7 +125,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		return nil, errors.New("dcr secret lifetime requires a secret-based token authentication method")
 	}
 
-	if op.config.DCRSecretRotationIsEnabled && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
+	if op.config.DCRSecretRotationEnabled && !slices.ContainsFunc(op.config.AuthnMethods, func(method goidc.AuthnMethod) bool {
 		return method == goidc.AuthnMethodSecretBasic || method == goidc.AuthnMethodSecretPost || method == goidc.AuthnMethodSecretJWT
 	}) {
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
@@ -116,16 +138,12 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
 
 	op.config.GrantManager = nonZeroOrDefault(op.config.GrantManager, goidc.GrantManager(inmemoryManager))
-	if op.config.OpaqueTokenIsEnabled {
+	if op.config.OpaqueTokenEnabled {
 		op.config.OpaqueTokenManager = nonZeroOrDefault(op.config.OpaqueTokenManager, goidc.OpaqueTokenManager(inmemoryManager))
 		op.config.OpaqueTokenFunc = nonZeroOrDefault(op.config.OpaqueTokenFunc, defaultOpaqueTokenFunc)
 	}
 
 	op.config.Profile = nonZeroOrDefault(op.config.Profile, goidc.ProfileOpenID)
-
-	op.config.IDTokenDefaultSigAlg = nonZeroOrDefault(op.config.IDTokenDefaultSigAlg, defaultAsymmetricSigAlg)
-
-	op.config.IDTokenSigAlgs = nonZeroOrDefault(op.config.IDTokenSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
 
 	op.config.Scopes = nonZeroOrDefault(op.config.Scopes, []goidc.Scope{goidc.ScopeOpenID})
 
@@ -140,8 +158,6 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 	op.config.IDTokenClaimsFunc = nonZeroOrDefault(op.config.IDTokenClaimsFunc, goidc.IDTokenClaimsFunc(defaultIDTokenClaimsFunc))
 	op.config.UserInfoClaimsFunc = nonZeroOrDefault(op.config.UserInfoClaimsFunc, goidc.UserInfoClaimsFunc(defaultUserInfoClaimsFunc))
 	op.config.TokenClaimsFunc = nonZeroOrDefault(op.config.TokenClaimsFunc, goidc.TokenClaimsFunc(defaultTokenClaimsFunc))
-
-	op.config.ResponseModes = appendIfNotIn(op.config.ResponseModes, goidc.ResponseModeQuery, goidc.ResponseModeFragment)
 
 	op.config.SubIdentifierTypeDefault = nonZeroOrDefault(op.config.SubIdentifierTypeDefault, goidc.SubIdentifierPublic)
 	op.config.SubIdentifierTypes = nonZeroOrDefault(op.config.SubIdentifierTypes, []goidc.SubIdentifierType{goidc.SubIdentifierPublic})
@@ -170,7 +186,9 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
 		op.config.AuthManager = nonZeroOrDefault(op.config.AuthManager, goidc.AuthManager(inmemoryManager))
-		op.config.ResponseTypes = appendIfNotIn(op.config.ResponseTypes, goidc.ResponseTypeCode)
+		if !slices.Contains(op.config.ResponseTypes, goidc.ResponseTypeCode) {
+			op.config.ResponseTypes = append([]goidc.ResponseType{goidc.ResponseTypeCode}, op.config.ResponseTypes...)
+		}
 		op.config.AuthTimeoutSecs = nonZeroOrDefault(op.config.AuthTimeoutSecs, defaultAuthnSessionTimeoutSecs)
 		op.config.AuthCodeLifetimeSecs = nonZeroOrDefault(op.config.AuthCodeLifetimeSecs, defaultAuthorizationCodeLifetimeSecs)
 		op.config.AuthCodeFunc = nonZeroOrDefault(op.config.AuthCodeFunc, defaultAuthCodeFunc)
@@ -179,11 +197,16 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}) {
 			op.config.GrantTypes = append(op.config.GrantTypes, goidc.GrantImplicit)
 		}
+		responseModes := []goidc.ResponseMode{goidc.ResponseModeQuery, goidc.ResponseModeFragment}
+		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
+			responseModes = append(responseModes, goidc.ResponseModeFormPost)
+		}
+		op.config.ResponseModes = responseModes
 	}
 
 	op.config.AuthnMethods = nonZeroOrDefault(op.config.AuthnMethods, []goidc.AuthnMethod{goidc.AuthnMethodSecretPost})
 
-	if op.config.DCRIsEnabled {
+	if op.config.DCREnabled {
 		op.config.DCRManager = nonZeroOrDefault(op.config.DCRManager, goidc.DCRManager(inmemoryManager))
 		op.config.DCREndpoint = nonZeroOrDefault(op.config.DCREndpoint, defaultEndpointDynamicClient)
 		op.config.DCRClientIDFunc = nonZeroOrDefault(op.config.DCRClientIDFunc, defaultClientIDFunc)
@@ -192,7 +215,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		op.config.DCRRegistrationTokenFunc = nonZeroOrDefault(op.config.DCRRegistrationTokenFunc, goidc.RandomFunc(defaultDCRRegistrationTokenFunc))
 	}
 
-	if op.config.PARIsEnabled {
+	if op.config.PAREnabled {
 		op.config.PARManager = nonZeroOrDefault(op.config.PARManager, goidc.PARManager(inmemoryManager))
 		op.config.PARHandleSessionFunc = nonZeroOrDefault(op.config.PARHandleSessionFunc, goidc.HandleSessionFunc(defaultPARHandleSessionFunc))
 		op.config.PARIDFunc = nonZeroOrDefault(op.config.PARIDFunc, defaultPARIDFunc)
@@ -200,11 +223,11 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
 
-	if op.config.JAREncIsEnabled {
+	if op.config.JAREncEnabled {
 		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.JARMIsEnabled {
+	if op.config.JARMEnabled {
 		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
 		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
 		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
@@ -212,28 +235,28 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	if op.config.JARMEncIsEnabled {
+	if op.config.JARMEncEnabled {
 		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
 		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
 			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.TokenIntrospectionIsEnabled {
+	if op.config.TokenIntrospectionEnabled {
 		op.config.TokenIntrospectionEndpoint = nonZeroOrDefault(op.config.TokenIntrospectionEndpoint, defaultEndpointTokenIntrospection)
 		op.config.TokenIntrospectionIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenIntrospectionIsClientAllowedFunc, goidc.IsClientAllowedTokenIntrospectionFunc(defaultTokenIntrospectionIsClientAllowedFunc))
 	}
 
-	if op.config.TokenRevocationIsEnabled {
+	if op.config.TokenRevocationEnabled {
 		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
 		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
 	}
 
-	if op.config.IDTokenEncIsEnabled {
+	if op.config.IDTokenEncEnabled {
 		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
 		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
-	if op.config.UserInfoEncIsEnabled {
+	if op.config.UserInfoEncEnabled {
 		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
 		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
@@ -265,11 +288,10 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		op.config.DeviceAuthGenerateUserCodeFunc = nonZeroOrDefault(op.config.DeviceAuthGenerateUserCodeFunc, defaultGenerateUserCodeFunc())
 	}
 
-	if op.config.OpenIDFedIsEnabled {
+	if op.config.OpenIDFedEnabled {
 		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(inmemoryManager))
 		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
-		op.config.OpenIDFedDefaultSigAlg = nonZeroOrDefault(op.config.OpenIDFedDefaultSigAlg, defaultAsymmetricSigAlg)
-		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{defaultAsymmetricSigAlg})
+		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{op.config.OpenIDFedSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
 		op.config.OpenIDFedJWKSRepresentations = nonZeroOrDefault(op.config.OpenIDFedJWKSRepresentations, []goidc.JWKSRepresentation{goidc.JWKSRepresentationURI})
@@ -284,14 +306,14 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	if op.config.LogoutIsEnabled {
+	if op.config.LogoutEnabled {
 		op.config.LogoutManager = nonZeroOrDefault(op.config.LogoutManager, goidc.LogoutManager(inmemoryManager))
 		op.config.LogoutEndpoint = nonZeroOrDefault(op.config.LogoutEndpoint, defaultEndpointEndSession)
 		op.config.LogoutSessionTimeoutSecs = nonZeroOrDefault(op.config.LogoutSessionTimeoutSecs, defaultLogoutSessionTimeoutSecs)
 		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
 	}
 
-	if op.config.SSFIsEnabled {
+	if op.config.SSFEnabled {
 		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
@@ -317,22 +339,66 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 		}
 	}
 
-	if op.config.RARIsEnabled {
+	if op.config.RAREnabled {
 		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
 		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
 	}
 
-	if op.config.MTLSIsEnabled {
+	if op.config.MTLSEnabled {
 		op.config.ClientCertFunc = nonZeroOrDefault(op.config.ClientCertFunc, goidc.ClientCertFunc(defaultClientCertFunc))
 	}
 
-	if op.config.VCIsEnabled {
-		op.config.VCOfferIDFunc = nonZeroOrDefault(op.config.VCOfferIDFunc, defaultSessionIDFunc)
-		op.config.VCIssuerStateFunc = nonZeroOrDefault(op.config.VCIssuerStateFunc, defaultSessionIDFunc)
-		op.config.VCHandlePreAuthCodeFunc = nonZeroOrDefault(op.config.VCHandlePreAuthCodeFunc, goidc.VCHandlePreAuthCodeFunc(defaultVCHandlePreAuthCodeFunc))
+	if op.config.VCIEnabled {
+		op.config.VCISelfHost = nonZeroOrDefault(op.config.VCISelfHost, op.config.Host)
+		// The self issuer should go first. This is just a convention.
+		op.config.VCIIssuers = append([]goidc.VCIssuer{{
+			Issuer:         op.config.VCISelfHost,
+			Configurations: op.config.VCISelfConfigurations,
+		}}, op.config.VCIIssuers...)
+
+		if op.config.VCISelfOffersEnabled {
+			op.config.VCISelfOfferManager = nonZeroOrDefault(op.config.VCISelfOfferManager, goidc.VCOfferManager(inmemoryManager))
+			op.config.VCISelfOfferIDFunc = nonZeroOrDefault(op.config.VCISelfOfferIDFunc, defaultSessionIDFunc)
+		}
+		if op.config.VCISelfEnabled {
+			for id, config := range op.config.VCISelfConfigurations {
+				if config.Format == goidc.VCFormatDCSDJWT {
+					if config.Type == "" {
+						return nil, fmt.Errorf("credential configuration %q requires Type when Format is %q", id, goidc.VCFormatDCSDJWT)
+					}
+
+					if !op.config.VCISelfJWTIssuerEnabled {
+						return nil, fmt.Errorf("credential configuration %q with Format %q requires WithVCISelfJWTIssuer", id, goidc.VCFormatDCSDJWT)
+					}
+				}
+			}
+
+			if op.config.VCISelfPreAuthCodeGrantEnabled {
+				op.config.VCISelfPreAuthCodeGrantManager = nonZeroOrDefault(op.config.VCISelfPreAuthCodeGrantManager, goidc.VCPreAuthCodeGrantManager(inmemoryManager))
+				op.config.VCISelfPreAuthCodeFunc = nonZeroOrDefault(op.config.VCISelfPreAuthCodeFunc, defaultPreAuthCodeFunc)
+				op.config.VCISelfPreAuthCodeLifetimeSecs = nonZeroOrDefault(op.config.VCISelfPreAuthCodeLifetimeSecs, defaultPreAuthCodeLifetimeSecs)
+			}
+
+			if op.config.VCISelfJWTIssuerEnabled {
+				if op.config.VCISelfJWTIssuerJWKSFunc == nil && op.config.VCISelfJWTIssuerJWKSURI == "" {
+					return nil, errors.New("WithVCISelfJWTIssuer requires either JWKS or JWKS URI")
+				}
+
+				if op.config.VCISelfJWTIssuerJWKSFunc != nil && op.config.VCISelfJWTIssuerJWKSURI != "" {
+					return nil, errors.New("WithVCISelfJWTIssuer requires either JWKS or JWKS URI, not both")
+				}
+			}
+		}
+
+		if op.config.VCIIssuerStateEnabled {
+			if !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+				return nil, errors.New("WithVCIIssuerState requires the authorization code grant to be enabled")
+			}
+		}
+
 	}
 
-	if !op.profileValidationIsEnabled {
+	if !op.profileValidationEnabled {
 		return op, nil
 	}
 
@@ -353,7 +419,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 			return nil, errors.New("[FAPI 2.0 5.3.1] implicit grant is not allowed")
 		}
 
-		if !op.config.TokenBindingIsRequired && !op.config.DPoPIsRequired && !op.config.MTLSTokenBindingIsRequired {
+		if !op.config.TokenBindingRequired && !op.config.DPoPRequired && !op.config.MTLSTokenBindingRequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] sender-constrained access tokens must be required")
 		}
 
@@ -375,11 +441,11 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 			return nil, errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
 		}
 
-		if !op.config.PARIsRequired {
+		if !op.config.PARRequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
 		}
 
-		if !op.config.PKCEIsRequired {
+		if !op.config.PKCERequired {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be required")
 		}
 
@@ -389,7 +455,7 @@ func New(issuer string, manager goidc.GrantManager, jwksFunc goidc.JWKSFunc, opt
 			return nil, errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
 		}
 
-		if !op.config.IssuerRespParamIsEnabled {
+		if !op.config.IssuerRespParamEnabled {
 			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
 		}
 
@@ -442,10 +508,16 @@ func (op *Provider) Client(ctx context.Context, id string) (*goidc.Client, error
 	return client.Client(oidc.NewContext(ctx, &op.config), id)
 }
 
-func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo, error) {
+func (op *Provider) Introspect(ctx context.Context, tkn string) (goidc.TokenInfo, *goidc.Grant, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
-	info, _, err := token.Introspect(oidcCtx, tkn, nil)
-	return info, err
+	return token.Introspect(oidcCtx, tkn, nil)
+}
+
+// IDToken parses and validates an ID token issued by this provider, returning
+// its claims as an [goidc.IDToken].
+func (op *Provider) IDToken(ctx context.Context, idToken string) (goidc.IDToken, error) {
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	return token.IDToken(oidcCtx, idToken)
 }
 
 // GrantCIBARequest resolves an approved CIBA request into a grant and notifies
@@ -474,10 +546,44 @@ func (op *Provider) DenyCIBARequest(ctx context.Context, authReqID string, err g
 	return token.DenyCIBARequest(oidcCtx, authReqID, err)
 }
 
+// CreatePreAuthCodeGrant creates a grant that can be redeemed through the
+// pre-authorized code grant.
+func (op *Provider) CreatePreAuthCodeGrant(ctx context.Context, grant *goidc.Grant) error {
+	if !op.config.VCISelfEnabled || !op.config.VCISelfPreAuthCodeGrantEnabled {
+		return errors.New("self pre-authorized code grant is not enabled")
+	}
+	if grant == nil {
+		return errors.New("grant is required")
+	}
+	if grant.PreAuthCodeConsumedAt != 0 {
+		return errors.New("pre-authorized code grant is already consumed")
+	}
+
+	oidcCtx := oidc.NewContext(ctx, &op.config)
+	now := timeutil.TimestampNow()
+	if grant.ID == "" {
+		grant.ID = oidcCtx.GrantID()
+	}
+	if grant.CreatedAt == 0 {
+		grant.CreatedAt = now
+	}
+	if grant.PreAuthCode == "" {
+		grant.PreAuthCode = oidcCtx.PreAuthCode()
+	}
+	if grant.PreAuthCodeExpiresAt == 0 {
+		grant.PreAuthCodeExpiresAt = now + oidcCtx.PreAuthCodeLifetime()
+	}
+	if grant.PreAuthCodeExpiresAt <= now {
+		return errors.New("pre-authorized code expiration must be in the future")
+	}
+	if err := oidcCtx.HandleGrant(goidc.GrantPreAuthorizedCode, grant); err != nil {
+		return err
+	}
+	return oidcCtx.SaveGrant(grant)
+}
+
 // MakeToken generates a new access token based on the provided grant
 // and stores the corresponding grant session and token.
-//
-// This function is intended for scenarios where a token is required for the provider itself.
 func (op *Provider) MakeToken(ctx context.Context, grant *goidc.Grant) (string, error) {
 	oidcCtx := oidc.NewContext(ctx, &op.config)
 	c := &goidc.Client{ID: grant.ClientID}
@@ -506,14 +612,19 @@ func (op *Provider) RevokeToken(ctx context.Context, tkn string) error {
 	return token.Revoke(oidc.NewContext(ctx, &op.config), tkn, nil)
 }
 
-func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
-	oidcCtx := oidc.NewContext(ctx, &p.config)
-	return ssf.PublishEvent(oidcCtx, streamID, event)
+// Resolve builds and resolves a federation trust chain for the given entity ID,
+// returning the resolved entity statement with merged metadata and applied
+// metadata policies.
+func (op *Provider) ResolveFederationEntity(ctx context.Context, id string) (goidc.EntityStatement, error) {
+	return federation.Resolve(oidc.NewContext(ctx, &op.config), id)
 }
 
-func (op *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	oidcCtx := oidc.NewContext(ctx, &op.config)
-	return ssf.PublishEvent(oidcCtx, streamID, goidc.NewSSFVerificationEvent(streamID, opts))
+func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
+	return ssf.PublishEvent(oidc.NewContext(ctx, &p.config), streamID, event)
+}
+
+func (p *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+	return ssf.PublishEvent(oidc.NewContext(ctx, &p.config), streamID, goidc.NewSSFVerificationEvent(streamID, opts))
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.
@@ -550,9 +661,8 @@ const (
 	defaultDeviceAuthLifetimeSecs         = 300 // 5 minutes.
 	defaultDeviceAuthPollingIntervalSecs  = 5
 	defaultAuthorizationCodeLifetimeSecs  = 60
+	defaultPreAuthCodeLifetimeSecs        = 60
 
-	defaultAsymmetricSigAlg            = goidc.RS256
-	defaultSymmetricSigAlg             = goidc.HS256
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
@@ -609,6 +719,10 @@ func defaultHTTPClientFunc(_ context.Context) *http.Client {
 }
 
 func defaultAuthCodeFunc(_ context.Context) string {
+	return strutil.Random(30)
+}
+
+func defaultPreAuthCodeFunc(_ context.Context) string {
 	return strutil.Random(30)
 }
 

@@ -16,7 +16,7 @@ import (
 
 func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 	if joseutil.IsJWS(tkn) {
-		if !ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled {
+		if !ctx.TokenRevocationRevokeGrantOnAccessTokenEnabled {
 			return nil
 		}
 
@@ -77,7 +77,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 
 	// Opaque access token revocation.
 	err := func() error {
-		if !ctx.OpaqueTokenIsEnabled {
+		if !ctx.OpaqueTokenEnabled {
 			return goidc.ErrNotFound
 		}
 
@@ -94,7 +94,7 @@ func Revoke(ctx oidc.Context, tkn string, c *goidc.Client) error {
 			return goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("the token belongs to a different client"))
 		}
 
-		if !ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled {
+		if !ctx.TokenRevocationRevokeGrantOnAccessTokenEnabled {
 			token.RevokedAt = timeutil.TimestampNow()
 			if err := ctx.SaveOpaqueToken(token); err != nil {
 				return fmt.Errorf("could not revoke token: %w", err)

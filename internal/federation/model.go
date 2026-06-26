@@ -59,9 +59,9 @@ type entityStatement struct {
 	} `json:"trust_mark_owners,omitempty"`
 	// TrustAnchor is the identifier of the trust anchor in the trust chain.
 	// This claim is specific to explicit registration responses, it is not a general entity statement claim.
-	TrustAnchor      string     `json:"trust_anchor,omitempty"`
-	trustChainHeader trustChain `json:"-"`
-	signed           string     `json:"-"`
+	TrustAnchor      string `json:"trust_anchor,omitempty"`
+	trustChainHeader trustChain
+	signed           string
 }
 
 func (s entityStatement) Signed() string {
@@ -201,22 +201,6 @@ func matchesNamespace(entityID, namespace string) bool {
 		return strings.HasSuffix(entityURL.Host, namespaceURL.Host)
 	}
 	return entityURL.Host == namespaceURL.Host
-}
-
-type federationAuthority struct {
-	FetchEndpoint                string              `json:"federation_fetch_endpoint,omitempty"`
-	FetchEndpointAuthMethods     []goidc.AuthnMethod `json:"federation_fetch_endpoint_auth_methods,omitempty"`
-	ListEndpoint                 string              `json:"federation_list_endpoint,omitempty"`
-	ResolveEndpoint              string              `json:"federation_resolve_endpoint,omitempty"`
-	TrustMarkStatusEndpoint      string              `json:"federation_trust_mark_status_endpoint,omitempty"`
-	TrustMarkListEndpoint        string              `json:"federation_trust_mark_list_endpoint,omitempty"`
-	TrustMarkEndpoint            string              `json:"federation_trust_mark_endpoint,omitempty"`
-	TrustMarkEndpointAuthMethods []goidc.AuthnMethod `json:"federation_trust_mark_endpoint_auth_methods,omitempty"`
-	HistoricalKeysEndpoint       string              `json:"federation_historical_keys_endpoint,omitempty"`
-	// EndpointAuthSigAlgValuesSupported are the algorithms for signing the JWT
-	// used for private_key_jwt when authenticating to federation endpoints.
-	EndpointAuthSigAlgValuesSupported []goidc.SignatureAlgorithm `json:"endpoint_auth_signing_alg_values_supported,omitempty"`
-	OrganizationName                  string                     `json:"organization_name,omitempty"`
 }
 
 type trustMark struct {

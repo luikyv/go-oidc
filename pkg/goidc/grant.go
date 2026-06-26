@@ -37,6 +37,16 @@ type Grant struct {
 	AuthCodeConsumedAt int `json:"auth_code_consumed_at,omitempty"`
 	// PreAuthCode is populated for pre-authorized code flows.
 	PreAuthCode string `json:"pre_auth_code,omitempty"`
+	// PreAuthCodeExpiresAt stores the original pre auth code expiry deadline,
+	// so redemption remains bounded by that window independently of grant
+	// creation time.
+	PreAuthCodeExpiresAt int `json:"pre_auth_code_expires_at,omitempty"`
+	// PreAuthCodeConsumedAt is populated once the pre auth code has been
+	// successfully redeemed, so reuse can be detected.
+	PreAuthCodeConsumedAt int `json:"pre_auth_code_consumed_at,omitempty"`
+	// TransactionCode is the additional code required to redeem the
+	// pre-authorized code.
+	TransactionCode string `json:"transaction_code,omitempty"`
 	// AuthReqID is populated when a CIBA request is approved and turned into a
 	// grant.
 	AuthReqID string `json:"auth_req_id,omitempty"`
@@ -61,6 +71,8 @@ type Grant struct {
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
 	// CertThumbprint contains the thumbprint of the certificate used to generate the token.
 	CertThumbprint string `json:"cert_thumbprint,omitempty"`
+	// [RFC 8693 §4.1] Actor represents the acting party in delegation scenarios.
+	Actor *Actor `json:"act,omitempty"`
 	// Store allows storing custom data within the grant.
 	Store map[string]any `json:"store,omitempty"`
 }

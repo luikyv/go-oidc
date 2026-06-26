@@ -1,0 +1,396 @@
+{{define "head"}}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>go-oidc</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #f5f6f8;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            margin: 0;
+            color: #1a1a1a;
+        }
+        .container {
+            background-color: #fff;
+            padding: 32px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08), 0 4px 16px rgba(0, 0, 0, 0.04);
+            width: 100%;
+            max-width: 400px;
+            margin: 16px;
+        }
+        .container h1 {
+            font-size: 20px;
+            font-weight: 600;
+            text-align: center;
+            margin: 0 0 4px;
+            color: #1a1a1a;
+            letter-spacing: -0.3px;
+        }
+        .container h2 {
+            font-size: 14px;
+            font-weight: 400;
+            text-align: center;
+            margin: 0 0 24px;
+            color: #6b7280;
+        }
+        .container p {
+            margin: 0 0 20px;
+            text-align: center;
+            line-height: 1.5;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        .logo {
+            display: block;
+            max-width: 160px;
+            height: auto;
+            margin: 0 auto 16px;
+        }
+        label {
+            display: block;
+            margin-bottom: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            color: #374151;
+        }
+        input[type="text"],
+        input[type="password"] {
+            width: 100%;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 14px;
+            color: #1a1a1a;
+            background: #fff;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            outline: none;
+        }
+        input[type="text"]:focus,
+        input[type="password"]:focus {
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 10px 16px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background-color 0.15s, box-shadow 0.15s;
+            text-align: center;
+            text-decoration: none;
+        }
+        .btn-primary {
+            background-color: #2563eb;
+            color: #fff;
+            margin-bottom: 8px;
+        }
+        .btn-primary:hover {
+            background-color: #1d4ed8;
+            box-shadow: 0 1px 3px rgba(37, 99, 235, 0.3);
+        }
+        .btn-secondary {
+            background-color: #f3f4f6;
+            color: #374151;
+            margin-bottom: 8px;
+        }
+        .btn-secondary:hover {
+            background-color: #e5e7eb;
+        }
+        .btn-ghost {
+            background: none;
+            color: #6b7280;
+            font-size: 13px;
+            padding: 8px;
+            margin-top: 8px;
+        }
+        .btn-ghost:hover {
+            color: #374151;
+            background-color: #f9fafb;
+        }
+        .actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .actions .btn {
+            margin-bottom: 0;
+        }
+        .error-banner {
+            background-color: #fef2f2;
+            border: 1px solid #fecaca;
+            border-radius: 8px;
+            padding: 10px 12px;
+            margin-bottom: 16px;
+            color: #991b1b;
+            font-size: 13px;
+            text-align: center;
+            opacity: 0;
+            transform: translateY(-4px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        .error-banner.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .error-page-heading {
+            color: #dc2626;
+            font-size: 20px;
+            font-weight: 600;
+            margin: 0 0 8px;
+        }
+        .error-page-text {
+            color: #4b5563;
+            font-size: 14px;
+        }
+        .links {
+            text-align: center;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid #f3f4f6;
+        }
+        .links a {
+            display: inline-block;
+            font-size: 13px;
+            color: #6b7280;
+            text-decoration: none;
+            margin: 0 8px;
+            transition: color 0.15s;
+        }
+        .links a:hover {
+            color: #2563eb;
+        }
+        .session-info {
+            margin-top: 12px;
+            word-wrap: break-word;
+            word-break: break-all;
+            max-height: 220px;
+            overflow-y: auto;
+            background-color: #f9fafb;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid #e5e7eb;
+            font-size: 13px;
+        }
+        .session-info h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0 0 8px;
+            color: #374151;
+        }
+        .session-info ul {
+            list-style-type: none;
+            padding-left: 0;
+            margin: 0;
+        }
+        .session-info ul li {
+            margin-bottom: 4px;
+            color: #4b5563;
+            line-height: 1.4;
+        }
+        .session-info ul li strong {
+            color: #374151;
+        }
+        .hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+{{end}}
+
+{{define "foot"}}
+</body>
+</html>
+{{end}}
+
+{{define "login"}}
+    {{template "head"}}
+    <script>
+        var error = "{{ .Error }}";
+        function showError() {
+            if (error) {
+                var el = document.getElementById("error-banner");
+                el.textContent = error;
+                el.classList.add("show");
+            }
+        }
+        function toggleSessionInfo() {
+            document.getElementById('session-info').classList.toggle('hidden');
+        }
+        window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/login");
+        window.onload = showError;
+    </script>
+
+    <div class="container">
+        {{ if .LogoURI }}
+        <img src="{{ .LogoURI }}" alt="Logo" class="logo">
+        {{ end }}
+        <h1>go-oidc</h1>
+        <h2>Login Form</h2>
+        <div id="error-banner" class="error-banner"></div>
+
+        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/login" method="POST">
+            <input type="hidden" name="login" value="true">
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" required>
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+            <button type="submit" id="submit_button" class="btn btn-primary">Sign in</button>
+        </form>
+
+        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/login" method="POST">
+            <input type="hidden" name="login" value="false">
+            <button type="submit" id="cancel_button" class="btn btn-secondary">Deny</button>
+        </form>
+
+        {{ if or .PolicyURI .TermsOfServiceURI }}
+        <div class="links">
+            {{ if .PolicyURI }}
+            <a href="{{ .PolicyURI }}" target="_blank">Privacy Policy</a>
+            {{ end }}
+            {{ if .TermsOfServiceURI }}
+            <a href="{{ .TermsOfServiceURI }}" target="_blank">Terms of Service</a>
+            {{ end }}
+        </div>
+        {{ end }}
+
+        <button type="button" class="btn btn-ghost" onclick="toggleSessionInfo()">Session info</button>
+        <div id="session-info" class="session-info hidden">
+            <h3>Authentication Session</h3>
+            <ul>
+                {{ range $key, $value := .Session }}
+                <li><strong>{{ $key }}:</strong> {{ $value }}</li>
+                {{ end }}
+            </ul>
+        </div>
+    </div>
+    {{template "foot"}}
+{{end}}
+
+{{define "consent"}}
+    {{template "head"}}
+    <script>
+        function toggleSessionInfo() {
+            document.getElementById('session-info').classList.toggle('hidden');
+        }
+        window.history.pushState({}, '', "{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent");
+    </script>
+
+    <div class="container">
+        {{ if .LogoURI }}
+        <img src="{{ .LogoURI }}" alt="Logo" class="logo">
+        {{ end }}
+        <h1>go-oidc</h1>
+        <h2>Grant access</h2>
+        <p>Signed in as <strong>{{ .Subject }}</strong></p>
+
+        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
+            <input type="hidden" name="consent" value="true">
+            <button type="submit" id="submit_button" class="btn btn-primary">Allow</button>
+        </form>
+        <form action="{{ .BaseURL }}/authorize/{{ .CallbackID }}/consent" method="POST">
+            <input type="hidden" name="consent" value="false">
+            <button type="submit" class="btn btn-secondary">Deny</button>
+        </form>
+
+        {{ if or .PolicyURI .TermsOfServiceURI }}
+        <div class="links">
+            {{ if .PolicyURI }}
+            <a href="{{ .PolicyURI }}" target="_blank">Privacy Policy</a>
+            {{ end }}
+            {{ if .TermsOfServiceURI }}
+            <a href="{{ .TermsOfServiceURI }}" target="_blank">Terms of Service</a>
+            {{ end }}
+        </div>
+        {{ end }}
+
+        <button type="button" class="btn btn-ghost" onclick="toggleSessionInfo()">Session info</button>
+        <div id="session-info" class="session-info hidden">
+            <h3>Authentication Session</h3>
+            <ul>
+                {{ range $key, $value := .Session }}
+                <li><strong>{{ $key }}:</strong> {{ $value }}</li>
+                {{ end }}
+            </ul>
+        </div>
+    </div>
+    {{template "foot"}}
+{{end}}
+
+{{define "error"}}
+    {{template "head"}}
+    <div class="container" style="text-align: center;">
+        <h1 class="error-page-heading">Error</h1>
+        <p class="error-page-text">{{ .Error }}</p>
+    </div>
+    {{template "foot"}}
+{{end}}
+
+{{define "logout"}}
+    {{template "head"}}
+    <script>
+        function toggleSessionInfo() {
+            document.getElementById('session-info').classList.toggle('hidden');
+        }
+        {{ if .IsLoggedOut }}
+        window.history.pushState({}, '', "{{ .BaseURL }}/post-logout");
+        {{ else }}
+        window.history.pushState({}, '', "{{ .BaseURL }}/logout/{{ .CallbackID }}");
+        {{ end }}
+    </script>
+
+    {{ if .IsLoggedOut }}
+
+    <div class="container" style="text-align: center;">
+        <h1>go-oidc</h1>
+        <h2>Signed out</h2>
+        <p>You have been logged out.</p>
+    </div>
+
+    {{ else }}
+
+    <div class="container">
+        <h1>go-oidc</h1>
+        <h2>Sign out</h2>
+        <p>Are you sure you want to log out?</p>
+
+        <div class="actions">
+            <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+                <input type="hidden" name="logout" value="true">
+                <button type="submit" id="confirm_button" class="btn btn-primary">Confirm</button>
+            </form>
+            <form action="{{ .BaseURL }}/logout/{{ .CallbackID }}" method="POST">
+                <input type="hidden" name="logout" value="false">
+                <button type="submit" id="cancel_button" class="btn btn-secondary">Cancel</button>
+            </form>
+        </div>
+
+        <button type="button" class="btn btn-ghost" onclick="toggleSessionInfo()">Session info</button>
+        <div id="session-info" class="session-info hidden">
+            <h3>Logout Session</h3>
+            <ul>
+                {{ range $key, $value := .Session }}
+                <li><strong>{{ $key }}:</strong> {{ $value }}</li>
+                {{ end }}
+            </ul>
+        </div>
+    </div>
+
+    {{ end }}
+    {{template "foot"}}
+{{end}}

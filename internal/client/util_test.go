@@ -42,9 +42,9 @@ func TestClient(t *testing.T) {
 				fedClient := &goidc.Client{ID: clientID}
 				dcrClient := &goidc.Client{ID: clientID}
 				ctx.StaticClients = append(ctx.StaticClients, staticClient)
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = fedManager
-				ctx.DCRIsEnabled = true
+				ctx.DCREnabled = true
 				ctx.DCRManager = dcrManager
 				if err := ctx.OpenIDFedSaveClient(fedClient); err != nil {
 					t.Fatalf("could not save federation client: %v", err)
@@ -62,7 +62,7 @@ func TestClient(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				manager := oidctest.Manager(t, ctx)
 				fedClient := &goidc.Client{ID: "https://client.example.com"}
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = manager
 				if err := ctx.OpenIDFedSaveClient(fedClient); err != nil {
 					t.Fatalf("could not save federation client: %v", err)
@@ -78,8 +78,8 @@ func TestClient(t *testing.T) {
 				ctx.OpenIDFedManager = storage.NewManager(100)
 				ctx.DCRManager = storage.NewManager(100)
 				clientID := "https://client.example.com"
-				ctx.OpenIDFedIsEnabled = true
-				ctx.DCRIsEnabled = true
+				ctx.OpenIDFedEnabled = true
+				ctx.DCREnabled = true
 				if err := ctx.DCRSaveClient(&goidc.Client{ID: clientID}); err != nil {
 					t.Fatalf("could not save dcr client: %v", err)
 				}
@@ -93,7 +93,7 @@ func TestClient(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				manager := oidctest.Manager(t, ctx)
 				dcrClient := &goidc.Client{ID: "dcr_client"}
-				ctx.DCRIsEnabled = true
+				ctx.DCREnabled = true
 				ctx.DCRManager = manager
 				if err := ctx.DCRSaveClient(dcrClient); err != nil {
 					t.Fatalf("could not save dcr client: %v", err)
@@ -108,9 +108,9 @@ func TestClient(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				manager := oidctest.Manager(t, ctx)
 				dcrClient := &goidc.Client{ID: "dcr_client"}
-				ctx.OpenIDFedIsEnabled = true
+				ctx.OpenIDFedEnabled = true
 				ctx.OpenIDFedManager = manager
-				ctx.DCRIsEnabled = true
+				ctx.DCREnabled = true
 				ctx.DCRManager = manager
 				if err := ctx.DCRSaveClient(dcrClient); err != nil {
 					t.Fatalf("could not save dcr client: %v", err)

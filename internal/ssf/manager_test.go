@@ -106,11 +106,11 @@ func TestEventManager_Delete(t *testing.T) {
 func TestEventManager_MaxStreams(t *testing.T) {
 	// Given.
 	manager := NewEventManager(2)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAtTimestamp: 100})
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAtTimestamp: 200})
+	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAt: 100})
+	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAt: 200})
 
 	// When - create third stream, should evict oldest.
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAtTimestamp: 300})
+	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAt: 300})
 
 	// Then.
 	_, err := manager.EventStream(context.Background(), "stream_1")

@@ -136,8 +136,8 @@ func TestRegisterHandlers(t *testing.T) {
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := oidctest.NewContext(t)
-			ctx.TokenIntrospectionIsEnabled = test.enableIntrospect
-			ctx.TokenRevocationIsEnabled = test.enableRevoke
+			ctx.TokenIntrospectionEnabled = test.enableIntrospect
+			ctx.TokenRevocationEnabled = test.enableRevoke
 			if ctx.TokenIntrospectionEndpoint == "" {
 				ctx.TokenIntrospectionEndpoint = "/introspect"
 			}

@@ -27,7 +27,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlerCallback), middlewares...))
 	}
 
-	if config.PARIsEnabled {
+	if config.PAREnabled {
 		router.Handle("POST "+config.EndpointPrefix+config.PAREndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlerPAR), middlewares...))
 	}

@@ -174,7 +174,7 @@ func TestUpdate(t *testing.T) {
 			name: "happy path",
 			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRTokenRotationIsEnabled = false
+				ctx.DCRTokenRotationEnabled = false
 				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response, clientID string) {
@@ -190,7 +190,7 @@ func TestUpdate(t *testing.T) {
 			name: "token rotation",
 			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRTokenRotationIsEnabled = true
+				ctx.DCRTokenRotationEnabled = true
 				return ctx, c.ID, regToken, request{ClientID: c.ID, Meta: &client.Meta{ClientMeta: c.ClientMeta}}
 			},
 			validate: func(t *testing.T, _ oidc.Context, resp response, clientID string) {
@@ -365,7 +365,7 @@ func TestUpdate(t *testing.T) {
 			name: "rotates existing secret when secret rotation is enabled",
 			setup: func(t *testing.T) (oidc.Context, string, string, request) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRSecretRotationIsEnabled = true
+				ctx.DCRSecretRotationEnabled = true
 				ctx.DCRSecretLifetimeSecs = 300
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
 				c.Secret = "existing_secret"
@@ -521,7 +521,7 @@ func TestFetch(t *testing.T) {
 			name: "token rotation",
 			setup: func(t *testing.T) (oidc.Context, string, string) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRTokenRotationIsEnabled = true
+				ctx.DCRTokenRotationEnabled = true
 				return ctx, c.ID, regToken
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, clientID string) {
@@ -570,7 +570,7 @@ func TestFetch(t *testing.T) {
 			name: "rotated secret with no lifetime returns zero expiry",
 			setup: func(t *testing.T) (oidc.Context, string, string) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRSecretRotationIsEnabled = true
+				ctx.DCRSecretRotationEnabled = true
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
 				c.Secret = "existing_secret"
 				c.SecretExpiresAt = 0
@@ -602,7 +602,7 @@ func TestFetch(t *testing.T) {
 			name: "rotates existing secret when secret rotation is enabled",
 			setup: func(t *testing.T) (oidc.Context, string, string) {
 				ctx, c, regToken := setUp(t)
-				ctx.DCRSecretRotationIsEnabled = true
+				ctx.DCRSecretRotationEnabled = true
 				ctx.DCRSecretLifetimeSecs = 300
 				c.TokenAuthnMethod = goidc.AuthnMethodSecretBasic
 				c.Secret = "existing_secret"
@@ -719,7 +719,7 @@ func TestRemove(t *testing.T) {
 			name: "client not found",
 			setup: func(t *testing.T) (oidc.Context, string, string) {
 				ctx := oidctest.NewContext(t)
-				ctx.DCRIsEnabled = true
+				ctx.DCREnabled = true
 				ctx.DCRManager = oidctest.Manager(t, ctx)
 				return ctx, "nonexistent_client", "some_token"
 			},
@@ -782,7 +782,7 @@ func newDCRContext(tb testing.TB) oidc.Context {
 	tb.Helper()
 
 	ctx := oidctest.NewContext(tb)
-	ctx.DCRIsEnabled = true
+	ctx.DCREnabled = true
 	ctx.DCRManager = oidctest.Manager(tb, ctx)
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"

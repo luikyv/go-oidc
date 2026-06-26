@@ -1,4 +1,4 @@
-CS_VERSION = v5.1.44
+CS_VERSION = v5.1.45
 GOLANGCI_LINT_VERSION = v2.12.2
 
 setup-dev:
@@ -118,7 +118,6 @@ cs-fapi2-sp-op-mtls-mtls-tests:
 cs-fapi2-sp-op-mtls-dpop-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		fapi2-security-profile-final-test-plan[client_auth_type=mtls][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi] ./examples/fapi2_sp_op_mtls_dpop/config.json \
-		--expected-failures-file ./examples/fapi2_sp_op_mtls_dpop/failures.json \
 		--export-dir ./examples/fapi2_sp_op_mtls_dpop \
 		--verbose
 
@@ -131,7 +130,6 @@ cs-fapi2-sp-op-private-key-mtls-tests:
 cs-fapi2-sp-op-private-key-dpop-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		fapi2-security-profile-final-test-plan[client_auth_type=private_key_jwt][sender_constrain=dpop][openid=openid_connect][fapi_profile=plain_fapi] ./examples/fapi2_sp_op_private_key_dpop/config.json \
-		--expected-failures-file ./examples/fapi2_sp_op_private_key_dpop/failures.json \
 		--export-dir ./examples/fapi2_sp_op_private_key_dpop \
 		--verbose
 
@@ -167,7 +165,6 @@ cs-ssf-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=push][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
 		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=poll][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		--expected-failures-file ./examples/ssf/failures.json \
 		--export-dir ./examples/ssf \
 		--verbose
 

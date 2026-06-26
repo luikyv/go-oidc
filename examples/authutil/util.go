@@ -236,10 +236,10 @@ func HandleError(ctx context.Context, err error) {
 }
 
 func RenderError() goidc.RenderErrorFunc {
-	tmpl := template.Must(template.ParseFS(ui.FS, "*.html"))
+	tmpl := template.Must(template.ParseFS(ui.FS, "template.html"))
 	return func(w http.ResponseWriter, r *http.Request, err error) error {
 		w.WriteHeader(http.StatusOK)
-		_ = tmpl.ExecuteTemplate(w, "error.html", authnPage{
+		_ = tmpl.ExecuteTemplate(w, "error", authnPage{
 			Error: err.Error(),
 		})
 		return nil
@@ -306,7 +306,7 @@ type LogoutPage struct {
 
 func LogoutPolicy() goidc.LogoutPolicy {
 
-	tmpl := template.Must(template.ParseFS(ui.FS, "logout.html"))
+	tmpl := template.Must(template.ParseFS(ui.FS, "template.html"))
 	return goidc.NewLogoutPolicy(
 		"main",
 		func(r *http.Request, ls *goidc.LogoutSession) bool {
@@ -316,7 +316,7 @@ func LogoutPolicy() goidc.LogoutPolicy {
 			logout := r.PostFormValue("logout")
 			if logout == "" {
 				slog.Debug("rendering logout page")
-				if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{
+				if err := tmpl.ExecuteTemplate(w, "logout", LogoutPage{
 					BaseURL:    Issuer,
 					CallbackID: ls.ID,
 					Session:    mapify(ls),
@@ -344,9 +344,9 @@ func LogoutPolicy() goidc.LogoutPolicy {
 }
 
 func HandleLogout() goidc.HandleDefaultPostLogoutFunc {
-	tmpl := template.Must(template.ParseFS(ui.FS, "logout.html"))
+	tmpl := template.Must(template.ParseFS(ui.FS, "template.html"))
 	return func(w http.ResponseWriter, r *http.Request, ls *goidc.LogoutSession) error {
-		if err := tmpl.ExecuteTemplate(w, "logout.html", LogoutPage{IsLoggedOut: true}); err != nil {
+		if err := tmpl.ExecuteTemplate(w, "logout", LogoutPage{IsLoggedOut: true}); err != nil {
 			return fmt.Errorf("could not execute logout template: %w", err)
 		}
 		return nil

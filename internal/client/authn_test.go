@@ -718,7 +718,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "attestation jwt combined mode success",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/token"
@@ -903,7 +903,7 @@ func TestAuthenticated(t *testing.T) {
 			authnCtx: client.AuthnContextDeviceAuth,
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 
 				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
@@ -925,7 +925,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "attestation combined mode dpop key mismatch",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/token"
@@ -950,7 +950,7 @@ func TestAuthenticated(t *testing.T) {
 			name: "attestation no pop and no dpop header",
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 
 				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}
@@ -1075,7 +1075,7 @@ func TestAuthenticated(t *testing.T) {
 			authnCtx: client.AuthnContextPAR,
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 				ctx.Request.Method = http.MethodPost
 				ctx.Request.RequestURI = "/par"
@@ -1100,7 +1100,7 @@ func TestAuthenticated(t *testing.T) {
 			authnCtx: client.AuthnContextCIBA,
 			setup: func(t *testing.T) (oidc.Context, func(*testing.T)) {
 				ctx, c, issuerKey, clientKey := setUpAttestationAuthn(t)
-				ctx.DPoPIsEnabled = true
+				ctx.DPoPEnabled = true
 				ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.ES256}
 
 				cnfJWK := jose.JSONWebKey{Key: clientKey.Public(), Algorithm: string(goidc.ES256)}

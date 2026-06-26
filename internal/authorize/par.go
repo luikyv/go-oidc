@@ -18,7 +18,7 @@ import (
 func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	var shouldRegisterFedClient bool
 	c, err := func() (*goidc.Client, error) {
-		if !ctx.OpenIDFedIsEnabled {
+		if !ctx.OpenIDFedEnabled {
 			return client.Authenticated(ctx, client.AuthnContextPAR)
 		}
 
@@ -56,7 +56,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 	}
 
 	as, err := func() (*goidc.AuthnSession, error) {
-		jar := ctx.JARIsEnabled && (ctx.JARIsRequired || c.JARIsRequired || req.RequestObject != "")
+		jar := ctx.JAREnabled && (ctx.JARRequired || c.JARRequired || req.RequestObject != "")
 		if jar {
 			if req.RequestObject == "" {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request object is required"))
@@ -135,7 +135,7 @@ func pushAuth(ctx oidc.Context, req request) (parResponse, error) {
 // dpopThumbprintForPAR extracts the DPoP JWK thumbprint from the request.
 // The DPoP proof is expected to have been validated before this point.
 func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
-	if !ctx.DPoPIsEnabled {
+	if !ctx.DPoPEnabled {
 		return ""
 	}
 	if dpopJWT, ok := dpop.JWT(ctx); ok {
@@ -145,7 +145,7 @@ func dpopThumbprintForPAR(ctx oidc.Context, req request) string {
 }
 
 func tlsThumbprint(ctx oidc.Context) string {
-	if !ctx.MTLSTokenBindingIsEnabled {
+	if !ctx.MTLSTokenBindingEnabled {
 		return ""
 	}
 	clientCert, err := ctx.ClientCert()
@@ -157,7 +157,7 @@ func tlsThumbprint(ctx oidc.Context) string {
 
 func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Client, error) {
 	var opts *federation.Options
-	if ctx.JARIsEnabled && req.RequestObject != "" {
+	if ctx.JAREnabled && req.RequestObject != "" {
 		opts = &federation.Options{
 			TrustChain: jarTrustChain(req.RequestObject, ctx.JARSigAlgs),
 		}
@@ -168,7 +168,7 @@ func federationClientForPAR(ctx oidc.Context, id string, req request) (*goidc.Cl
 		return nil, err
 	}
 
-	jwksIsUsed := ctx.JARIsEnabled && req.RequestObject != ""
+	jwksIsUsed := ctx.JAREnabled && req.RequestObject != ""
 	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodPrivateKeyJWT
 	jwksIsUsed = jwksIsUsed || c.TokenAuthnMethod == goidc.AuthnMethodSelfSignedTLS
 	if !jwksIsUsed {

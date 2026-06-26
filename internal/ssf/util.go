@@ -109,7 +109,7 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverIsEnabled && len(streams) > 0 {
+	if streams, _ := ctx.SSFEventStreams(receiver.ID); !ctx.SSFMultipleStreamsPerReceiverEnabled && len(streams) > 0 {
 		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("multiple streams per receiver are not allowed")).WithStatusCode(http.StatusConflict)
 	}
 
@@ -123,15 +123,15 @@ func createStream(ctx oidc.Context, req request) (response, error) {
 		audiences = []string{receiver.ID}
 	}
 	stream := &goidc.SSFEventStream{
-		ID:                 ctx.SSFEventStreamID(),
-		ReceiverID:         receiver.ID,
-		Audiences:          audiences,
-		Status:             goidc.SSFEventStreamStatusEnabled,
-		EventsSupported:    ctx.SSFEventsSupported,
-		EventsRequested:    req.EventsRequested,
-		EventsDelivered:    intersection(ctx.SSFEventsSupported, req.EventsRequested),
-		DeliveryMethod:     req.Delivery.Method,
-		CreatedAtTimestamp: timeutil.TimestampNow(),
+		ID:              ctx.SSFEventStreamID(),
+		ReceiverID:      receiver.ID,
+		Audiences:       audiences,
+		Status:          goidc.SSFEventStreamStatusEnabled,
+		EventsSupported: ctx.SSFEventTypes,
+		EventsRequested: req.EventsRequested,
+		EventsDelivered: intersection(ctx.SSFEventTypes, req.EventsRequested),
+		DeliveryMethod:  req.Delivery.Method,
+		CreatedAt:       timeutil.TimestampNow(),
 	}
 	if req.Delivery.Endpoint != nil {
 		stream.DeliveryEndpoint = *req.Delivery.Endpoint
@@ -165,7 +165,7 @@ func updateStream(ctx oidc.Context, req request) (response, error) {
 	}
 
 	stream.EventsRequested = req.EventsRequested
-	stream.EventsDelivered = intersection(ctx.SSFEventsSupported, req.EventsRequested)
+	stream.EventsDelivered = intersection(ctx.SSFEventTypes, req.EventsRequested)
 	stream.DeliveryMethod = req.Delivery.Method
 	if req.Delivery.Endpoint != nil {
 		stream.DeliveryEndpoint = *req.Delivery.Endpoint
@@ -196,7 +196,7 @@ func patchStream(ctx oidc.Context, req request) (response, error) {
 
 	if req.EventsRequested != nil {
 		stream.EventsRequested = req.EventsRequested
-		stream.EventsDelivered = intersection(ctx.SSFEventsSupported, req.EventsRequested)
+		stream.EventsDelivered = intersection(ctx.SSFEventTypes, req.EventsRequested)
 	}
 
 	if req.Delivery.Method != "" {
@@ -542,7 +542,7 @@ func toResponse(ctx oidc.Context, stream *goidc.SSFEventStream) response {
 	}
 	var inactivityTimeout int
 	if ctx.SSFInactivityTimeoutSecs != 0 {
-		inactivityTimeout = stream.ExpiresAtTimestamp - timeutil.TimestampNow()
+		inactivityTimeout = stream.ExpiresAt - timeutil.TimestampNow()
 	}
 	return response{
 		ID:              stream.ID,
@@ -648,10 +648,10 @@ func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) e
 	}
 
 	if ctx.SSFMinVerificationInterval != 0 {
-		if stream.VerifiedAtTimestamp != 0 && stream.VerifiedAtTimestamp+ctx.SSFMinVerificationInterval > timeutil.TimestampNow() {
+		if stream.VerifiedAt != 0 && stream.VerifiedAt+ctx.SSFMinVerificationInterval > timeutil.TimestampNow() {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("verification event cannot be triggered within the minimum verification interval")).WithStatusCode(http.StatusTooManyRequests)
 		}
-		stream.VerifiedAtTimestamp = timeutil.TimestampNow()
+		stream.VerifiedAt = timeutil.TimestampNow()
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
 			return fmt.Errorf("could not update the event stream verification timestamp: %w", err)
 		}
@@ -687,18 +687,18 @@ func authorizedStream(ctx oidc.Context, id string) (*goidc.SSFEventStream, error
 		return nil, goidc.WrapError(goidc.ErrorCodeAccessDenied, "access denied", errors.New("stream not owned by receiver"))
 	}
 
-	if stream.ExpiresAtTimestamp != 0 && stream.ExpiresAtTimestamp <= timeutil.TimestampNow() {
+	if stream.ExpiresAt != 0 && stream.ExpiresAt <= timeutil.TimestampNow() {
 		if err := ctx.SSFHandleExpiredEventStream(stream); err != nil {
 			return nil, fmt.Errorf("could not handle the expired event stream: %w", err)
 		}
-		stream.ExpiresAtTimestamp = 0
+		stream.ExpiresAt = 0
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
 			return nil, fmt.Errorf("could not clear the expired event stream timeout: %w", err)
 		}
 	}
 
 	if ctx.SSFInactivityTimeoutSecs != 0 {
-		stream.ExpiresAtTimestamp = timeutil.TimestampNow() + ctx.SSFInactivityTimeoutSecs
+		stream.ExpiresAt = timeutil.TimestampNow() + ctx.SSFInactivityTimeoutSecs
 		if err := ctx.SSFUpdateEventStream(stream); err != nil {
 			return nil, fmt.Errorf("could not update the event stream inactivity timeout: %w", err)
 		}

@@ -71,7 +71,7 @@ func Introspect(ctx oidc.Context, tkn string, c *goidc.Client) (goidc.TokenInfo,
 	}
 
 	info, grant, err := func() (goidc.TokenInfo, *goidc.Grant, error) {
-		if !ctx.OpaqueTokenIsEnabled {
+		if !ctx.OpaqueTokenEnabled {
 			return goidc.TokenInfo{}, nil, goidc.ErrNotFound
 		}
 
@@ -119,6 +119,7 @@ func Introspect(ctx oidc.Context, tkn string, c *goidc.Client) (goidc.TokenInfo,
 			NotBefore:         token.CreatedAt,
 			ExpiresAt:         token.ExpiresAt,
 			Confirmation:      cnf,
+			Actor:             token.Actor,
 			ResourceAudiences: token.Resources,
 			AdditionalClaims:  ctx.TokenClaims(token, grant),
 		}, grant, nil
@@ -226,4 +227,35 @@ func introspect(ctx oidc.Context, req queryRequest) (goidc.TokenInfo, error) {
 	}
 
 	return info, nil
+}
+
+// IDToken parses and validates an ID token issued by this provider.
+func IDToken(ctx oidc.Context, rawToken string) (goidc.IDToken, error) {
+	parsedToken, err := jwt.ParseSigned(rawToken, ctx.IDTokenSigAlgs)
+	if err != nil {
+		return goidc.IDToken{}, fmt.Errorf("could not parse id token: %w", err)
+	}
+
+	if len(parsedToken.Headers) != 1 || parsedToken.Headers[0].KeyID == "" {
+		return goidc.IDToken{}, fmt.Errorf("id token must contain exactly one JOSE header with a key ID")
+	}
+
+	publicKey, err := ctx.PublicJWK(parsedToken.Headers[0].KeyID)
+	if err != nil {
+		return goidc.IDToken{}, fmt.Errorf("could not fetch signing key for id token: %w", err)
+	}
+
+	var claims jwt.Claims
+	var idToken goidc.IDToken
+	if err := parsedToken.Claims(publicKey.Key, &claims, &idToken); err != nil {
+		return goidc.IDToken{}, fmt.Errorf("could not verify id token claims: %w", err)
+	}
+
+	if err := claims.ValidateWithLeeway(jwt.Expected{
+		Issuer: ctx.Issuer(),
+	}, time.Duration(ctx.JWTLeewayTimeSecs)*time.Second); err != nil {
+		return goidc.IDToken{}, fmt.Errorf("id token validation failed: %w", err)
+	}
+
+	return idToken, nil
 }

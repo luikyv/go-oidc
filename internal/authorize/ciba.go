@@ -25,7 +25,7 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	}
 
 	as, err := func() (*goidc.AuthnSession, error) {
-		jar := ctx.CIBAJARIsEnabled && (ctx.CIBAJARIsRequired || c.CIBAJARSigAlg != "" || req.RequestObject != "")
+		jar := ctx.CIBAJAREnabled && (ctx.CIBAJARRequired || c.CIBAJARSigAlg != "" || req.RequestObject != "")
 		if jar {
 			if req.RequestObject == "" {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("request object is required"))
@@ -116,20 +116,20 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 	as.AuthReqID = ctx.CIBAID()
 	as.ExpiresAt = timeutil.TimestampNow() + exp
 	if as.IDTokenHint != "" {
-		// The ID token hint was already validated.
-		idToken, _ := jwt.ParseSigned(as.IDTokenHint, ctx.IDTokenSigAlgs)
-		_ = idToken.UnsafeClaimsWithoutVerification(&as.IDTokenHintClaims)
+		// The ID token hint was already validated during request validation.
+		idTkn, _ := token.IDToken(ctx, as.IDTokenHint)
+		as.IDTokenHintClaims = &idTkn
 	}
 
 	// Store binding information only for CIBA push mode.
 	// For other modes, binding occurs at the token endpoint.
 	if c.CIBATokenDeliveryMode == goidc.CIBADeliveryModePush {
-		if ctx.DPoPIsEnabled {
+		if ctx.DPoPEnabled {
 			if dpopJWT, ok := dpop.JWT(ctx); ok {
 				as.JWKThumbprint = dpop.JWKThumbprint(dpopJWT, ctx.DPoPSigAlgs)
 			}
 		}
-		if ctx.MTLSTokenBindingIsEnabled {
+		if ctx.MTLSTokenBindingEnabled {
 			if cert, err := ctx.ClientCert(); err == nil {
 				as.ClientCertThumbprint = hashutil.Thumbprint(string(cert.Raw))
 			}
@@ -161,7 +161,7 @@ func validateCIBARequest(ctx oidc.Context, req request, c *goidc.Client) error {
 		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the CIBA grant type"))
 	}
 
-	if ctx.OpenIDIsRequired && !strutil.ContainsOpenID(req.Scopes) {
+	if ctx.OpenIDRequired && !strutil.ContainsOpenID(req.Scopes) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "scope openid is required", errors.New("scope openid is required"))
 	}
 
@@ -173,7 +173,7 @@ func validateCIBARequest(ctx oidc.Context, req request, c *goidc.Client) error {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", fmt.Errorf("client_notification_token length %d exceeds the maximum allowed length", len(req.ClientNotificationToken)))
 	}
 
-	if req.UserCode != "" && (!ctx.CIBAUserCodeIsEnabled || !c.CIBAUserCodeIsEnabled) {
+	if req.UserCode != "" && (!ctx.CIBAUserCodeEnabled || !c.CIBAUserCodeEnabled) {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("user_code is not allowed for this client or server configuration"))
 	}
 

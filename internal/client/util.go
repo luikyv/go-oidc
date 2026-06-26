@@ -20,11 +20,11 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 		}
 	}
 
-	if ctx.OpenIDFedIsEnabled && strutil.IsURL(id) {
+	if ctx.OpenIDFedEnabled && strutil.IsURL(id) {
 		return ctx.OpenIDFedClient(id)
 	}
 
-	if ctx.DCRIsEnabled {
+	if ctx.DCREnabled {
 		return ctx.DCRClient(id)
 	}
 

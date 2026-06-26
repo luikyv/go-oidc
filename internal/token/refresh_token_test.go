@@ -104,7 +104,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "auth details",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -148,7 +148,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "auth details subset",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -191,8 +191,8 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "resource indicators subset",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				req.resources = []string{"https://resource1.com", "https://resource2.com"}
 				if err := ctx.SaveGrant(grant); err != nil {
@@ -328,7 +328,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "rotation enabled",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RefreshTokenRotationIsEnabled = true
+				ctx.RefreshTokenRotationEnabled = true
 				return ctx, req, c, grant
 			},
 			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client, _ *goidc.Grant) {
@@ -352,7 +352,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "rotation enabled clears expiry when lifetime is zero",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.RefreshTokenRotationIsEnabled = true
+				ctx.RefreshTokenRotationEnabled = true
 				ctx.RefreshTokenLifetimeSecs = 0
 				return ctx, req, c, grant
 			},
@@ -445,7 +445,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "mtls binding",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: []byte("test_client_cert")}, nil
 				}
@@ -480,7 +480,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			name: "confidential client must re-bind mtls refresh token",
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				grant.CertThumbprint = "bound_thumbprint"
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
@@ -495,7 +495,7 @@ func TestGenerateRefreshToken(t *testing.T) {
 			setup: func() (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, req, c, grant := setup(t)
 				c.TokenAuthnMethod = goidc.AuthnMethodNone
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.Request.PostForm = map[string][]string{
 					"client_id": {c.ID},
 				}

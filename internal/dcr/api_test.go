@@ -248,7 +248,7 @@ func TestHandleDelete_NoToken(t *testing.T) {
 func TestRegisterHandlers(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.DCRIsEnabled = true
+	ctx.DCREnabled = true
 	ctx.DCRManager = oidctest.Manager(t, ctx)
 	ctx.DCRClientIDFunc = func(context.Context) string {
 		return "test_client_id"
@@ -281,7 +281,7 @@ func TestRegisterHandlers(t *testing.T) {
 func TestRegisterHandlers_Disabled(t *testing.T) {
 	// Given.
 	ctx := oidctest.NewContext(t)
-	ctx.DCRIsEnabled = false
+	ctx.DCREnabled = false
 	mux := http.NewServeMux()
 
 	// When.

@@ -34,7 +34,7 @@ func TestInitBackAuth(t *testing.T) {
 		ctx.CIBAHandleSessionFunc = func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
 			return nil
 		}
-		ctx.CIBAUserCodeIsEnabled = true
+		ctx.CIBAUserCodeEnabled = true
 		ctx.CIBADefaultSessionLifetimeSecs = 60
 		ctx.CIBAPollingIntervalSecs = 5
 
@@ -205,7 +205,7 @@ func TestInitBackAuth(t *testing.T) {
 			name: "with jar",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client) {
 				ctx, client := setup(t)
-				ctx.CIBAJARIsEnabled = true
+				ctx.CIBAJAREnabled = true
 				ctx.CIBAJARSigAlgs = []goidc.SignatureAlgorithm{goidc.RS256}
 
 				privateJWK := oidctest.PrivateRS256JWK(t, "rsa256_key", goidc.KeyUsageSignature)

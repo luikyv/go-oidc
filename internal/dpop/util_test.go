@@ -28,7 +28,7 @@ func TestValidateJWT(t *testing.T) {
 			oidc.Context{
 				Configuration: &oidc.Configuration{
 					Host:            "https://server.example.com",
-					DPoPIsEnabled:   true,
+					DPoPEnabled:     true,
 					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
 					ConsumeJTIFunc:  func(_ context.Context, _ string) error { return nil },
 					JWTLifetimeSecs: 99999999999,
@@ -46,7 +46,7 @@ func TestValidateJWT(t *testing.T) {
 			oidc.Context{
 				Configuration: &oidc.Configuration{
 					Host:            "https://resource.example.org",
-					DPoPIsEnabled:   true,
+					DPoPEnabled:     true,
 					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256, goidc.ES256},
 					ConsumeJTIFunc:  func(_ context.Context, _ string) error { return nil },
 					JWTLifetimeSecs: 99999999999,

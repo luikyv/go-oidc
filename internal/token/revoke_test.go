@@ -17,7 +17,7 @@ func TestRevoke(t *testing.T) {
 		tb.Helper()
 
 		ctx := oidctest.NewContext(tb)
-		ctx.TokenRevocationIsEnabled = true
+		ctx.TokenRevocationEnabled = true
 		ctx.RefreshTokenManager = oidctest.Manager(tb, ctx)
 		ctx.TokenRevocationIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client) bool {
 			return true
@@ -83,7 +83,7 @@ func TestRevoke(t *testing.T) {
 			name: "jwt access token revocation can revoke the grant when configured",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				ctx, c := setup(t)
-				ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
+				ctx.TokenRevocationRevokeGrantOnAccessTokenEnabled = true
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
@@ -195,7 +195,7 @@ func TestRevoke(t *testing.T) {
 			name: "expired jwt access token returns success and does not revoke grant",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				ctx, c := setup(t)
-				ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
+				ctx.TokenRevocationRevokeGrantOnAccessTokenEnabled = true
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{
@@ -254,7 +254,7 @@ func TestRevoke(t *testing.T) {
 			name: "jwt access token issued to another client is rejected",
 			setup: func(t *testing.T) (oidc.Context, queryRequest, *goidc.Client) {
 				ctx, c := setup(t)
-				ctx.TokenRevocationRevokeGrantOnAccessTokenIsEnabled = true
+				ctx.TokenRevocationRevokeGrantOnAccessTokenEnabled = true
 
 				now := timeutil.TimestampNow()
 				grant := &goidc.Grant{

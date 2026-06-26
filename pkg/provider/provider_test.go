@@ -23,23 +23,23 @@ func TestNew(t *testing.T) {
 
 	tests := []struct {
 		name    string
-		setup   func() (goidc.GrantManager, []Option)
+		setup   func() (Config, []Option)
 		want    oidc.Configuration
 		ignores []string
 	}{
 		{
 			name: "default",
-			setup: func() (goidc.GrantManager, []Option) {
-				return storage.NewManager(100), nil
+			setup: func() (Config, []Option) {
+				return Config{
+					Issuer:      issuer,
+					JWKSFunc:    jwksFunc,
+					IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+				}, nil
 			},
 			want: oidc.Configuration{
-				Profile: goidc.ProfileOpenID,
-				Host:    issuer,
-				Scopes:  []goidc.Scope{goidc.ScopeOpenID},
-				ResponseModes: []goidc.ResponseMode{
-					goidc.ResponseModeQuery,
-					goidc.ResponseModeFragment,
-				},
+				Profile:                  goidc.ProfileOpenID,
+				Host:                     issuer,
+				Scopes:                   []goidc.Scope{goidc.ScopeOpenID},
 				ClaimTypes:               []goidc.ClaimType{goidc.ClaimTypeNormal},
 				SubIdentifierTypeDefault: goidc.SubIdentifierPublic,
 				SubIdentifierTypes:       []goidc.SubIdentifierType{goidc.SubIdentifierPublic},
@@ -85,27 +85,38 @@ func TestNew(t *testing.T) {
 		},
 		{
 			name: "with options",
-			setup: func() (goidc.GrantManager, []Option) {
+			setup: func() (Config, []Option) {
 				manager := storage.NewManager(100)
-				return manager, []Option{
-					WithAuthCodeGrant(manager, goidc.ResponseTypeCode, goidc.ResponseTypeToken,
-						goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken, goidc.ResponseTypeCodeAndIDToken,
-						goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken),
-					WithCIBAGrant(manager, goidc.CIBADeliveryModePoll),
-					WithPrivateKeyJWTAuthn(goidc.RS256),
-					WithSecretJWTAuthn(goidc.HS256),
-					WithDCR(manager),
-					WithPAR(manager),
-					WithJAR(goidc.RS256),
-					WithJAREncryption(goidc.RSA_OAEP),
-					WithJARM(goidc.RS256),
-					WithFormPostResponseMode(),
-					WithTokenIntrospection(nil),
-					WithTokenRevocation(nil),
-					WithCIBASessionHandler(nil),
-					WithUserInfoSignatureAlgs(goidc.PS256),
-					WithUserInfoEncryption(goidc.RSA_OAEP),
-				}
+				return Config{
+						Issuer:      issuer,
+						JWKSFunc:    jwksFunc,
+						IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+					}, []Option{
+						WithAuthCodeGrant(AuthCodeGrantConfig{
+							Manager: manager,
+							ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode, goidc.ResponseTypeToken,
+								goidc.ResponseTypeIDToken, goidc.ResponseTypeIDTokenAndToken, goidc.ResponseTypeCodeAndIDToken,
+								goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken},
+						},
+							WithPAR(manager),
+							WithJAR([]goidc.SignatureAlgorithm{goidc.RS256}, WithJAREncryption(goidc.RSA_OAEP)),
+							WithJARM([]goidc.SignatureAlgorithm{goidc.RS256}),
+							WithFormPostResponseMode(),
+						),
+						WithCIBAGrant(CIBAGrantConfig{
+							Manager:       manager,
+							DeliveryModes: []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
+						},
+							WithCIBASessionHandler(nil),
+						),
+						WithPrivateKeyJWTAuthn(goidc.RS256),
+						WithSecretJWTAuthn(goidc.HS256),
+						WithDCR(manager),
+						WithTokenIntrospection(nil),
+						WithTokenRevocation(nil),
+						WithUserInfoSignatureAlgs(goidc.PS256),
+						WithUserInfoEncryption(goidc.RSA_OAEP),
+					}
 			},
 			want: oidc.Configuration{
 				Profile:                  goidc.ProfileOpenID,
@@ -143,17 +154,17 @@ func TestNew(t *testing.T) {
 				AuthnMethods:                    []goidc.AuthnMethod{goidc.AuthnMethodPrivateKeyJWT, goidc.AuthnMethodSecretJWT},
 				AuthnMethodPrivateKeyJWTSigAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 				AuthnMethodSecretJWTSigAlgs:     []goidc.SignatureAlgorithm{goidc.HS256},
-				DCRIsEnabled:                    true,
+				DCREnabled:                      true,
 				DCREndpoint:                     defaultEndpointDynamicClient,
-				PARIsEnabled:                    true,
+				PAREnabled:                      true,
 				PAREndpoint:                     defaultEndpointPushedAuthorizationRequest,
 				PARLifetimeSecs:                 defaultPARLifetimeSecs,
-				JARIsEnabled:                    true,
+				JAREnabled:                      true,
 				JARSigAlgs:                      []goidc.SignatureAlgorithm{goidc.RS256},
-				JAREncIsEnabled:                 true,
+				JAREncEnabled:                   true,
 				JARKeyEncAlgs:                   []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 				JARContentEncAlgs:               []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
-				JARMIsEnabled:                   true,
+				JARMEnabled:                     true,
 				JARMSigAlgDefault:               goidc.RS256,
 				JARMSigAlgs:                     []goidc.SignatureAlgorithm{goidc.RS256},
 				ResponseModes: []goidc.ResponseMode{
@@ -166,16 +177,16 @@ func TestNew(t *testing.T) {
 					goidc.ResponseModeFormPostJWT,
 				},
 				JARMLifetimeSecs:               defaultJWTLifetimeSecs,
-				TokenIntrospectionIsEnabled:    true,
+				TokenIntrospectionEnabled:      true,
 				TokenIntrospectionEndpoint:     defaultEndpointTokenIntrospection,
-				TokenRevocationIsEnabled:       true,
+				TokenRevocationEnabled:         true,
 				TokenRevocationEndpoint:        defaultEndpointTokenRevocation,
 				CIBAProfile:                    goidc.CIBAProfileOpenID,
 				CIBATokenDeliveryModes:         []goidc.CIBATokenDeliveryMode{goidc.CIBADeliveryModePoll},
 				CIBAEndpoint:                   defaultEndpointCIBA,
 				CIBADefaultSessionLifetimeSecs: 60,
 				CIBAPollingIntervalSecs:        5,
-				UserInfoEncIsEnabled:           true,
+				UserInfoEncEnabled:             true,
 				UserInfoKeyEncAlgs:             []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
 				UserInfoDefaultContentEncAlg:   goidc.A128CBC_HS256,
 				UserInfoContentEncAlgs:         []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
@@ -227,9 +238,9 @@ func TestNew(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			manager, opts := test.setup()
+			cfg, opts := test.setup()
 
-			op, err := New(issuer, manager, jwksFunc, opts...)
+			op, err := New(cfg, opts...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -286,14 +297,14 @@ func TestNew_ValidationErrors(t *testing.T) {
 	}{
 		{
 			name:    "jar by-reference unregistered uris require jar by-reference",
-			opts:    []Option{WithJARByReferenceUnregisteredURIs()},
+			opts:    []Option{Option(WithJARByReferenceUnregisteredURIs())},
 			wantErr: "jar by-reference unregistered uris cannot be enabled without jar by-reference",
 		},
 		{
 			name: "dcr secret lifetime requires secret client auth",
 			opts: []Option{
 				WithPrivateKeyJWTAuthn(goidc.PS256),
-				WithDCRSecretLifetime(300),
+				WithDCR(nil, WithDCRSecretLifetime(300)),
 			},
 			wantErr: "dcr secret lifetime requires a secret-based token authentication method",
 		},
@@ -301,15 +312,65 @@ func TestNew_ValidationErrors(t *testing.T) {
 			name: "dcr secret rotation requires secret client auth",
 			opts: []Option{
 				WithPrivateKeyJWTAuthn(goidc.PS256),
-				WithDCRSecretRotation(),
+				WithDCR(nil, WithDCRSecretRotation()),
 			},
 			wantErr: "dcr secret rotation requires a secret-based token authentication method",
+		},
+		{
+			name: "dc sd-jwt credential configuration requires type",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+						"identity": {
+							Format: goidc.VCFormatDCSDJWT,
+						},
+					},
+				})),
+			},
+			wantErr: "credential configuration \"identity\" requires Type when Format is \"dc+sd-jwt\"",
+		},
+		{
+			name: "dc sd-jwt credential configuration requires self jwt issuer",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+						"identity": {
+							Format: goidc.VCFormatDCSDJWT,
+							Type:   "IdentityCredential",
+						},
+					},
+				})),
+			},
+			wantErr: "credential configuration \"identity\" with Format \"dc+sd-jwt\" requires WithVCISelfJWTIssuer",
+		},
+		{
+			name: "self jwt issuer requires jwks source",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+				}, WithVCISelfJWTIssuer())),
+			},
+			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI",
+		},
+		{
+			name: "self jwt issuer requires one jwks source",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+				}, WithVCISelfJWTIssuer(
+					WithVCISelfJWTIssuerJWKS(jwksFunc),
+					WithVCISelfJWTIssuerJWKSURI("https://credential-issuer.example.com/jwks"),
+				))),
+			},
+			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI, not both",
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := New(issuer, storage.NewManager(100), jwksFunc, test.opts...)
+			_, err := New(Config{Issuer: issuer, JWKSFunc: jwksFunc, IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256}}, test.opts...)
 			if err == nil {
 				t.Fatal("New() error = nil, want non-nil")
 			}
@@ -325,12 +386,12 @@ func TestMakeToken(t *testing.T) {
 	issuer := "https://example.com"
 	jwk := oidctest.PrivateRS256JWK(t, "test_key", goidc.KeyUsageSignature)
 	op, _ := New(
-		issuer,
-		storage.NewManager(100),
-		func(ctx context.Context) (goidc.JSONWebKeySet, error) {
-			return goidc.JSONWebKeySet{
-				Keys: []goidc.JSONWebKey{jwk},
-			}, nil
+		Config{
+			Issuer: issuer,
+			JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+				return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk}}, nil
+			},
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 		WithTokenOptions(func(_ context.Context, _ *goidc.Grant, _ *goidc.Client) goidc.TokenOptions {
 			return goidc.NewJWTTokenOptions(goidc.RS256, 60)

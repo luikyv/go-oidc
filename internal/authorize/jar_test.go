@@ -29,9 +29,9 @@ func TestJARFromRequestObject(t *testing.T) {
 				privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
 				ctx := oidc.Context{
 					Configuration: &oidc.Configuration{
-						Host:         "https://server.example.com",
-						JARIsEnabled: true,
-						JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+						Host:       "https://server.example.com",
+						JAREnabled: true,
+						JARSigAlgs: []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 					},
 					Request: &http.Request{Method: http.MethodPost},
 				}
@@ -90,9 +90,9 @@ func TestJARFromRequestObject(t *testing.T) {
 			setup: func(t *testing.T) (oidc.Context, string, *goidc.Client, request) {
 				ctx := oidc.Context{
 					Configuration: &oidc.Configuration{
-						Host:         "https://server.example.com",
-						JARIsEnabled: true,
-						JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.None},
+						Host:       "https://server.example.com",
+						JAREnabled: true,
+						JARSigAlgs: []goidc.SignatureAlgorithm{goidc.None},
 					},
 					Request: &http.Request{Method: http.MethodPost},
 				}
@@ -145,9 +145,9 @@ func TestJARFromRequestObject(t *testing.T) {
 				privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
 				ctx := oidc.Context{
 					Configuration: &oidc.Configuration{
-						Host:         "https://server.example.com",
-						JARIsEnabled: true,
-						JARSigAlgs:   []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+						Host:       "https://server.example.com",
+						JAREnabled: true,
+						JARSigAlgs: []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
 					},
 					Request: &http.Request{Method: http.MethodPost},
 				}
@@ -218,12 +218,12 @@ func TestJARFromRequestURI(t *testing.T) {
 	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
-			Host:                    "https://server.example.com",
-			JARIsEnabled:            true,
-			JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
-			JARByReferenceIsEnabled: true,
-			HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
-			JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
+			Host:                         "https://server.example.com",
+			JAREnabled:                   true,
+			JARSigAlgs:                   []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+			JARByReferenceEnabled:        true,
+			HTTPClientFunc:               func(_ context.Context) *http.Client { return http.DefaultClient },
+			JARByReferenceHTTPClientFunc: func(_ context.Context) *http.Client { return http.DefaultClient },
 		},
 		Request: &http.Request{Method: http.MethodPost},
 	}
@@ -310,12 +310,12 @@ func TestJARFromRequestURIErrors(t *testing.T) {
 
 		ctx := oidc.Context{
 			Configuration: &oidc.Configuration{
-				Host:                    "https://server.example.com",
-				JARIsEnabled:            true,
-				JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
-				JARByReferenceIsEnabled: true,
-				HTTPClientFunc:          func(_ context.Context) *http.Client { return http.DefaultClient },
-				JARHTTPClientFunc:       func(_ context.Context) *http.Client { return http.DefaultClient },
+				Host:                         "https://server.example.com",
+				JAREnabled:                   true,
+				JARSigAlgs:                   []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+				JARByReferenceEnabled:        true,
+				HTTPClientFunc:               func(_ context.Context) *http.Client { return http.DefaultClient },
+				JARByReferenceHTTPClientFunc: func(_ context.Context) *http.Client { return http.DefaultClient },
 			},
 			Request: &http.Request{Method: http.MethodPost},
 		}
@@ -372,10 +372,10 @@ func TestJARFromRequestURIUsesDedicatedClient(t *testing.T) {
 
 	ctx := oidc.Context{
 		Configuration: &oidc.Configuration{
-			Host:                    "https://server.example.com",
-			JARIsEnabled:            true,
-			JARSigAlgs:              []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
-			JARByReferenceIsEnabled: true,
+			Host:                  "https://server.example.com",
+			JAREnabled:            true,
+			JARSigAlgs:            []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+			JARByReferenceEnabled: true,
 			HTTPClientFunc: func(_ context.Context) *http.Client {
 				return &http.Client{
 					Transport: roundTripperFunc(func(*http.Request) (*http.Response, error) {
@@ -383,7 +383,7 @@ func TestJARFromRequestURIUsesDedicatedClient(t *testing.T) {
 					}),
 				}
 			},
-			JARHTTPClientFunc: func(_ context.Context) *http.Client {
+			JARByReferenceHTTPClientFunc: func(_ context.Context) *http.Client {
 				return http.DefaultClient
 			},
 		},

@@ -12,12 +12,12 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 	router.Handle("POST "+config.EndpointPrefix+config.TokenEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...))
 
-	if config.TokenIntrospectionIsEnabled {
+	if config.TokenIntrospectionEnabled {
 		router.Handle("POST "+config.EndpointPrefix+config.TokenIntrospectionEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleIntrospection), middlewares...))
 	}
 
-	if config.TokenRevocationIsEnabled {
+	if config.TokenRevocationEnabled {
 		router.Handle("POST "+config.EndpointPrefix+config.TokenRevocationEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleRevocation), middlewares...))
 	}

@@ -20,10 +20,10 @@ func TestIntrospect(t *testing.T) {
 		tb.Helper()
 
 		ctx := oidctest.NewContext(tb)
-		ctx.TokenIntrospectionIsEnabled = true
+		ctx.TokenIntrospectionEnabled = true
 		manager := oidctest.Manager(tb, ctx)
 		ctx.RefreshTokenManager = manager
-		ctx.OpaqueTokenIsEnabled = true
+		ctx.OpaqueTokenEnabled = true
 		ctx.OpaqueTokenManager = manager
 		ctx.TokenIntrospectionIsClientAllowedFunc = func(_ context.Context, _ *goidc.Client, _ goidc.TokenInfo) bool {
 			return true

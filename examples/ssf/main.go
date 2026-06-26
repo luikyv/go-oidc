@@ -27,35 +27,42 @@ func main() {
 	client := authutil.ClientSecretPost("client_one", "ssf_secret", scope)
 
 	op, _ := provider.New(
-		authutil.Issuer,
-		nil,
-		authutil.PrivateJWKSFunc(),
+		provider.Config{
+			Issuer:      authutil.Issuer,
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+		},
 		provider.WithScopes(scope),
 		provider.WithClientCredentialsGrant(),
 		provider.WithStaticClients(client),
-		provider.WithSSF(authutil.PrivateJWKSFunc(), func(ctx context.Context) (goidc.SSFReceiver, error) {
-			clientID := ctx.Value(ctxKeyClientID).(string)
-			if clientID == "" {
-				return goidc.SSFReceiver{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "client id is required")
-			}
-			return goidc.SSFReceiver{ID: clientID}, nil
-		}),
-		provider.WithSSFEventTypes(goidc.SSFEventTypeCAEPCredentialChange, goidc.SSFEventTypeCAEPSessionRevoked),
-		provider.WithSSFSignatureAlgorithm(goidc.RS256),
-		provider.WithSSFDeliveryMethods(goidc.SSFDeliveryMethodPoll, goidc.SSFDeliveryMethodPush),
-		provider.WithSSFEventStreamStatusManagement(),
-		provider.WithSSFEventStreamSubjectManagement(),
-		provider.WithSSFEventStreamVerification(nil),
-		provider.WithSSFMinVerificationInterval(5),
-		provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
-		provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),
-		provider.WithSSFInactivityTimeoutSecs(30, func(ctx context.Context, stream *goidc.SSFEventStream) error {
-			stream.Status = goidc.SSFEventStreamStatusPaused
-			stream.StatusReason = "stream has expired"
-			return nil
-		}),
+		provider.WithSSF(
+			provider.SSFConfig{
+				JWKSFunc: authutil.PrivateJWKSFunc(),
+				SigAlg:   goidc.RS256,
+				ReceiverFunc: func(ctx context.Context) (goidc.SSFReceiver, error) {
+					clientID := ctx.Value(ctxKeyClientID).(string)
+					if clientID == "" {
+						return goidc.SSFReceiver{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "client id is required")
+					}
+					return goidc.SSFReceiver{ID: clientID}, nil
+				},
+				EventTypes: []goidc.SSFEventType{goidc.SSFEventTypeCAEPCredentialChange, goidc.SSFEventTypeCAEPSessionRevoked},
+			},
+			provider.WithSSFPollDelivery(nil),
+			provider.WithSSFPushDelivery(authutil.HTTPClient),
+			provider.WithSSFEventStreamStatusManagement(),
+			provider.WithSSFEventStreamSubjectManagement(),
+			provider.WithSSFEventStreamVerification(nil),
+			provider.WithSSFMinVerificationInterval(5),
+			provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
+			provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),
+			provider.WithSSFInactivityTimeout(30, func(ctx context.Context, stream *goidc.SSFEventStream) error {
+				stream.Status = goidc.SSFEventStreamStatusPaused
+				stream.StatusReason = "stream has expired"
+				return nil
+			}),
+		),
 		provider.WithErrorHandler(authutil.HandleError),
-		provider.WithSSFHTTPClientFunc(authutil.HTTPClient),
 	)
 
 	// Set up the server.
@@ -67,7 +74,7 @@ func main() {
 			}
 
 			tkn := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-			tokenInfo, err := op.Introspect(r.Context(), tkn)
+			tokenInfo, _, err := op.Introspect(r.Context(), tkn)
 			if err != nil {
 				log.Printf("error getting token info: %v", err)
 				http.Error(w, err.Error(), http.StatusUnauthorized)

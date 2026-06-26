@@ -9,7 +9,7 @@ import (
 )
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
-	if config.DCRIsEnabled {
+	if config.DCREnabled {
 		router.Handle(
 			"POST "+config.EndpointPrefix+config.DCREndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleCreate), middlewares...),

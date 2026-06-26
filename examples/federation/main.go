@@ -14,6 +14,7 @@ import (
 	"github.com/go-jose/go-jose/v4"
 	"github.com/go-jose/go-jose/v4/json"
 	"github.com/go-jose/go-jose/v4/jwt"
+	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/examples/authutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -109,51 +110,60 @@ func main() {
 	c.ClientRegistrationTypes = []goidc.ClientRegistrationType{goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit}
 
 	op, err := provider.New(
-		OPFedID,
-		nil,
-		authutil.PrivateJWKSFunc(),
+		provider.Config{
+			Issuer:      OPFedID,
+			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+		},
 		provider.WithOpenIDFederation(
-			nil,
-			func(ctx context.Context) (goidc.JSONWebKeySet, error) {
-				return opFedJWKS, nil
+			provider.OpenIDFedConfig{
+				JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+					return opFedJWKS, nil
+				},
+				SigAlg:         goidc.RS256,
+				AuthorityHints: []string{TrustAnchorFedID},
+				TrustedAnchors: []string{
+					TrustAnchorFedID,
+					"https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor",
+					"https://localhost.emobix.co.uk:8443/test/a/goidc2/trust-anchor",
+					"https://localhost.emobix.co.uk:8443/test/a/goidc3/trust-anchor",
+				},
 			},
-			[]string{TrustAnchorFedID},
-			[]string{
-				TrustAnchorFedID,
-				"https://localhost.emobix.co.uk:8443/test/a/goidc/trust-anchor",
-				"https://localhost.emobix.co.uk:8443/test/a/goidc2/trust-anchor",
-				"https://localhost.emobix.co.uk:8443/test/a/goidc3/trust-anchor",
-			},
+			provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
+			provider.WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit),
+			provider.WithOpenIDFedClientHandler(func(ctx context.Context, c *goidc.Client) error {
+				var scopes []string
+				for _, scope := range authutil.Scopes {
+					scopes = append(scopes, scope.ID)
+				}
+				c.ScopeIDs = strings.Join(scopes, " ")
+				c.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
+				return nil
+			}),
 		),
-		provider.WithOpenIDFedSignatureAlgs(goidc.RS256, goidc.ES256),
-		provider.WithOpenIDFedClientRegistrationTypes(goidc.ClientRegistrationTypeAutomatic, goidc.ClientRegistrationTypeExplicit),
 		provider.WithScopes(authutil.Scopes...),
-		provider.WithIDTokenSignatureAlgs(goidc.RS256),
 		provider.WithPrivateKeyJWTAuthn(goidc.RS256),
 		provider.WithDefaultAuthn(goidc.AuthnMethodPrivateKeyJWT),
-		provider.WithAuthCodeGrant(nil, goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken),
+		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
+			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode, goidc.ResponseTypeCodeAndIDToken},
+		},
+			provider.WithJAR(
+				[]goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256},
+				provider.WithJAREncryption(goidc.RSA_OAEP),
+				provider.WithJARContentEncryptionAlgs(goidc.A256GCM),
+			),
+			provider.WithPAR(nil),
+			provider.WithAuthPolicies(authutil.Policy()),
+		),
 		provider.WithRefreshTokenGrant(nil),
-		provider.WithJAR(goidc.RS256, goidc.PS256),
-		provider.WithJAREncryption(goidc.RSA_OAEP),
-		provider.WithJARContentEncryptionAlgs(goidc.A256GCM),
-		provider.WithPAR(nil),
-		provider.WithClaims(authutil.Claims[0], authutil.Claims...),
+		provider.WithClientCredentialsGrant(),
+		provider.WithClaims(authutil.Claims...),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
 		provider.WithIDTokenClaims(authutil.IDTokenClaimsFunc()),
 		provider.WithUserInfoClaims(authutil.UserInfoClaimsFunc()),
 		provider.WithHTTPClientFunc(httpClientFunc()),
-		provider.WithPolicies(authutil.Policy()),
 		provider.WithErrorHandler(authutil.HandleError),
 		provider.WithErrorRenderer(authutil.RenderError()),
-		provider.WithOpenIDFedClientHandler(func(ctx context.Context, c *goidc.Client) error {
-			var scopes []string
-			for _, scope := range authutil.Scopes {
-				scopes = append(scopes, scope.ID)
-			}
-			c.ScopeIDs = strings.Join(scopes, " ")
-			c.TokenAuthnMethod = goidc.AuthnMethodPrivateKeyJWT
-			return nil
-		}),
 		provider.WithJTIConsumer(authutil.ConsumeJTIFunc()),
 	)
 	if err != nil {
@@ -314,6 +324,7 @@ func authReqURL(clientJWKS goidc.JSONWebKeySet) string {
 	jar, _ := jwt.Signed(signer).Claims(map[string]any{
 		"iss":           ClientFedID,
 		"aud":           OPFedID,
+		"jti":           uuid.NewString(),
 		"iat":           timeutil.TimestampNow(),
 		"exp":           timeutil.TimestampNow() + 600,
 		"client_id":     ClientFedID,

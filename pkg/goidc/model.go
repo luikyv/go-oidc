@@ -11,6 +11,79 @@ import (
 	"strings"
 )
 
+type Configuration struct {
+	Issuer                            string                       `json:"issuer"`
+	ClientRegistrationEndpoint        string                       `json:"registration_endpoint,omitempty"`
+	AuthorizationEndpoint             string                       `json:"authorization_endpoint"`
+	TokenEndpoint                     string                       `json:"token_endpoint"`
+	UserInfoEndpoint                  string                       `json:"userinfo_endpoint"`
+	JWKSEndpoint                      string                       `json:"jwks_uri,omitempty"`
+	PAREndpoint                       string                       `json:"pushed_authorization_request_endpoint,omitempty"`
+	PARRequired                       bool                         `json:"require_pushed_authorization_requests,omitempty"`
+	ResponseTypes                     []ResponseType               `json:"response_types_supported,omitempty"`
+	ResponseModes                     []ResponseMode               `json:"response_modes_supported,omitempty"`
+	GrantTypes                        []GrantType                  `json:"grant_types_supported,omitempty"`
+	Scopes                            []string                     `json:"scopes_supported"`
+	UserClaimsSupported               []string                     `json:"claims_supported,omitempty"`
+	ClaimTypesSupported               []ClaimType                  `json:"claim_types_supported,omitempty"`
+	SubIdentifierTypes                []SubIdentifierType          `json:"subject_types_supported,omitempty"`
+	IDTokenSigAlgs                    []SignatureAlgorithm         `json:"id_token_signing_alg_values_supported"`
+	IDTokenKeyEncAlgs                 []KeyEncryptionAlgorithm     `json:"id_token_encryption_alg_values_supported,omitempty"`
+	IDTokenContentEncAlgs             []ContentEncryptionAlgorithm `json:"id_token_encryption_enc_values_supported,omitempty"`
+	UserInfoKeyEncAlgs                []KeyEncryptionAlgorithm     `json:"userinfo_encryption_alg_values_supported,omitempty"`
+	UserInfoContentEncAlgs            []ContentEncryptionAlgorithm `json:"userinfo_encryption_enc_values_supported,omitempty"`
+	UserInfoSigAlgs                   []SignatureAlgorithm         `json:"userinfo_signing_alg_values_supported,omitempty"`
+	TokenAuthnMethods                 []AuthnMethod                `json:"token_endpoint_auth_methods_supported,omitempty"`
+	TokenAuthnSigAlgs                 []SignatureAlgorithm         `json:"token_endpoint_auth_signing_alg_values_supported,omitempty"`
+	JAREnabled                        bool                         `json:"request_parameter_supported,omitempty"`
+	JARRequired                       bool                         `json:"require_signed_request_object,omitempty"`
+	JARAlgs                           []SignatureAlgorithm         `json:"request_object_signing_alg_values_supported,omitempty"`
+	JARKeyEncAlgs                     []KeyEncryptionAlgorithm     `json:"request_object_encryption_alg_values_supported,omitempty"`
+	JARContentEncAlgs                 []ContentEncryptionAlgorithm `json:"request_object_encryption_enc_values_supported,omitempty"`
+	JARByReferenceEnabled             bool                         `json:"request_uri_parameter_supported,omitempty"`
+	JARRequestURIRegistrationRequired bool                         `json:"require_request_uri_registration,omitempty"`
+	JARMAlgs                          []SignatureAlgorithm         `json:"authorization_signing_alg_values_supported,omitempty"`
+	JARMKeyEncAlgs                    []KeyEncryptionAlgorithm     `json:"authorization_encryption_alg_values_supported,omitempty"`
+	JARMContentEncAlgs                []ContentEncryptionAlgorithm `json:"authorization_encryption_enc_values_supported,omitempty"`
+	IssuerResponseParamEnabled        bool                         `json:"authorization_response_iss_parameter_supported,omitempty"`
+	ClaimsParamEnabled                bool                         `json:"claims_parameter_supported,omitempty"`
+	AuthDetailsEnabled                bool                         `json:"authorization_details_supported,omitempty"`
+	AuthDetailTypesSupported          []AuthDetailType             `json:"authorization_details_types_supported,omitempty"`
+	DPoPSigAlgs                       []SignatureAlgorithm         `json:"dpop_signing_alg_values_supported,omitempty"`
+	TokenIntrospectionEndpoint        string                       `json:"introspection_endpoint,omitempty"`
+	TokenIntrospectionAuthnMethods    []AuthnMethod                `json:"introspection_endpoint_auth_methods_supported,omitempty"`
+	TokenIntrospectionAuthnSigAlgs    []SignatureAlgorithm         `json:"introspection_endpoint_auth_signing_alg_values_supported,omitempty"`
+	TokenRevocationEndpoint           string                       `json:"revocation_endpoint,omitempty"`
+	TokenRevocationAuthnMethods       []AuthnMethod                `json:"revocation_endpoint_auth_methods_supported,omitempty"`
+	TokenRevocationAuthnSigAlgs       []SignatureAlgorithm         `json:"revocation_endpoint_auth_signing_alg_values_supported,omitempty"`
+	DeviceAuthorizationEndpoint       string                       `json:"device_authorization_endpoint,omitempty"`
+	CIBATokenDeliveryModes            []CIBATokenDeliveryMode      `json:"backchannel_token_delivery_modes_supported,omitempty"`
+	CIBAEndpoint                      string                       `json:"backchannel_authentication_endpoint,omitempty"`
+	CIBAJARSigAlgs                    []SignatureAlgorithm         `json:"backchannel_authentication_request_signing_alg_values_supported,omitempty"`
+	CIBAUserCodeEnabled               bool                         `json:"backchannel_user_code_parameter_supported,omitempty"`
+	MTLSAliases                       *struct {
+		TokenEndpoint              string `json:"token_endpoint"`
+		ParEndpoint                string `json:"pushed_authorization_request_endpoint,omitempty"`
+		UserInfoEndpoint           string `json:"userinfo_endpoint"`
+		ClientRegistrationEndpoint string `json:"registration_endpoint,omitempty"`
+		TokenIntrospectionEndpoint string `json:"introspection_endpoint,omitempty"`
+		TokenRevocationEndpoint    string `json:"revocation_endpoint,omitempty"`
+		CIBAEndpoint               string `json:"backchannel_authentication_endpoint,omitempty"`
+	} `json:"mtls_endpoint_aliases,omitempty"`
+	// TLSBoundTokensEnabled signals support for certificate bound tokens.
+	TLSBoundTokensEnabled          bool                     `json:"tls_client_certificate_bound_access_tokens,omitempty"`
+	ACRs                           []ACR                    `json:"acr_values_supported,omitempty"`
+	DisplayValues                  []DisplayValue           `json:"display_values_supported,omitempty"`
+	CodeChallengeMethods           []CodeChallengeMethod    `json:"code_challenge_methods_supported,omitempty"`
+	EndSessionEndpoint             string                   `json:"end_session_endpoint,omitempty"`
+	ClientRegistrationTypes        []ClientRegistrationType `json:"client_registration_types_supported,omitempty"`
+	OrganizationName               string                   `json:"organization_name,omitempty"`
+	FederationRegistrationEndpoint string                   `json:"federation_registration_endpoint,omitempty"`
+	SignedJWKSEndpoint             string                   `json:"signed_jwks_uri,omitempty"`
+	JWKS                           *JSONWebKeySet           `json:"jwks,omitempty"`
+	PreAuthCodeAnonymousAccess     bool                     `json:"pre-authorized_grant_anonymous_access_supported,omitempty"`
+}
+
 // GrantManager stores grants.
 type GrantManager interface {
 	SaveGrant(context.Context, *Grant) error
@@ -216,47 +289,51 @@ const (
 )
 
 const (
-	ClaimTokenID             string = "jti"
-	ClaimIssuer              string = "iss"
-	ClaimSubject             string = "sub"
-	ClaimAudience            string = "aud"
-	ClaimClientID            string = "client_id"
-	ClaimExpiry              string = "exp"
-	ClaimIssuedAt            string = "iat"
-	ClaimNotBefore           string = "nbf"
-	ClaimScope               string = "scope"
-	ClaimNonce               string = "nonce"
-	ClaimAuthTime            string = "auth_time"
-	ClaimAMR                 string = "amr"
-	ClaimACR                 string = "acr"
-	ClaimProfile             string = "profile"
-	ClaimEmail               string = "email"
-	ClaimEmailVerified       string = "email_verified"
-	ClaimPhoneNumber         string = "phone_number"
-	ClaimPhoneNumberVerified string = "phone_number_verified"
-	ClaimAddress             string = "address"
-	ClaimName                string = "name"
-	ClaimWebsite             string = "website"
-	ClaimZoneInfo            string = "zoneinfo"
-	ClaimBirthdate           string = "birthdate"
-	ClaimGender              string = "gender"
-	ClaimPreferredUsername   string = "preferred_username"
-	ClaimGivenName           string = "given_name"
-	ClaimMiddleName          string = "middle_name"
-	ClaimLocale              string = "locale"
-	ClaimPicture             string = "picture"
-	ClaimUpdatedAt           string = "updated_at"
-	ClaimNickname            string = "nickname"
-	ClaimFamilyName          string = "family_name"
-	ClaimAuthDetails         string = "authorization_details"
-	ClaimAccessTokenHash     string = "at_hash"
-	ClaimAuthzCodeHash       string = "c_hash"
-	ClaimStateHash           string = "s_hash"
-	ClaimRefreshTokenHash    string = "urn:openid:params:jwt:claim:rt_hash" //nolint:gosec
-	ClaimAuthReqID           string = "urn:openid:params:jwt:claim:auth_req_id"
-	ClaimGrantID             string = "grant_id"
-	ClaimAct                 string = "act"
-	ClaimMayAct              string = "may_act"
+	ClaimTokenID                          string = "jti"
+	ClaimIssuer                           string = "iss"
+	ClaimSubject                          string = "sub"
+	ClaimAudience                         string = "aud"
+	ClaimClientID                         string = "client_id"
+	ClaimExpiry                           string = "exp"
+	ClaimIssuedAt                         string = "iat"
+	ClaimNotBefore                        string = "nbf"
+	ClaimScope                            string = "scope"
+	ClaimNonce                            string = "nonce"
+	ClaimAuthTime                         string = "auth_time"
+	ClaimAMR                              string = "amr"
+	ClaimACR                              string = "acr"
+	ClaimProfile                          string = "profile"
+	ClaimEmail                            string = "email"
+	ClaimEmailVerified                    string = "email_verified"
+	ClaimPhoneNumber                      string = "phone_number"
+	ClaimPhoneNumberVerified              string = "phone_number_verified"
+	ClaimAddress                          string = "address"
+	ClaimName                             string = "name"
+	ClaimWebsite                          string = "website"
+	ClaimZoneInfo                         string = "zoneinfo"
+	ClaimBirthdate                        string = "birthdate"
+	ClaimGender                           string = "gender"
+	ClaimPreferredUsername                string = "preferred_username"
+	ClaimGivenName                        string = "given_name"
+	ClaimMiddleName                       string = "middle_name"
+	ClaimLocale                           string = "locale"
+	ClaimPicture                          string = "picture"
+	ClaimUpdatedAt                        string = "updated_at"
+	ClaimNickname                         string = "nickname"
+	ClaimFamilyName                       string = "family_name"
+	ClaimAuthDetails                      string = "authorization_details"
+	ClaimAccessTokenHash                  string = "at_hash"
+	ClaimAuthzCodeHash                    string = "c_hash"
+	ClaimStateHash                        string = "s_hash"
+	ClaimRefreshTokenHash                 string = "urn:openid:params:jwt:claim:rt_hash" //nolint:gosec
+	ClaimAuthReqID                        string = "urn:openid:params:jwt:claim:auth_req_id"
+	ClaimGrantID                          string = "grant_id"
+	ClaimAct                              string = "act"
+	ClaimMayAct                           string = "may_act"
+	ClaimConfirmation                     string = "cnf"
+	ClaimJWK                              string = "jwk"
+	ClaimVerifiableCredentilType          string = "vct"
+	ClaimVerifiableCredentilTypeIntegrity string = "vct#integrity"
 )
 
 type KeyUsage string
@@ -423,6 +500,10 @@ type Scope struct {
 	Matches MatchScopeFunc
 }
 
+func (s Scope) MarshalJSON() ([]byte, error) {
+	return json.Marshal(s.ID)
+}
+
 // NewScope creates a scope where the validation logic is simple string comparison.
 func NewScope(scope string) Scope {
 	return Scope{
@@ -563,6 +644,7 @@ type TokenInfo struct {
 	NotBefore        int                `json:"nbf,omitempty"`
 	ExpiresAt        int                `json:"exp,omitempty"`
 	Confirmation     *TokenConfirmation `json:"cnf,omitempty"`
+	Actor            *Actor             `json:"act,omitempty"`
 	AdditionalClaims map[string]any     `json:"-"`
 }
 
@@ -643,31 +725,39 @@ type AuthorizationParameters struct {
 	IssuerState             string              `json:"issuer_state,omitempty"`
 }
 
-type Resources []string
+// Audiences is a list of strings that marshals as a single string when it
+// contains exactly one element, and as a JSON array otherwise.
+type Audiences []string
 
-func (r *Resources) UnmarshalJSON(data []byte) error {
-	var resource string
-	if err := json.Unmarshal(data, &resource); err == nil {
-		*r = []string{resource}
+func (a *Audiences) UnmarshalJSON(data []byte) error {
+	var single string
+	if err := json.Unmarshal(data, &single); err == nil {
+		*a = []string{single}
 		return nil
 	}
 
-	var resources []string
-	if err := json.Unmarshal(data, &resources); err != nil {
+	var multi []string
+	if err := json.Unmarshal(data, &multi); err != nil {
 		return err
 	}
 
-	*r = resources
+	*a = multi
 	return nil
 }
 
-func (resources Resources) MarshalJSON() ([]byte, error) {
-	if len(resources) == 1 {
-		return json.Marshal(resources[0])
+func (a Audiences) MarshalJSON() ([]byte, error) {
+	if len(a) == 1 {
+		return json.Marshal(a[0])
 	}
 
-	return json.Marshal([]string(resources))
+	return json.Marshal([]string(a))
 }
+
+// ResourceIndicator identifies a target resource the client intends to access.
+type ResourceIndicator = string
+
+// Resources is an alias for [Audiences] used in resource indicator contexts.
+type Resources = Audiences
 
 type ClaimsObject struct {
 	UserInfo map[string]ClaimObjectInfo `json:"userinfo"`
@@ -877,7 +967,58 @@ type TokenExchangeRequest struct {
 
 type TokenExchangeResult struct {
 	Subject string
+	Actor   *Actor
 	Store   map[string]any
 }
 
 type TokenExchangeHandleFunc func(context.Context, TokenExchangeRequest) (TokenExchangeResult, error)
+
+// IDToken represents a parsed and validated OpenID Connect ID Token.
+type IDToken struct {
+	Subject   string    `json:"sub"`
+	Issuer    string    `json:"iss"`
+	Audience  Audiences `json:"aud"`
+	ExpiresAt int       `json:"exp"`
+	IssuedAt  int       `json:"iat"`
+	Nonce     string    `json:"nonce,omitempty"`
+	// [OIDC Core §2] AuthTime is the time when the end-user authentication occurred.
+	AuthTime         int            `json:"auth_time,omitempty"`
+	ACR              ACR            `json:"acr,omitempty"`
+	AMRs             []AMR          `json:"amr,omitempty"`
+	AccessTokenHash  string         `json:"at_hash,omitempty"`
+	CodeHash         string         `json:"c_hash,omitempty"`
+	StateHash        string         `json:"s_hash,omitempty"`
+	AdditionalClaims map[string]any `json:"-"`
+}
+
+func (t *IDToken) UnmarshalJSON(data []byte) error {
+	type idToken IDToken
+	if err := json.Unmarshal(data, (*idToken)(t)); err != nil {
+		return err
+	}
+
+	var raw map[string]any
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	typ := reflect.TypeFor[idToken]()
+	for i := range typ.NumField() {
+		tag := typ.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			delete(raw, name)
+		}
+	}
+
+	if len(raw) > 0 {
+		t.AdditionalClaims = raw
+	}
+
+	return nil
+}
+
+type Actor struct {
+	Subject string `json:"sub,omitempty"`
+	Issuer  string `json:"iss,omitempty"`
+	Actor   *Actor `json:"act,omitempty"`
+}

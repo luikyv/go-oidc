@@ -16,7 +16,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	// Return an error for client authentication only if authentication is
 	// required or if the error is unrelated to client identification, such as
 	// when the client provides invalid credentials.
-	if err != nil && (ctx.TokenExchangeClientAuthnIsRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
+	if err != nil && (ctx.TokenExchangeClientAuthnRequired || !errors.Is(err, client.ErrClientNotIdentified)) {
 		return response{}, err
 	}
 
@@ -44,7 +44,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	if err := validateScopes(ctx, req, c, ""); err != nil {
+	if err := validateScopes(ctx, req, c, nil); err != nil {
 		return response{}, err
 	}
 
@@ -105,6 +105,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 	grant, err := NewGrant(ctx, c, GrantOptions{
 		Type:                 goidc.GrantTokenExchange,
 		Subject:              result.Subject,
+		Actor:                result.Actor,
 		Store:                result.Store,
 		ClientID:             c.ID,
 		Scopes:               req.scopes,

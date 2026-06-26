@@ -106,7 +106,7 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 
 	httpURI, err := strutil.NormalizeURL(dpopClaims.HTTPURI)
 	auds := []string{ctx.BaseURL() + ctx.Request.RequestURI}
-	if ctx.MTLSIsEnabled {
+	if ctx.MTLSEnabled {
 		auds = append(auds, ctx.MTLSBaseURL()+ctx.Request.RequestURI)
 	}
 	if err != nil || !slices.Contains(auds, httpURI) {

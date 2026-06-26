@@ -151,7 +151,7 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "auth details",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -199,7 +199,7 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "auth details subset",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				ctx.RARIsEnabled = true
+				ctx.RAREnabled = true
 				ctx.RARDetailTypes = []goidc.AuthDetailType{"type1", "type2"}
 				ctx.RARCompareDetailsFunc = func(_ context.Context, _, _ []goidc.AuthDetail) error {
 					return nil
@@ -246,8 +246,8 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "resource indicators subset",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				ctx.ResourceIndicatorsIsEnabled = true
-				ctx.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicators = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				grant.Resources = []string{"https://resource1.com", "https://resource2.com", "https://resource3.com"}
 				if err := ctx.SaveGrant(grant); err != nil {
 					t.Fatalf("error while updating the grant: %v", err)
@@ -334,7 +334,7 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "mtls binding",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
+				ctx.MTLSTokenBindingEnabled = true
 				ctx.ClientCertFunc = func(context.Context) (*x509.Certificate, error) {
 					return &x509.Certificate{Raw: []byte("test_client_cert")}, nil
 				}
@@ -406,8 +406,8 @@ func TestGenerateCIBAToken(t *testing.T) {
 			name: "invalid request when pending session requires mtls binding and no client cert is presented",
 			setup: func(t *testing.T) (oidc.Context, request, *goidc.Client, *goidc.Grant) {
 				ctx, c, grant := setup(t)
-				ctx.MTLSTokenBindingIsEnabled = true
-				ctx.MTLSTokenBindingIsRequired = true
+				ctx.MTLSTokenBindingEnabled = true
+				ctx.MTLSTokenBindingRequired = true
 				delete(oidctest.Manager(t, ctx).Grants, grant.ID)
 				session := &goidc.AuthnSession{
 					ID:            "random_ciba_session_id",

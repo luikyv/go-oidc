@@ -11,7 +11,7 @@ jobs:
   run-tests:
     runs-on: ubuntu-latest
     env:
-      CS_VERSION: "v5.1.44"
+      CS_VERSION: "v5.1.45"
 
     strategy:
       fail-fast: false
@@ -34,7 +34,7 @@ jobs:
           fapi1-op-private-key-par-jarm,
           fapiciba,
           federation,
-          # ssf,
+          ssf,
         ]
 
     steps:
