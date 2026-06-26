@@ -316,6 +316,56 @@ func TestNew_ValidationErrors(t *testing.T) {
 			},
 			wantErr: "dcr secret rotation requires a secret-based token authentication method",
 		},
+		{
+			name: "dc sd-jwt credential configuration requires type",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+						"identity": {
+							Format: goidc.VCFormatDCSDJWT,
+						},
+					},
+				})),
+			},
+			wantErr: "credential configuration \"identity\" requires Type when Format is \"dc+sd-jwt\"",
+		},
+		{
+			name: "dc sd-jwt credential configuration requires self jwt issuer",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+						"identity": {
+							Format: goidc.VCFormatDCSDJWT,
+							Type:   "IdentityCredential",
+						},
+					},
+				})),
+			},
+			wantErr: "credential configuration \"identity\" with Format \"dc+sd-jwt\" requires WithVCISelfJWTIssuer",
+		},
+		{
+			name: "self jwt issuer requires jwks source",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+				}, WithVCISelfJWTIssuer())),
+			},
+			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI",
+		},
+		{
+			name: "self jwt issuer requires one jwks source",
+			opts: []Option{
+				WithVCI(WithVCISelf(VCISelfConfig{
+					Issuer: "https://credential-issuer.example.com",
+				}, WithVCISelfJWTIssuer(
+					WithVCISelfJWTIssuerJWKS(jwksFunc),
+					WithVCISelfJWTIssuerJWKSURI("https://credential-issuer.example.com/jwks"),
+				))),
+			},
+			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI, not both",
+		},
 	}
 
 	for _, test := range tests {

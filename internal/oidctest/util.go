@@ -188,7 +188,7 @@ func NewContext(tb testing.TB) oidc.Context {
 		SSFHandleExpiredEventStreamFunc: func(context.Context, *goidc.SSFEventStream) error {
 			return nil
 		},
-		VCIPreAuthCodeHandleFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+		VCIExternalPreAuthCodeHandleFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 			return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
 		},
 		VCISelfOfferIDFunc: func(context.Context) string {

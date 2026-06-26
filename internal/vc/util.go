@@ -321,6 +321,32 @@ func offer(ctx oidc.Context, id string) (offerResponse, error) {
 	}, nil
 }
 
+type jwtIssuerMetadata struct {
+	Issuer  string               `json:"issuer"`
+	JWKS    *goidc.JSONWebKeySet `json:"jwks,omitempty"`
+	JWKSURI string               `json:"jwks_uri,omitempty"`
+}
+
+func newJWTIssuerMetadata(ctx oidc.Context) (jwtIssuerMetadata, error) {
+	if ctx.VCISelfJWTIssuerJWKSURI != "" {
+		return jwtIssuerMetadata{
+			Issuer:  ctx.VCISelfHost,
+			JWKSURI: ctx.VCISelfJWTIssuerJWKSURI,
+		}, nil
+	}
+
+	jwks, err := ctx.VCISelfJWTIssuerJWKS()
+	if err != nil {
+		return jwtIssuerMetadata{}, fmt.Errorf("could not load the vci self jwt issuer jwks: %w", err)
+	}
+	jwks = jwks.Public()
+
+	return jwtIssuerMetadata{
+		Issuer: ctx.VCISelfHost,
+		JWKS:   &jwks,
+	}, nil
+}
+
 // TODO: I only need an ID per offer if the params are different.
 func CreateOffer(ctx oidc.Context, opts goidc.VCOfferOptions) (string, error) {
 	credentialURL := "openid-credential-offer://" //nolint:gosec

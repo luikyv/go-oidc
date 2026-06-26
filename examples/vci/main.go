@@ -5,9 +5,8 @@ import (
 	"crypto/tls"
 	"encoding/json"
 	"log"
+	"maps"
 	"net/http"
-	"net/url"
-	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4"
@@ -43,6 +42,7 @@ const (
 			]
 		}
 	`
+	CredentialType goidc.VCType = goidc.VCType(CredentialIssuer + "/identity_credential")
 )
 
 var (
@@ -50,7 +50,6 @@ var (
 )
 
 func main() {
-	credIssuerURL, _ := url.Parse(CredentialIssuer)
 	var credIssuerJWKS goidc.JSONWebKeySet
 	_ = json.Unmarshal([]byte(CredentialIssuerJWKS), &credIssuerJWKS)
 	credIssuerJWK := credIssuerJWKS.Keys[0]
@@ -66,6 +65,7 @@ func main() {
 		provider.WithStaticClients(clientOne, clientTwo),
 		provider.WithScopes(goidc.ScopeOpenID, ScopeIdentityCredential),
 		provider.WithPrivateKeyJWTAuthn(goidc.RS256),
+		provider.WithAttestationJWTAuthn(goidc.AttestationIssuer{}),
 		provider.WithAuthCodeGrant(
 			provider.AuthCodeGrantConfig{ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode}},
 			provider.WithPAR(nil),
@@ -75,66 +75,73 @@ func main() {
 				func(r *http.Request, as *goidc.AuthnSession, c *goidc.Client) bool { return true },
 				func(w http.ResponseWriter, r *http.Request, as *goidc.AuthnSession, c *goidc.Client) (goidc.Status, error) {
 					as.Subject = uuid.NewString()
-					as.Store["email"] = "random@gmail.com"
+					as.Store[goidc.ClaimEmail] = "random@gmail.com"
+					as.Store[goidc.ClaimAddress] = map[string]any{
+						"street_address": "123 Main St, Suite 500",
+						"locality":       "Springfield",
+						"region":         "IL",
+						"postal_code":    "62701",
+						"country":        "USA",
+					}
+					as.GrantedScopes = as.Scopes
 					for _, detail := range as.AuthDetails {
+						detail = maps.Clone(detail)
 						if detail.Type() == goidc.AuthDetailTypeOpenIDCredential && detail["credential_configuration_id"] == CredentialConfigurationIdentity {
 							detail["credential_identifiers"] = []string{string(CredentialConfigurationIdentity) + "." + as.Subject}
 						}
+						as.GrantedAuthDetails = append(as.GrantedAuthDetails, detail)
 					}
 					return goidc.StatusSuccess, nil
 				},
 			)),
 		),
 		provider.WithVCI(
-			provider.WithVCISelf(provider.VCISelfConfig{
-				Issuer: CredentialIssuer,
-				Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
+			provider.WithVCISelf(
+				map[goidc.VCConfigurationID]goidc.VCConfiguration{
 					CredentialConfigurationIdentity: {
-						Format: goidc.VCFormatDCSDJWT,
-						Scope:  ScopeIdentityCredential,
+						Format:         goidc.VCFormatDCSDJWT,
+						Type:           CredentialType,
+						Scope:          ScopeIdentityCredential,
+						SigAlgs:        []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(credIssuerJWK.Algorithm)},
+						BindingMethods: []goidc.VCBindingMethod{goidc.VCBindingMethodJWK},
+						ProofTypes: map[goidc.VCProofType]goidc.VCProofConfiguration{
+							goidc.VCProofTypeJWT: {
+								SigAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256},
+							},
+						},
 						Issue: func(ctx context.Context, grant *goidc.Grant, opts goidc.VCIssuanceOptions) (string, error) {
+							claims := map[string]any{
+								goidc.ClaimSubject:                 grant.Subject,
+								goidc.ClaimEmail:                   sdjwt.SD(grant.Store["email"]),
+								goidc.ClaimAddress:                 sdjwt.SD(grant.Store["address"]),
+								goidc.ClaimVerifiableCredentilType: CredentialType,
+							}
+							if opts.ProofKey != nil {
+								claims[goidc.ClaimConfirmation] = map[string]any{
+									goidc.ClaimJWK: jose.JSONWebKey{Key: opts.ProofKey},
+								}
+							}
 							signer, _ := jose.NewSigner(
 								jose.SigningKey{Algorithm: jose.SignatureAlgorithm(credIssuerJWK.Algorithm), Key: credIssuerJWK},
-								(&jose.SignerOptions{}).WithType("sd-jwt"),
+								(&jose.SignerOptions{}).WithType(jose.ContentType(goidc.VCFormatDCSDJWT)),
 							)
-							sdJWT, err := sdjwt.Signed(signer).Claims(
+							return sdjwt.Signed(signer).Claims(
 								jwt.Claims{
 									Issuer:   CredentialIssuer,
 									Subject:  grant.Subject,
 									IssuedAt: jwt.NewNumericDate(time.Now()),
 									Expiry:   jwt.NewNumericDate(time.Now().Add(time.Hour)),
 								},
-								map[string]any{
-									"email": sdjwt.SD(grant.Store["email"]),
-								},
-							).Token()
-							if err != nil {
-								return "", err
-							}
-
-							selected := sdJWT.DisclosuresByNames("email")
-
-							var kbJWT string
-							if opts.ProofKey != nil {
-								holderSigner, _ := jose.NewSigner(
-									jose.SigningKey{Algorithm: jose.RS256, Key: opts.ProofKey},
-									(&jose.SignerOptions{}).WithType("kb+jwt"),
-								)
-								sdHash, _ := sdJWT.Hash(selected)
-								kbJWT, _ = jwt.Signed(holderSigner).Claims(map[string]any{
-									"iat":     time.Now().Unix(),
-									"sd_hash": sdHash,
-								}).Serialize()
-							}
-
-							return sdJWT.Serialize(selected, kbJWT)
+								claims,
+							).Serialize()
 						},
 					},
 				},
-			}),
-			provider.WithVCIIssuerState(func(ctx context.Context, state string, opts goidc.VCIssuerOptions) (goidc.VCIssuerStateResult, error) {
-				return goidc.VCIssuerStateResult{}, nil
-			}),
+				provider.WithVCISelfIssuer(CredentialIssuer),
+				provider.WithVCISelfJWTIssuer(provider.WithVCISelfJWTIssuerJWKS(func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+					return credIssuerJWKS.Public(), nil
+				})),
+				provider.WithVCISelfPreAuthCodeGrant(nil)),
 		),
 		provider.WithRAR([]goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}),
 		provider.WithTokenOptions(authutil.TokenOptionsFunc(goidc.RS256)),
@@ -146,129 +153,9 @@ func main() {
 	}
 
 	// Set up the server.
-	mux := http.NewServeMux()
-
-	mux.Handle("GET "+credIssuerURL.Host+"/.well-known/openid-credential-issuer", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		type credentialIssuerConfiguration struct {
-			Issuer                   string                           `json:"credential_issuer"`
-			AuthorizationServers     []string                         `json:"authorization_servers,omitempty"`
-			CredentialEndpoint       string                           `json:"credential_endpoint"`
-			CredentialConfigurations map[string]goidc.VCConfiguration `json:"credential_configurations_supported"`
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(credentialIssuerConfiguration{
-			Issuer:             CredentialIssuer,
-			CredentialEndpoint: CredentialIssuer + "/credential",
-			CredentialConfigurations: map[string]goidc.VCConfiguration{
-				string(CredentialConfigurationIdentity): {
-					Format: goidc.VCFormatDCSDJWT,
-					Scope:  ScopeIdentityCredential,
-				},
-			},
-		})
-	}))
-	mux.Handle("POST "+credIssuerURL.Host+"/credential", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// request represents the credential request at the credential endpoint
-		// as defined in [OIDC4VCI §8.2].
-		type request struct {
-			// CredentialIdentifier identifies a specific Credential Dataset to be issued.
-			// It's required when authorization_details of type openid_credential was returned
-			// in the token response. It must not be used together with credential_configuration_id.
-			CredentialIdentifier goidc.VCCredentialID `json:"credential_identifier,omitempty"`
-			// CredentialConfigurationID identifies the credential configuration to be issued.
-			// It's used when only the scope parameter was used in the autho request.
-			// It must not be used together with credential_identifier.
-			CredentialConfigurationID goidc.VCConfigurationID `json:"credential_configuration_id,omitempty"`
-			Proofs                    struct {
-				JWT []string `json:"jwt,omitempty"`
-			} `json:"proofs,omitempty"`
-		}
-
-		tkn := strings.TrimPrefix(r.Header.Get("Authorization"), "Bearer ")
-		if tkn == "" {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"error": goidc.ErrorCodeAccessDenied,
-			})
-			return
-		}
-		tokenInfo, grant, err := op.Introspect(r.Context(), tkn)
-		if err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusInternalServerError)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"error":             goidc.ErrorCodeInternalError,
-				"error_description": err.Error(),
-			})
-			return
-		}
-
-		var req request
-		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusUnauthorized)
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"error": goidc.ErrorCodeInvalidRequest,
-			})
-			return
-		}
-
-		var credentials []string
-		for _, detail := range tokenInfo.AuthDetails {
-			if detail.Type() != goidc.AuthDetailTypeOpenIDCredential {
-				continue
-			}
-			if req.CredentialConfigurationID != CredentialConfigurationIdentity {
-				continue
-			}
-			if detail["credential_configuration_id"] != CredentialConfigurationIdentity {
-				continue
-			}
-
-			signer, _ := jose.NewSigner(
-				jose.SigningKey{Algorithm: jose.SignatureAlgorithm(credIssuerJWK.Algorithm), Key: credIssuerJWK},
-				(&jose.SignerOptions{}).WithType("sd-jwt"),
-			)
-			cred, err := sdjwt.Signed(signer).Claims(
-				jwt.Claims{
-					Issuer:   CredentialIssuer,
-					Subject:  grant.Subject,
-					IssuedAt: jwt.NewNumericDate(time.Now()),
-					Expiry:   jwt.NewNumericDate(time.Now().Add(time.Hour)),
-				},
-				map[string]any{
-					"email": sdjwt.SD(grant.Store["email"]),
-				},
-			).Serialize()
-			if err != nil {
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusInternalServerError)
-				_ = json.NewEncoder(w).Encode(map[string]any{
-					"error":             goidc.ErrorCodeInternalError,
-					"error_description": err.Error(),
-				})
-				return
-			}
-
-			credentials = append(credentials, cred)
-		}
-
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_ = json.NewEncoder(w).Encode(map[string]any{
-			"credentials": credentials,
-		})
-	}))
-
-	hostURL, _ := url.Parse(authutil.Issuer)
-	mux.Handle(hostURL.Hostname()+"/", op.Handler())
-
 	server := &http.Server{
 		Addr:              authutil.Port,
-		Handler:           mux,
+		Handler:           op.Handler(),
 		ReadHeaderTimeout: 5 * time.Second,
 		TLSConfig: &tls.Config{
 			Certificates: []tls.Certificate{authutil.ServerCert()},

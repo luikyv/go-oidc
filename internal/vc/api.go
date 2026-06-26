@@ -3,6 +3,8 @@ package vc
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -13,14 +15,24 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		return
 	}
 
-	router.Handle("GET /.well-known/openid-credential-issuer",
+	uri, _ := url.Parse(config.VCISelfHost)
+	path := strings.TrimSuffix(uri.Path, "/")
+
+	router.Handle("GET /.well-known/openid-credential-issuer"+path,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleMetadata), middlewares...))
+
+	router.Handle("POST "+config.EndpointPrefix+config.VCISelfCredentialEndpoint,
+		goidc.ApplyMiddlewares(oidc.Handler(config, handleCredential), middlewares...))
+
 	if config.VCISelfOffersEnabled {
 		router.Handle("GET "+config.EndpointPrefix+config.VCISelfOfferEndpoint+"/{id}",
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleOffer), middlewares...))
 	}
-	router.Handle("POST "+config.EndpointPrefix+config.VCISelfCredentialEndpoint,
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleCredential), middlewares...))
+
+	if config.VCISelfJWTIssuerEnabled {
+		router.Handle("GET /.well-known/jwt-vc-issuer"+path,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleJWTIssuerMetadata), middlewares...))
+	}
 }
 
 func handleMetadata(ctx oidc.Context) {
@@ -56,6 +68,18 @@ func handleOffer(ctx oidc.Context) {
 	}
 
 	if err := ctx.Write(offer, http.StatusOK); err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handleJWTIssuerMetadata(ctx oidc.Context) {
+	metadata, err := newJWTIssuerMetadata(ctx)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	if err := ctx.Write(metadata, http.StatusOK); err != nil {
 		ctx.WriteError(err)
 	}
 }

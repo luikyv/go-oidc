@@ -2170,21 +2170,6 @@ func WithVCI(opts ...VCIOption) Option {
 	}
 }
 
-// WithVCIPreAuthCodeGrant enables the pre-authorized code grant. The handler
-// validates and consumes the code and returns the subject and credential
-// configuration IDs authorized by it.
-func WithVCIPreAuthCodeGrant(handler goidc.VCIPreAuthCodeHandleFunc) VCIOption {
-	return func(p *Provider) error {
-		if handler == nil {
-			return errors.New("pre-auth code handler is required")
-		}
-		p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
-		p.config.VCIPreAuthCodeGrantEnabled = true
-		p.config.VCIPreAuthCodeHandleFunc = handler
-		return nil
-	}
-}
-
 // WithVCIIssuerState enables issuer state support. The handler resolves the
 // credential configuration IDs associated with issuer_state.
 func WithVCIIssuerState(handler goidc.VCIIssuerStateHandleFunc) VCIOption {
@@ -2201,21 +2186,13 @@ func WithVCIIssuerState(handler goidc.VCIIssuerStateHandleFunc) VCIOption {
 type VCISelfOption VCIOption
 
 type VCISelfConfig struct {
-	Issuer  string
-	Configs map[goidc.VCConfigurationID]goidc.VCConfiguration
+	Issuer string
 }
 
-func WithVCISelf(config VCISelfConfig, opts ...VCISelfOption) VCIOption {
+func WithVCISelf(configs map[goidc.VCConfigurationID]goidc.VCConfiguration, opts ...VCISelfOption) VCIOption {
 	return func(p *Provider) error {
 		p.config.VCISelfEnabled = true
-		p.config.VCISelfHost = config.Issuer
-		p.config.VCISelfConfigurations = config.Configs
-		// The self issuer should go first. This is just a convention.
-		p.config.VCIIssuers = append([]goidc.VCIssuer{{
-			Issuer:         config.Issuer,
-			Configurations: config.Configs,
-		}}, p.config.VCIIssuers...)
-
+		p.config.VCISelfConfigurations = configs
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -2225,11 +2202,78 @@ func WithVCISelf(config VCISelfConfig, opts ...VCISelfOption) VCIOption {
 	}
 }
 
+func WithVCISelfIssuer(iss string) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfHost = iss
+		return nil
+	}
+}
+
 // WithVCISelfOffers enables credential offers for the self credential issuer.
 func WithVCISelfOffers(manager goidc.VCOfferManager) VCISelfOption {
 	return func(p *Provider) error {
 		p.config.VCISelfOffersEnabled = true
 		p.config.VCISelfOfferManager = manager
+		return nil
+	}
+}
+
+// WithVCISelfPreAuthCodeGrant enables the pre-authorized code grant for the
+// self credential issuer. If manager is nil, the default in-memory manager is
+// used.
+func WithVCISelfPreAuthCodeGrant(manager goidc.VCPreAuthCodeGrantManager) VCISelfOption {
+	return func(p *Provider) error {
+		if !slices.Contains(p.config.GrantTypes, goidc.GrantPreAuthorizedCode) {
+			p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
+		}
+		p.config.VCISelfPreAuthCodeGrantEnabled = true
+		p.config.VCISelfPreAuthCodeGrantManager = manager
+		return nil
+	}
+}
+
+// WithVCISelfPreAuthCodeFunc sets the function used to generate
+// pre-authorized codes.
+func WithVCISelfPreAuthCodeFunc(f goidc.RandomFunc) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfPreAuthCodeFunc = f
+		return nil
+	}
+}
+
+// WithVCISelfPreAuthCodeLifetime sets the pre-authorized code lifetime in
+// seconds.
+func WithVCISelfPreAuthCodeLifetime(secs int) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfPreAuthCodeLifetimeSecs = secs
+		return nil
+	}
+}
+
+type VCISelfJWTIssuerOption VCISelfOption
+
+func WithVCISelfJWTIssuer(opts ...VCISelfJWTIssuerOption) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfJWTIssuerEnabled = true
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func WithVCISelfJWTIssuerJWKS(jwks goidc.JWKSFunc) VCISelfJWTIssuerOption {
+	return func(p *Provider) error {
+		p.config.VCISelfJWTIssuerJWKSFunc = jwks
+		return nil
+	}
+}
+
+func WithVCISelfJWTIssuerJWKSURI(uri string) VCISelfJWTIssuerOption {
+	return func(p *Provider) error {
+		p.config.VCISelfJWTIssuerJWKSURI = uri
 		return nil
 	}
 }
@@ -2246,6 +2290,23 @@ func WithVCIExternal(issuers []goidc.VCIssuer, opts ...VCIExternalOption) VCIOpt
 				return err
 			}
 		}
+		return nil
+	}
+}
+
+// WithVCIExternalPreAuthCodeGrant enables the pre-authorized code grant for
+// external credential issuers. The handler validates and consumes the code and
+// returns its authorized issuance context.
+func WithVCIExternalPreAuthCodeGrant(handler goidc.VCIPreAuthCodeHandleFunc) VCIExternalOption {
+	return func(p *Provider) error {
+		if handler == nil {
+			return errors.New("pre-auth code handler is required")
+		}
+		if !slices.Contains(p.config.GrantTypes, goidc.GrantPreAuthorizedCode) {
+			p.config.GrantTypes = append(p.config.GrantTypes, goidc.GrantPreAuthorizedCode)
+		}
+		p.config.VCIExternalPreAuthCodeGrantEnabled = true
+		p.config.VCIExternalPreAuthCodeHandleFunc = handler
 		return nil
 	}
 }

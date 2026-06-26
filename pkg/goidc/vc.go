@@ -19,6 +19,13 @@ type VCIssuerStateResult struct {
 
 type VCIPreAuthCodeHandleFunc func(context.Context, string, VCPreAuthCodeOptions) (VCPreAuthCodeResult, error)
 
+// VCPreAuthCodeGrantManager resolves grants by pre-authorized code.
+type VCPreAuthCodeGrantManager interface {
+	// GrantByPreAuthCode returns the grant associated with the pre-authorized
+	// code. It must return [ErrNotFound] when the grant does not exist.
+	GrantByPreAuthCode(context.Context, string) (*Grant, error)
+}
+
 type VCPreAuthCodeOptions struct {
 	Issuer string
 	TxCode string
@@ -103,14 +110,19 @@ const (
 	VCFormatDCSDJWT VCFormat = "dc+sd-jwt"
 )
 
+type VCType string
+
 type VCConfiguration struct {
-	Format           VCFormat
-	Scope            Scope
-	SigAlgs          []SignatureAlgorithm
-	BindingMethods   []VCBindingMethod
-	ProofTypes       map[VCProofType]VCProofConfiguration
-	Issue            VCIssueCredentialFunc
-	CustomAttributes map[string]any
+	Format         VCFormat
+	Scope          Scope
+	SigAlgs        []SignatureAlgorithm
+	BindingMethods []VCBindingMethod
+	ProofTypes     map[VCProofType]VCProofConfiguration
+	Issue          VCIssueCredentialFunc
+	// Type identifies the SD-JWT VC type advertised as the "vct" parameter in
+	// Credential Issuer metadata. It is required when Format is
+	// [VCFormatDCSDJWT]. See [OIDC4VCI Appendix A.3.2].
+	Type VCType
 }
 
 // VCProofType is the format of the proof of possession of cryptographic key material

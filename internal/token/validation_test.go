@@ -1,6 +1,7 @@
 package token
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -236,7 +237,7 @@ func TestValidateScopes(t *testing.T) {
 	tests := []struct {
 		name    string
 		req     request
-		granted string
+		opts    *scopeValidationOptions
 		wantErr goidc.ErrorCode
 	}{
 		{
@@ -246,8 +247,18 @@ func TestValidateScopes(t *testing.T) {
 		{
 			name:    "invalid requested scope",
 			req:     request{scopes: "openid scope_not_granted"},
-			granted: "openid scope1",
+			opts:    &scopeValidationOptions{granted: "openid scope1"},
 			wantErr: goidc.ErrorCodeInvalidScope,
+		},
+		{
+			name:    "empty grant rejects requested scope",
+			req:     request{scopes: "openid"},
+			opts:    &scopeValidationOptions{},
+			wantErr: goidc.ErrorCodeInvalidScope,
+		},
+		{
+			name: "nil options allow client scope",
+			req:  request{scopes: "openid"},
 		},
 	}
 
@@ -256,7 +267,7 @@ func TestValidateScopes(t *testing.T) {
 			ctx := oidctest.NewContext(t)
 			client, _ := oidctest.NewClient(t)
 
-			err := validateScopes(ctx, test.req, client, test.granted)
+			err := validateScopes(ctx, test.req, client, test.opts)
 
 			if test.wantErr == "" {
 				if err != nil {
@@ -283,40 +294,61 @@ func TestValidateScopes(t *testing.T) {
 func TestValidateResources(t *testing.T) {
 	tests := []struct {
 		name    string
-		setup   func(*oidc.Context) (request, goidc.Resources)
+		setup   func(*oidc.Context) (request, *resourceValidationOptions)
 		wantErr goidc.ErrorCode
 	}{
 		{
 			name: "disabled",
-			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+			setup: func(ctx *oidc.Context) (request, *resourceValidationOptions) {
 				ctx.ResourceIndicatorsEnabled = false
 				return request{resources: []string{"https://resource.com"}}, nil
 			},
 		},
 		{
 			name: "valid resource",
-			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+			setup: func(ctx *oidc.Context) (request, *resourceValidationOptions) {
 				ctx.ResourceIndicatorsEnabled = true
 				ctx.ResourceIndicators = []string{"https://resource.com", "https://other.com"}
-				return request{resources: []string{"https://resource.com"}}, goidc.Resources{"https://resource.com", "https://other.com"}
+				return request{resources: []string{"https://resource.com"}}, &resourceValidationOptions{
+					granted: goidc.Resources{"https://resource.com", "https://other.com"},
+				}
 			},
 		},
 		{
 			name: "invalid resource",
-			setup: func(ctx *oidc.Context) (request, goidc.Resources) {
+			setup: func(ctx *oidc.Context) (request, *resourceValidationOptions) {
 				ctx.ResourceIndicatorsEnabled = true
-				return request{resources: []string{"https://unknown.com"}}, goidc.Resources{"https://resource.com"}
+				return request{resources: []string{"https://unknown.com"}}, &resourceValidationOptions{
+					granted: goidc.Resources{"https://resource.com"},
+				}
 			},
 			wantErr: goidc.ErrorCodeInvalidTarget,
+		},
+		{
+			name: "empty grant rejects requested resource",
+			setup: func(ctx *oidc.Context) (request, *resourceValidationOptions) {
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicators = []string{"https://resource.com"}
+				return request{resources: []string{"https://resource.com"}}, &resourceValidationOptions{}
+			},
+			wantErr: goidc.ErrorCodeInvalidTarget,
+		},
+		{
+			name: "nil options allow configured resource",
+			setup: func(ctx *oidc.Context) (request, *resourceValidationOptions) {
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicators = []string{"https://resource.com"}
+				return request{resources: []string{"https://resource.com"}}, nil
+			},
 		},
 	}
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
 			ctx := oidctest.NewContext(t)
-			req, granted := test.setup(&ctx)
+			req, opts := test.setup(&ctx)
 
-			err := validateResources(ctx, req, granted)
+			err := validateResources(ctx, req, opts)
 
 			if test.wantErr == "" {
 				if err != nil {
@@ -332,6 +364,62 @@ func TestValidateResources(t *testing.T) {
 			var oidcErr goidc.Error
 			if !errors.As(err, &oidcErr) {
 				t.Fatalf("expected goidc.Error, got %v", err)
+			}
+			if oidcErr.Code != test.wantErr {
+				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestValidateAuthDetails(t *testing.T) {
+	tests := []struct {
+		name    string
+		opts    *authDetailsValidationOptions
+		wantErr goidc.ErrorCode
+	}{
+		{
+			name:    "empty grant rejects requested authorization detail",
+			opts:    &authDetailsValidationOptions{},
+			wantErr: goidc.ErrorCodeInvalidAuthDetails,
+		},
+		{
+			name: "nil options allow supported authorization detail",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.RAREnabled = true
+			ctx.RARDetailTypes = []goidc.AuthDetailType{"payment"}
+			ctx.RARValidateDetailFunc = func(context.Context, goidc.AuthDetail) error {
+				return nil
+			}
+			ctx.RARCompareDetailsFunc = func(_ context.Context, requested, granted []goidc.AuthDetail) error {
+				if len(requested) > 0 && len(granted) == 0 {
+					return errors.New("authorization detail was not granted")
+				}
+				return nil
+			}
+			client, _ := oidctest.NewClient(t)
+			req := request{
+				authDetails: []goidc.AuthDetail{{"type": "payment"}},
+			}
+
+			err := validateAuthDetails(ctx, req, client, test.opts)
+			if test.wantErr == "" {
+				if err != nil {
+					t.Fatalf("validateAuthDetails() error = %v", err)
+				}
+				return
+			}
+			if err == nil {
+				t.Fatalf("validateAuthDetails() error = nil, want %s", test.wantErr)
+			}
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("validateAuthDetails() error = %v, want goidc.Error", err)
 			}
 			if oidcErr.Code != test.wantErr {
 				t.Fatalf("Code = %s, want %s", oidcErr.Code, test.wantErr)

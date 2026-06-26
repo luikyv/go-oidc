@@ -109,7 +109,11 @@ func validateBindingRequirement(ctx oidc.Context) error {
 	return nil
 }
 
-func validateResources(ctx oidc.Context, req request, granted goidc.Resources) error {
+type resourceValidationOptions struct {
+	granted goidc.Resources
+}
+
+func validateResources(ctx oidc.Context, req request, opts *resourceValidationOptions) error {
 	if !ctx.ResourceIndicatorsEnabled {
 		return nil
 	}
@@ -119,7 +123,7 @@ func validateResources(ctx oidc.Context, req request, granted goidc.Resources) e
 			return goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target", fmt.Errorf("resource %q is not configured by the server", r))
 		}
 
-		if granted != nil && !slices.Contains(granted, r) {
+		if opts != nil && !slices.Contains(opts.granted, r) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target", fmt.Errorf("resource %q was not granted for this authorization", r))
 		}
 	}
@@ -127,10 +131,12 @@ func validateResources(ctx oidc.Context, req request, granted goidc.Resources) e
 	return nil
 }
 
+type authDetailsValidationOptions struct {
+	granted []goidc.AuthDetail
+}
+
 // validateAuthDetails validates the auth details for the token request.
-// Parameters:
-//   - granted: The granted auth details. If nil, no auth details were previouly granted.
-func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted []goidc.AuthDetail) error {
+func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, opts *authDetailsValidationOptions) error {
 	if !ctx.RAREnabled || req.authDetails == nil {
 		return nil
 	}
@@ -149,8 +155,8 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 		}
 	}
 
-	if granted != nil {
-		if err := ctx.RARCompareAuthDetails(req.authDetails, granted); err != nil {
+	if opts != nil {
+		if err := ctx.RARCompareAuthDetails(req.authDetails, opts.granted); err != nil {
 			return goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details", err)
 		}
 	}
@@ -158,7 +164,11 @@ func validateAuthDetails(ctx oidc.Context, req request, c *goidc.Client, granted
 	return nil
 }
 
-func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted string) error {
+type scopeValidationOptions struct {
+	granted string
+}
+
+func validateScopes(ctx oidc.Context, req request, c *goidc.Client, opts *scopeValidationOptions) error {
 	if req.scopes == "" {
 		return nil
 	}
@@ -173,7 +183,7 @@ func validateScopes(ctx oidc.Context, req request, c *goidc.Client, granted stri
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not allowed for the client", s))
 		}
 
-		if granted != "" && !slices.Contains(strings.Fields(granted), s) {
+		if opts != nil && !slices.Contains(strings.Fields(opts.granted), s) {
 			return goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope", fmt.Errorf("scope %s is not granted", s))
 		}
 	}

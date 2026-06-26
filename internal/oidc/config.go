@@ -292,8 +292,15 @@ type Configuration struct {
 	VCISelfCredentialEndpoint            string
 	VCISelfOfferEndpoint                 string
 	VCISelfOfferIDFunc                   goidc.RandomFunc
-	VCIPreAuthCodeGrantEnabled           bool
-	VCIPreAuthCodeHandleFunc             goidc.VCIPreAuthCodeHandleFunc
+	VCISelfPreAuthCodeGrantEnabled       bool
+	VCISelfPreAuthCodeGrantManager       goidc.VCPreAuthCodeGrantManager
+	VCISelfPreAuthCodeFunc               goidc.RandomFunc
+	VCISelfPreAuthCodeLifetimeSecs       int
+	VCISelfJWTIssuerEnabled              bool
+	VCISelfJWTIssuerJWKSFunc             goidc.JWKSFunc
+	VCISelfJWTIssuerJWKSURI              string
+	VCIExternalPreAuthCodeGrantEnabled   bool
+	VCIExternalPreAuthCodeHandleFunc     goidc.VCIPreAuthCodeHandleFunc
 	VCIIssuerStateEnabled                bool
 	VCIIssuerStateHandleFunc             goidc.VCIIssuerStateHandleFunc
 	VCIPreAuthCodeAnonymousAccessEnabled bool

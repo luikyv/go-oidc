@@ -18,6 +18,7 @@ var _ goidc.GrantManager = &Manager{}
 var _ goidc.OpaqueTokenManager = &Manager{}
 var _ goidc.LogoutManager = &Manager{}
 var _ goidc.VCOfferManager = &Manager{}
+var _ goidc.VCPreAuthCodeGrantManager = &Manager{}
 
 type Manager struct {
 	Sessions       map[string]*goidc.AuthnSession
@@ -198,6 +199,19 @@ func (m *Manager) GrantByAuthCode(_ context.Context, code string) (*goidc.Grant,
 	for _, g := range m.Grants {
 		if g.AuthCode == code {
 			return g, nil
+		}
+	}
+
+	return nil, goidc.ErrNotFound
+}
+
+func (m *Manager) GrantByPreAuthCode(_ context.Context, code string) (*goidc.Grant, error) {
+	m.grantMutex.RLock()
+	defer m.grantMutex.RUnlock()
+
+	for _, grant := range m.Grants {
+		if grant.PreAuthCode == code {
+			return grant, nil
 		}
 	}
 

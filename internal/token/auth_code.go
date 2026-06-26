@@ -70,11 +70,11 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 			return response{}, err
 		}
 
-		if err := validateResources(ctx, req, grant.Resources); err != nil {
+		if err := validateResources(ctx, req, &resourceValidationOptions{granted: grant.Resources}); err != nil {
 			return response{}, err
 		}
 
-		if err := validateAuthDetails(ctx, req, c, grant.AuthDetails); err != nil {
+		if err := validateAuthDetails(ctx, req, c, &authDetailsValidationOptions{granted: grant.AuthDetails}); err != nil {
 			return response{}, err
 		}
 
@@ -82,7 +82,7 @@ func generateAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 			return response{}, err
 		}
 
-		if err := validateScopes(ctx, req, c, grant.Scopes); err != nil {
+		if err := validateScopes(ctx, req, c, &scopeValidationOptions{granted: grant.Scopes}); err != nil {
 			return response{}, err
 		}
 

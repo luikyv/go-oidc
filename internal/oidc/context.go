@@ -713,8 +713,24 @@ func (ctx Context) SSFHandleExpiredEventStream(stream *goidc.SSFEventStream) err
 	return ctx.SSFHandleExpiredEventStreamFunc(ctx, stream)
 }
 
-func (ctx Context) VCIPreAuthCodeHandle(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
-	return ctx.VCIPreAuthCodeHandleFunc(ctx, preAuthCode, opts)
+func (ctx Context) VCISelfGrantByPreAuthCode(preAuthCode string) (*goidc.Grant, error) {
+	return ctx.VCISelfPreAuthCodeGrantManager.GrantByPreAuthCode(ctx, preAuthCode)
+}
+
+func (ctx Context) PreAuthCode() string {
+	return ctx.VCISelfPreAuthCodeFunc(ctx)
+}
+
+func (ctx Context) PreAuthCodeLifetime() int {
+	return ctx.VCISelfPreAuthCodeLifetimeSecs
+}
+
+func (ctx Context) VCISelfJWTIssuerJWKS() (goidc.JSONWebKeySet, error) {
+	return ctx.VCISelfJWTIssuerJWKSFunc(ctx)
+}
+
+func (ctx Context) VCIExternalPreAuthCodeHandle(preAuthCode string, opts goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
+	return ctx.VCIExternalPreAuthCodeHandleFunc(ctx, preAuthCode, opts)
 }
 
 func (ctx Context) VCIIssuerStateHandle(state string, opts goidc.VCIssuerOptions) (goidc.VCIssuerStateResult, error) {

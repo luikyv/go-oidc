@@ -44,7 +44,7 @@ func generateExchangeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, err
 	}
 
-	if err := validateScopes(ctx, req, c, ""); err != nil {
+	if err := validateScopes(ctx, req, c, nil); err != nil {
 		return response{}, err
 	}
 
