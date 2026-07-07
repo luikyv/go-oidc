@@ -327,7 +327,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			}
 
 			if c.IDTokenContentEncAlg == "" {
-				c.IDTokenContentEncAlg = ctx.IDTokenDefaultContentEncAlg
+				c.IDTokenContentEncAlg = ctx.IDTokenContentEncAlgs[0]
 			}
 
 			if !slices.Contains(ctx.IDTokenContentEncAlgs, c.IDTokenContentEncAlg) {
@@ -358,7 +358,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 			}
 
 			if c.UserInfoContentEncAlg == "" {
-				c.UserInfoContentEncAlg = ctx.UserInfoDefaultContentEncAlg
+				c.UserInfoContentEncAlg = ctx.UserInfoContentEncAlgs[0]
 			}
 
 			if !slices.Contains(ctx.UserInfoContentEncAlgs, c.UserInfoContentEncAlg) {
@@ -424,7 +424,7 @@ func Resolve(ctx oidc.Context, c *Meta) (err error) {
 				}
 
 				if c.JARMContentEncAlg == "" {
-					c.JARMContentEncAlg = ctx.JARMContentEncAlgDefault
+					c.JARMContentEncAlg = ctx.JARMContentEncAlgs[0]
 				}
 
 				if !slices.Contains(ctx.JARMContentEncAlgs, c.JARMContentEncAlg) {

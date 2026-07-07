@@ -37,8 +37,8 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
@@ -51,7 +51,7 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 					}
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
-						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
+						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCIdentifier{
 							"cred1": {"credential_1"},
 						},
 					}, nil
@@ -92,8 +92,8 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: ctx.VCISelfHost,
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
@@ -139,7 +139,7 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer:         ctx.VCISelfHost,
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{},
+						Configurations: []goidc.VCConfiguration{},
 					},
 				}
 				grant := &goidc.Grant{
@@ -172,15 +172,15 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
 				ctx.VCIExternalPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
-						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
+						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCIdentifier{
 							"cred1": {"credential_1"},
 						},
 					}, nil
@@ -210,15 +210,15 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
 				ctx.VCIExternalPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
-						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
+						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCIdentifier{
 							"unknown": {"credential_1"},
 						},
 					}, nil
@@ -241,16 +241,16 @@ func TestGeneratePreAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
-							"cred2": {Scope: goidc.NewScope("vc_scope2")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
+							{ID: "cred2", Scope: goidc.NewScope("vc_scope2")},
 						},
 					},
 				}
 				ctx.VCIExternalPreAuthCodeHandleFunc = func(_ context.Context, _ string, _ goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 					return goidc.VCPreAuthCodeResult{
 						Subject: "subject",
-						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCCredentialID{
+						ConfigurationIDs: map[goidc.VCConfigurationID][]goidc.VCIdentifier{
 							"cred1": {"credential_1"},
 						},
 					}, nil

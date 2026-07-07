@@ -699,9 +699,9 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer1.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
-							"cred2": {Scope: goidc.NewScope("vc_scope2")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
+							{ID: "cred2", Scope: goidc.NewScope("vc_scope2")},
 						},
 					},
 				}
@@ -745,14 +745,14 @@ func TestGenerateAuthCodeToken(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer1.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 					{
 						Issuer: "https://issuer2.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred2": {Scope: goidc.NewScope("vc_scope2")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred2", Scope: goidc.NewScope("vc_scope2")},
 						},
 					},
 				}

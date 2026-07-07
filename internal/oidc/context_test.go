@@ -1517,7 +1517,7 @@ func TestDecryptWithDecrypter(t *testing.T) {
 		},
 	}
 
-	jwe, err := joseutil.Encrypt("random_jws", encKey.Public(), goidc.A128CBC_HS256)
+	jwe, err := joseutil.Encrypt("random_jws", encKey.Public(), goidc.A128CBC_HS256, nil)
 	if err != nil {
 		t.Fatalf("joseutil.Encrypt() error = %v", err)
 	}

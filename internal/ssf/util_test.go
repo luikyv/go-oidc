@@ -1356,11 +1356,11 @@ func TestValidateStream_PollWithAuthHeader(t *testing.T) {
 func TestNewConfiguration(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFIsStatusManagementEnabled = true
-	ctx.SSFIsSubjectManagementEnabled = true
+	ctx.SSFStatusManagementEnabled = true
+	ctx.SSFSubjectEnabled = true
 	ctx.SSFStatusEndpoint = "/ssf/status"
-	ctx.SSFAddSubjectEndpoint = "/ssf/subjects/add"
-	ctx.SSFRemoveSubjectEndpoint = "/ssf/subjects/remove"
+	ctx.SSFSubjectAddEndpoint = "/ssf/subjects/add"
+	ctx.SSFSubjectRemoveEndpoint = "/ssf/subjects/remove"
 	ctx.SSFVerificationEndpoint = "/ssf/verification"
 	ctx.SSFCriticalSubjectMembers = []string{"user", "tenant"}
 	ctx.SSFAuthorizationSchemes = []goidc.SSFAuthorizationScheme{{SpecificationURN: "bearer"}}
@@ -1393,9 +1393,9 @@ func TestNewConfiguration(t *testing.T) {
 func TestNewConfiguration_Minimal(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFIsStatusManagementEnabled = false
-	ctx.SSFIsSubjectManagementEnabled = false
-	ctx.SSFIsVerificationEnabled = false
+	ctx.SSFStatusManagementEnabled = false
+	ctx.SSFSubjectEnabled = false
+	ctx.SSFVerificationEnabled = false
 
 	// When.
 	config := newConfiguration(ctx)
@@ -1899,11 +1899,12 @@ func setUp(t *testing.T) oidc.Context {
 		return uuid.NewString()
 	}
 	ctx.SSFEventStreamManager = manager
+	ctx.SSFSubjectManager = manager
 	ctx.SSFEventPollManager = manager
 	ctx.SSFScheduleVerificationEventFunc = manager.ScheduleVerificationEvent
 	ctx.SSFDeliveryMethods = []goidc.SSFDeliveryMethod{goidc.SSFDeliveryMethodPush, goidc.SSFDeliveryMethodPoll}
 	ctx.SSFEventTypes = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
-	ctx.SSFIsVerificationEnabled = true
+	ctx.SSFVerificationEnabled = true
 	ctx.SSFJWKSFunc = ctx.JWKSFunc
 	ctx.SSFDefaultSigAlg = goidc.PS256
 	ctx.SSFPollingEndpoint = "/ssf/poll"

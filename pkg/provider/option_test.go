@@ -463,7 +463,10 @@ func TestWithUserInfoEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithUserInfoEncryption(goidc.RSA_OAEP)(p)
+	err := WithUserInfoEncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -472,12 +475,45 @@ func TestWithUserInfoEncryption(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			UserInfoEncEnabled: true,
-			UserInfoKeyEncAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			UserInfoEncEnabled:     true,
+			UserInfoKeyEncAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			UserInfoContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithUserInfoEncryptionValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		keyAlgs     []goidc.KeyEncryptionAlgorithm
+		contentAlgs []goidc.ContentEncryptionAlgorithm
+		wantErr     string
+	}{
+		{
+			name:        "requires key encryption algorithm",
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			wantErr:     "at least one key encryption algorithm is required for user info encryption",
+		},
+		{
+			name:    "requires content encryption algorithm",
+			keyAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			wantErr: "at least one content encryption algorithm is required for user info encryption",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := WithUserInfoEncryption(test.keyAlgs, test.contentAlgs)(&Provider{})
+			if err == nil {
+				t.Fatal("WithUserInfoEncryption() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("WithUserInfoEncryption() error = %q, want %q", got, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -488,7 +524,10 @@ func TestWithIDTokenEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithIDTokenEncryption(goidc.RSA_OAEP)(p)
+	err := WithIDTokenEncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -497,8 +536,9 @@ func TestWithIDTokenEncryption(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			IDTokenEncEnabled: true,
-			IDTokenKeyEncAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			IDTokenEncEnabled:     true,
+			IDTokenKeyEncAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			IDTokenContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -506,53 +546,35 @@ func TestWithIDTokenEncryption(t *testing.T) {
 	}
 }
 
-func TestWithUserInfoContentEncryptionAlgs(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithUserInfoContentEncryptionAlgs(goidc.A128GCM)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			UserInfoDefaultContentEncAlg: goidc.A128GCM,
-			UserInfoContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+func TestWithIDTokenEncryptionValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		keyAlgs     []goidc.KeyEncryptionAlgorithm
+		contentAlgs []goidc.ContentEncryptionAlgorithm
+		wantErr     string
+	}{
+		{
+			name:        "requires key encryption algorithm",
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			wantErr:     "at least one key encryption algorithm is required for ID token encryption",
+		},
+		{
+			name:    "requires content encryption algorithm",
+			keyAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			wantErr: "at least one content encryption algorithm is required for ID token encryption",
 		},
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
-	}
-}
 
-func TestWithIDTokenContentEncryptionAlgs(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithIDTokenContentEncryptionAlgs(goidc.A128GCM)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			IDTokenDefaultContentEncAlg: goidc.A128GCM,
-			IDTokenContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
-		},
-	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := WithIDTokenEncryption(test.keyAlgs, test.contentAlgs)(&Provider{})
+			if err == nil {
+				t.Fatal("WithIDTokenEncryption() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("WithIDTokenEncryption() error = %q, want %q", got, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -1114,7 +1136,10 @@ func TestJAREncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithJAREncryption(goidc.RSA_OAEP_256)(p)
+	err := WithJAREncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -1123,8 +1148,9 @@ func TestJAREncryption(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			JAREncEnabled: true,
-			JARKeyEncAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
+			JAREncEnabled:     true,
+			JARKeyEncAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256},
+			JARContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1132,27 +1158,35 @@ func TestJAREncryption(t *testing.T) {
 	}
 }
 
-func TestJARContentEncryptionAlgs(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithJARContentEncryptionAlgs(goidc.A128GCM)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			JARContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+func TestJAREncryptionValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		keyAlgs     []goidc.KeyEncryptionAlgorithm
+		contentAlgs []goidc.ContentEncryptionAlgorithm
+		wantErr     string
+	}{
+		{
+			name:        "requires key encryption algorithm",
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			wantErr:     "at least one key encryption algorithm is required for JAR encryption",
+		},
+		{
+			name:    "requires content encryption algorithm",
+			keyAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			wantErr: "at least one content encryption algorithm is required for JAR encryption",
 		},
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := WithJAREncryption(test.keyAlgs, test.contentAlgs)(&Provider{})
+			if err == nil {
+				t.Fatal("WithJAREncryption() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("WithJAREncryption() error = %q, want %q", got, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -1189,7 +1223,10 @@ func TestJARMEncryption(t *testing.T) {
 	}
 
 	// When.
-	err := WithJARMEncryption(goidc.RSA_OAEP)(p)
+	err := WithJARMEncryption(
+		[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+		[]goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -1198,8 +1235,9 @@ func TestJARMEncryption(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			JARMEncEnabled: true,
-			JARMKeyEncAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			JARMEncEnabled:     true,
+			JARMKeyEncAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			JARMContentEncAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -1207,28 +1245,35 @@ func TestJARMEncryption(t *testing.T) {
 	}
 }
 
-func TestJARMContentEncryptionAlgs(t *testing.T) {
-	// Given.
-	p := &Provider{
-		config: oidc.Configuration{},
-	}
-
-	// When.
-	err := WithJARMContentEncryptionAlgs(goidc.A128GCM)(p)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	want := &Provider{
-		config: oidc.Configuration{
-			JARMContentEncAlgDefault: goidc.A128GCM,
-			JARMContentEncAlgs:       []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+func TestJARMEncryptionValidation(t *testing.T) {
+	tests := []struct {
+		name        string
+		keyAlgs     []goidc.KeyEncryptionAlgorithm
+		contentAlgs []goidc.ContentEncryptionAlgorithm
+		wantErr     string
+	}{
+		{
+			name:        "requires key encryption algorithm",
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			wantErr:     "at least one key encryption algorithm is required for JARM encryption",
+		},
+		{
+			name:    "requires content encryption algorithm",
+			keyAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			wantErr: "at least one content encryption algorithm is required for JARM encryption",
 		},
 	}
-	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
-		t.Error(diff)
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := WithJARMEncryption(test.keyAlgs, test.contentAlgs)(&Provider{})
+			if err == nil {
+				t.Fatal("WithJARMEncryption() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("WithJARMEncryption() error = %q, want %q", got, test.wantErr)
+			}
+		})
 	}
 }
 
@@ -2754,7 +2799,9 @@ func TestSSFPushDelivery(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFPushDelivery(clientFunc)(p)
+	err := WithSSFPushDelivery(
+		WithSSFPushDeliveryHTTPClient(clientFunc),
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -2789,7 +2836,7 @@ func TestSSFEventStreamStatusManagement(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFIsStatusManagementEnabled: true,
+			SSFStatusManagementEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2804,7 +2851,9 @@ func TestSSFStatusEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFStatusEndpoint("/ssf/status")(p)
+	err := WithSSFEventStreamStatusManagement(
+		WithSSFStatusEndpoint("/ssf/status"),
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -2813,7 +2862,8 @@ func TestSSFStatusEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFStatusEndpoint: "/ssf/status",
+			SSFStatusManagementEnabled: true,
+			SSFStatusEndpoint:          "/ssf/status",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2828,7 +2878,7 @@ func TestSSFEventStreamSubjectManagement(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFEventStreamSubjectManagement()(p)
+	err := WithSSFSubjectManagement(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -2837,7 +2887,7 @@ func TestSSFEventStreamSubjectManagement(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFIsSubjectManagementEnabled: true,
+			SSFSubjectEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2852,7 +2902,10 @@ func TestSSFAddSubjectEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFAddSubjectEndpoint("/ssf/subjects/add")(p)
+	err := WithSSFSubjectManagement(
+		nil,
+		WithSSFAddSubjectEndpoint("/ssf/subjects/add"),
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -2861,7 +2914,8 @@ func TestSSFAddSubjectEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFAddSubjectEndpoint: "/ssf/subjects/add",
+			SSFSubjectEnabled:      true,
+			SSFSubjectAddEndpoint: "/ssf/subjects/add",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2876,7 +2930,10 @@ func TestSSFRemoveSubjectEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFRemoveSubjectEndpoint("/ssf/subjects/remove")(p)
+	err := WithSSFSubjectManagement(
+		nil,
+		WithSSFRemoveSubjectEndpoint("/ssf/subjects/remove"),
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -2885,7 +2942,8 @@ func TestSSFRemoveSubjectEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFRemoveSubjectEndpoint: "/ssf/subjects/remove",
+			SSFSubjectEnabled:        true,
+			SSFSubjectRemoveEndpoint: "/ssf/subjects/remove",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2909,7 +2967,7 @@ func TestSSFEventStreamVerification(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFIsVerificationEnabled: true,
+			SSFVerificationEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2924,7 +2982,10 @@ func TestSSFMinVerificationInterval(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFMinVerificationInterval(60)(p)
+	err := WithSSFEventStreamVerification(
+		nil,
+		WithSSFMinVerificationInterval(60),
+	)(p)
 
 	// Then.
 	if err != nil {
@@ -2933,6 +2994,7 @@ func TestSSFMinVerificationInterval(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
+			SSFVerificationEnabled:     true,
 			SSFMinVerificationInterval: 60,
 		},
 	}
@@ -3152,7 +3214,7 @@ func TestWithSelfSignedTLSAuthn(t *testing.T) {
 func TestWithAttestationJWTAuthn(t *testing.T) {
 	p := &Provider{}
 	issuer := goidc.AttestationIssuer{Issuer: "https://attester.example.com", JWKSURI: "https://attester.example.com/jwks"}
-	if err := WithAttestationJWTAuthn(issuer)(p); err != nil {
+	if err := WithAttestationJWTAuthn([]goidc.AttestationIssuer{issuer})(p); err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 	wantMethods := []goidc.AuthnMethod{goidc.AuthnMethodAttestationJWT}
@@ -3162,6 +3224,148 @@ func TestWithAttestationJWTAuthn(t *testing.T) {
 	wantIssuers := []goidc.AttestationIssuer{issuer}
 	if diff := cmp.Diff(p.config.AuthnMethodAttestationJWTIssuers, wantIssuers); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestWithAttestationJWTAuthnValidation(t *testing.T) {
+	tests := []struct {
+		name    string
+		issuers []goidc.AttestationIssuer
+		wantErr string
+	}{
+		{
+			name:    "requires issuers",
+			wantErr: "at least one attestation issuer is required",
+		},
+		{
+			name: "requires issuer",
+			issuers: []goidc.AttestationIssuer{
+				{JWKSURI: "https://attester.example.com/jwks"},
+			},
+			wantErr: "attestation issuer cannot be empty",
+		},
+		{
+			name: "requires key source",
+			issuers: []goidc.AttestationIssuer{
+				{Issuer: "https://attester.example.com"},
+			},
+			wantErr: "attestation issuer \"https://attester.example.com\" requires either JWKSURI or JWKSFunc",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			err := WithAttestationJWTAuthn(test.issuers)(&Provider{})
+			if err == nil {
+				t.Fatal("WithAttestationJWTAuthn() error = nil, want non-nil")
+			}
+			if got := err.Error(); got != test.wantErr {
+				t.Fatalf("WithAttestationJWTAuthn() error = %q, want %q", got, test.wantErr)
+			}
+		})
+	}
+}
+
+func TestWithVCISelfBatchIssuance(t *testing.T) {
+	p := &Provider{}
+	if err := WithVCISelfBatchIssuance(10)(p); err != nil {
+		t.Fatalf("WithVCISelfBatchIssuance() error = %v", err)
+	}
+	if p.config.VCISelfBatchSize != 10 {
+		t.Fatalf("VCISelfBatchSize = %d, want 10", p.config.VCISelfBatchSize)
+	}
+}
+
+func TestWithVCISelfBatchIssuance_InvalidSize(t *testing.T) {
+	err := WithVCISelfBatchIssuance(1)(&Provider{})
+	if err == nil {
+		t.Fatal("WithVCISelfBatchIssuance() error = nil, want non-nil")
+	}
+	if got, want := err.Error(), "VCI self batch issuance size must be greater than 1"; got != want {
+		t.Fatalf("WithVCISelfBatchIssuance() error = %q, want %q", got, want)
+	}
+}
+
+func TestWithVCISelfNotification(t *testing.T) {
+	p := &Provider{}
+	handler := func(context.Context, *goidc.VCNotification, goidc.VCNotificationEvent) error {
+		return nil
+	}
+
+	if err := WithVCISelfNotification(nil, handler)(p); err != nil {
+		t.Fatalf("WithVCISelfNotification() error = %v", err)
+	}
+	if !p.config.VCISelfNotificationEnabled {
+		t.Fatal("VCISelfNotificationEnabled = false, want true")
+	}
+	if p.config.VCISelfNotificationHandleFunc == nil {
+		t.Fatal("VCISelfNotificationHandleFunc must be set")
+	}
+}
+
+func TestWithVCISelfNotification_RequiresHandler(t *testing.T) {
+	err := WithVCISelfNotification(nil, nil)(&Provider{})
+	if err == nil {
+		t.Fatal("WithVCISelfNotification() error = nil, want non-nil")
+	}
+	if got, want := err.Error(), "VCI self notification handler is required"; got != want {
+		t.Fatalf("WithVCISelfNotification() error = %q, want %q", got, want)
+	}
+}
+
+func TestWithVCISelfResponseEncryption(t *testing.T) {
+	tests := []struct {
+		name        string
+		keyAlgs     []goidc.KeyEncryptionAlgorithm
+		contentAlgs []goidc.ContentEncryptionAlgorithm
+		opts        []VCISelfResponseEncryptionOption
+		want        oidc.Configuration
+		wantErr     string
+	}{
+		{
+			name:        "success",
+			keyAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			opts:        []VCISelfResponseEncryptionOption{WithVCISelfResponseEncryptionRequired()},
+			want: oidc.Configuration{
+				VCISelfResponseEncEnabled:     true,
+				VCISelfResponseEncKeyAlgs:     []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+				VCISelfResponseEncContentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+				VCISelfResponseEncRequired:    true,
+			},
+		},
+		{
+			name:        "requires key encryption algorithm",
+			contentAlgs: []goidc.ContentEncryptionAlgorithm{goidc.A128GCM},
+			wantErr:     "at least one key encryption algorithm is required for VCI self response encryption",
+		},
+		{
+			name:    "requires content encryption algorithm",
+			keyAlgs: []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+			wantErr: "at least one content encryption algorithm is required for VCI self response encryption",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			p := &Provider{}
+			err := WithVCISelfResponseEncryption(test.keyAlgs, test.contentAlgs, test.opts...)(p)
+			if test.wantErr != "" {
+				if err == nil {
+					t.Fatal("WithVCISelfResponseEncryption() error = nil, want non-nil")
+				}
+				if got := err.Error(); got != test.wantErr {
+					t.Fatalf("WithVCISelfResponseEncryption() error = %q, want %q", got, test.wantErr)
+				}
+				return
+			}
+			if err != nil {
+				t.Fatalf("WithVCISelfResponseEncryption() error = %v", err)
+			}
+			if diff := cmp.Diff(p.config, test.want); diff != "" {
+				t.Error(diff)
+			}
+		})
 	}
 }
 

@@ -239,7 +239,6 @@ func TestHandleUserInfoRequest(t *testing.T) {
 
 				ctx.UserInfoEncEnabled = true
 				ctx.UserInfoKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP}
-				ctx.UserInfoDefaultContentEncAlg = goidc.A128CBC_HS256
 				ctx.UserInfoContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
 				return ctx, client
 			},

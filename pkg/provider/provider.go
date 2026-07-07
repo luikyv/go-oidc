@@ -223,22 +223,12 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.PARLifetimeSecs = nonZeroOrDefault(op.config.PARLifetimeSecs, defaultPARLifetimeSecs)
 	}
 
-	if op.config.JAREncEnabled {
-		op.config.JARContentEncAlgs = nonZeroOrDefault(op.config.JARContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
 	if op.config.JARMEnabled {
 		op.config.JARMLifetimeSecs = nonZeroOrDefault(op.config.JARMLifetimeSecs, defaultJWTLifetimeSecs)
 		op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeJWT, goidc.ResponseModeQueryJWT, goidc.ResponseModeFragmentJWT)
 		if slices.Contains(op.config.ResponseModes, goidc.ResponseModeFormPost) {
 			op.config.ResponseModes = append(op.config.ResponseModes, goidc.ResponseModeFormPostJWT)
 		}
-	}
-
-	if op.config.JARMEncEnabled {
-		op.config.JARMContentEncAlgDefault = nonZeroOrDefault(op.config.JARMContentEncAlgDefault, goidc.A128CBC_HS256)
-		op.config.JARMContentEncAlgs = nonZeroOrDefault(op.config.JARMContentEncAlgs,
-			[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if op.config.TokenIntrospectionEnabled {
@@ -249,16 +239,6 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	if op.config.TokenRevocationEnabled {
 		op.config.TokenRevocationEndpoint = nonZeroOrDefault(op.config.TokenRevocationEndpoint, defaultEndpointTokenRevocation)
 		op.config.TokenRevocationIsClientAllowedFunc = nonZeroOrDefault(op.config.TokenRevocationIsClientAllowedFunc, goidc.IsClientAllowedFunc(defaultTokenRevocationIsClientAllowedFunc))
-	}
-
-	if op.config.IDTokenEncEnabled {
-		op.config.IDTokenDefaultContentEncAlg = nonZeroOrDefault(op.config.IDTokenDefaultContentEncAlg, goidc.A128CBC_HS256)
-		op.config.IDTokenContentEncAlgs = nonZeroOrDefault(op.config.IDTokenContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
-	}
-
-	if op.config.UserInfoEncEnabled {
-		op.config.UserInfoDefaultContentEncAlg = nonZeroOrDefault(op.config.UserInfoDefaultContentEncAlg, goidc.A128CBC_HS256)
-		op.config.UserInfoContentEncAlgs = nonZeroOrDefault(op.config.UserInfoContentEncAlgs, []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256})
 	}
 
 	if slices.Contains(op.config.GrantTypes, goidc.GrantCIBA) {
@@ -321,19 +301,20 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
 		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
 		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
-		if op.config.SSFIsStatusManagementEnabled {
+		if op.config.SSFStatusManagementEnabled {
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
 			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
 		}
-		if op.config.SSFIsSubjectManagementEnabled {
-			op.config.SSFAddSubjectEndpoint = nonZeroOrDefault(op.config.SSFAddSubjectEndpoint, defaultEndpointSSFAddSubject)
-			op.config.SSFRemoveSubjectEndpoint = nonZeroOrDefault(op.config.SSFRemoveSubjectEndpoint, defaultEndpointSSFRemoveSubject)
+		if op.config.SSFSubjectEnabled {
+			op.config.SSFSubjectAddEndpoint = nonZeroOrDefault(op.config.SSFSubjectAddEndpoint, defaultEndpointSSFAddSubject)
+			op.config.SSFSubjectRemoveEndpoint = nonZeroOrDefault(op.config.SSFSubjectRemoveEndpoint, defaultEndpointSSFRemoveSubject)
+			op.config.SSFSubjectManager = nonZeroOrDefault(op.config.SSFSubjectManager, goidc.SSFSubjectManager(ssfManager))
 		}
 		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
 			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
 			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(ssfManager))
 		}
-		if op.config.SSFIsVerificationEnabled {
+		if op.config.SSFVerificationEnabled {
 			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
 			op.config.SSFScheduleVerificationEventFunc = nonZeroOrDefault(op.config.SSFScheduleVerificationEventFunc, ssfManager.ScheduleVerificationEvent)
 		}
@@ -349,18 +330,11 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	}
 
 	if op.config.VCIEnabled {
-		op.config.VCISelfHost = nonZeroOrDefault(op.config.VCISelfHost, op.config.Host)
-		// The self issuer should go first. This is just a convention.
-		op.config.VCIIssuers = append([]goidc.VCIssuer{{
-			Issuer:         op.config.VCISelfHost,
-			Configurations: op.config.VCISelfConfigurations,
-		}}, op.config.VCIIssuers...)
-
-		if op.config.VCISelfOffersEnabled {
-			op.config.VCISelfOfferManager = nonZeroOrDefault(op.config.VCISelfOfferManager, goidc.VCOfferManager(inmemoryManager))
-			op.config.VCISelfOfferIDFunc = nonZeroOrDefault(op.config.VCISelfOfferIDFunc, defaultSessionIDFunc)
-		}
 		if op.config.VCISelfEnabled {
+			op.config.VCISelfHost = nonZeroOrDefault(op.config.VCISelfHost, op.config.Host)
+			op.config.VCISelfCredentialEndpoint = nonZeroOrDefault(op.config.VCISelfCredentialEndpoint, defaultEndpointVCICredential)
+			op.config.VCISelfBatchSize = nonZeroOrDefault(op.config.VCISelfBatchSize, 1)
+
 			for id, config := range op.config.VCISelfConfigurations {
 				if config.Format == goidc.VCFormatDCSDJWT {
 					if config.Type == "" {
@@ -373,10 +347,46 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 				}
 			}
 
+			// The self issuer should go first. This is just a convention.
+			op.config.VCIIssuers = append([]goidc.VCIssuer{{
+				Issuer: op.config.VCISelfHost,
+				Configurations: func() []goidc.VCConfiguration {
+					selfConfigs := make([]goidc.VCConfiguration, 0, len(op.config.VCISelfConfigurations))
+					for _, config := range op.config.VCISelfConfigurations {
+						selfConfigs = append(selfConfigs, config)
+					}
+					return selfConfigs
+				}(),
+			}}, op.config.VCIIssuers...)
+
+			if op.config.VCISelfOffersEnabled {
+				op.config.VCISelfOfferManager = nonZeroOrDefault(op.config.VCISelfOfferManager, goidc.VCOfferManager(inmemoryManager))
+				op.config.VCISelfOfferIDFunc = nonZeroOrDefault(op.config.VCISelfOfferIDFunc, defaultSessionIDFunc)
+			}
+
 			if op.config.VCISelfPreAuthCodeGrantEnabled {
 				op.config.VCISelfPreAuthCodeGrantManager = nonZeroOrDefault(op.config.VCISelfPreAuthCodeGrantManager, goidc.VCPreAuthCodeGrantManager(inmemoryManager))
 				op.config.VCISelfPreAuthCodeFunc = nonZeroOrDefault(op.config.VCISelfPreAuthCodeFunc, defaultPreAuthCodeFunc)
 				op.config.VCISelfPreAuthCodeLifetimeSecs = nonZeroOrDefault(op.config.VCISelfPreAuthCodeLifetimeSecs, defaultPreAuthCodeLifetimeSecs)
+			}
+
+			if op.config.VCISelfDeferredEnabled {
+				op.config.VCISelfDeferredManager = nonZeroOrDefault(op.config.VCISelfDeferredManager, goidc.VCDeferralManager(inmemoryManager))
+				op.config.VCISelfDeferredIDFunc = nonZeroOrDefault(op.config.VCISelfDeferredIDFunc, defaultSessionIDFunc)
+				op.config.VCISelfDeferredCredentialEndpoint = nonZeroOrDefault(op.config.VCISelfDeferredCredentialEndpoint, defaultEndpointVCIDeferredCredential)
+				op.config.VCISelfDeferredIntervalSecs = nonZeroOrDefault(op.config.VCISelfDeferredIntervalSecs, defaultVCIDeferredIntervalSecs)
+			} else {
+				for id, config := range op.config.VCISelfConfigurations {
+					if config.IsDeferred != nil {
+						return nil, fmt.Errorf("credential configuration %q defines IsDeferred but WithVCISelfDeferred was not called", id)
+					}
+				}
+			}
+
+			if op.config.VCISelfNotificationEnabled {
+				op.config.VCISelfNotificationManager = nonZeroOrDefault(op.config.VCISelfNotificationManager, goidc.VCNotificationManager(inmemoryManager))
+				op.config.VCISelfNotificationIDFunc = nonZeroOrDefault(op.config.VCISelfNotificationIDFunc, defaultSessionIDFunc)
+				op.config.VCISelfNotificationEndpoint = nonZeroOrDefault(op.config.VCISelfNotificationEndpoint, defaultEndpointVCINotification)
 			}
 
 			if op.config.VCISelfJWTIssuerEnabled {
@@ -662,6 +672,7 @@ const (
 	defaultDeviceAuthPollingIntervalSecs  = 5
 	defaultAuthorizationCodeLifetimeSecs  = 60
 	defaultPreAuthCodeLifetimeSecs        = 60
+	defaultVCIDeferredIntervalSecs        = 5
 
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
@@ -689,6 +700,9 @@ const (
 	defaultEndpointSSFPolling                   = "/ssf/poll"
 	defaultEndpointDeviceAuthorization          = "/device_authorization"
 	defaultEndpointDeviceVerification           = "/device"
+	defaultEndpointVCICredential                = "/credential"
+	defaultEndpointVCIDeferredCredential        = "/deferred_credential" //nolint:gosec
+	defaultEndpointVCINotification              = "/notification"
 )
 
 func defaultTokenOptionsFunc(alg goidc.SignatureAlgorithm) goidc.TokenOptionsFunc {

@@ -31,9 +31,8 @@ func main() {
 		}),
 		provider.WithTLSAuthn(),
 		provider.WithDPoP([]goidc.SignatureAlgorithm{goidc.PS256, goidc.ES256}, provider.WithDPoPRequired()),
-		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
-			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
-		},
+		provider.WithAuthCodeGrant(
+			provider.AuthCodeGrantConfig{ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode}},
 			provider.WithPAR(nil, provider.WithPARRequired()),
 			provider.WithIssuerResponseParameter(),
 			provider.WithClaimsParameter(),

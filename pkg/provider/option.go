@@ -2,6 +2,7 @@ package provider
 
 import (
 	"errors"
+	"fmt"
 	"slices"
 	"strings"
 
@@ -430,15 +431,37 @@ func WithSelfSignedTLSAuthn() Option {
 	}
 }
 
+type AttestionJWTAuthnOption Option
+
 // WithAttestationJWTAuthn enables the "attest_jwt_client_auth" client
 // authentication method with the given trusted attestation issuers.
-func WithAttestationJWTAuthn(issuers ...goidc.AttestationIssuer) Option {
+func WithAttestationJWTAuthn(issuers []goidc.AttestationIssuer, opts ...AttestionJWTAuthnOption) Option {
 	return func(p *Provider) error {
 		if len(issuers) == 0 {
 			return errors.New("at least one attestation issuer is required")
 		}
+		for _, issuer := range issuers {
+			if issuer.Issuer == "" {
+				return errors.New("attestation issuer cannot be empty")
+			}
+			if issuer.JWKSURI == "" && issuer.JWKSFunc == nil {
+				return fmt.Errorf("attestation issuer %q requires either JWKSURI or JWKSFunc", issuer.Issuer)
+			}
+		}
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodAttestationJWT)
 		p.config.AuthnMethodAttestationJWTIssuers = issuers
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+func WithAttestionIssuerHTTPClient(f goidc.HTTPClientFunc) AttestionJWTAuthnOption {
+	return func(p *Provider) error {
+		p.config.AuthnMethodAttestationJWTHTTPClientFunc = f
 		return nil
 	}
 }
@@ -472,34 +495,25 @@ func WithIDTokenLifetime(secs int) Option {
 	}
 }
 
-// WithIDTokenEncryption allows encryption of ID tokens.
-// The default content encryption algorithm is A128CBC-HS256.
-// To make available more content encryption algorithms, see
-// [WithIDTokenContentEncryptionAlgs].
+// WithIDTokenEncryption allows encryption of ID tokens. Both key encryption and
+// content encryption algorithms must be provided. The first content encryption
+// algorithm is used as the default.
 // Clients can choose the encryption algorithms for ID tokens by informing the
 // attributes "id_token_encrypted_response_alg" and "id_token_encrypted_response_enc".
-func WithIDTokenEncryption(algs ...goidc.KeyEncryptionAlgorithm) Option {
+func WithIDTokenEncryption(
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	contentAlgs []goidc.ContentEncryptionAlgorithm,
+) Option {
 	return func(p *Provider) error {
-		if len(algs) == 0 {
+		if len(keyAlgs) == 0 {
 			return errors.New("at least one key encryption algorithm is required for ID token encryption")
 		}
-		p.config.IDTokenEncEnabled = true
-		p.config.IDTokenKeyEncAlgs = algs
-		return nil
-	}
-}
-
-// WithIDTokenContentEncryptionAlgs overrides the default content encryption
-// algorithm which is A128CBC-HS256.
-// The first element is used as the default content encryption algorithm.
-// To enable encryption of ID tokens, see [WithIDTokenEncryption].
-func WithIDTokenContentEncryptionAlgs(algs ...goidc.ContentEncryptionAlgorithm) Option {
-	return func(p *Provider) error {
-		if len(algs) == 0 {
-			return errors.New("at least one content encryption algorithm is required")
+		if len(contentAlgs) == 0 {
+			return errors.New("at least one content encryption algorithm is required for ID token encryption")
 		}
-		p.config.IDTokenDefaultContentEncAlg = algs[0]
-		p.config.IDTokenContentEncAlgs = algs
+		p.config.IDTokenEncEnabled = true
+		p.config.IDTokenKeyEncAlgs = keyAlgs
+		p.config.IDTokenContentEncAlgs = contentAlgs
 		return nil
 	}
 }
@@ -521,33 +535,24 @@ func WithUserInfoSignatureAlgs(algs ...goidc.SignatureAlgorithm) Option {
 }
 
 // WithUserInfoEncryption allows encryption of the user info endpoint response.
-// The default content encryption algorithm is A128CBC-HS256.
-// To make available more content encryption algorithms, see
-// [WithUserInfoContentEncryptionAlgs].
+// Both key encryption and content encryption algorithms must be provided. The
+// first content encryption algorithm is used as the default.
 // Clients can choose the encryption algorithms for user info by informing the
 // attributes "userinfo_signed_response_alg" and "userinfo_encrypted_response_alg".
-func WithUserInfoEncryption(algs ...goidc.KeyEncryptionAlgorithm) Option {
+func WithUserInfoEncryption(
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	contentAlgs []goidc.ContentEncryptionAlgorithm,
+) Option {
 	return func(p *Provider) error {
-		if len(algs) == 0 {
+		if len(keyAlgs) == 0 {
 			return errors.New("at least one key encryption algorithm is required for user info encryption")
 		}
-		p.config.UserInfoEncEnabled = true
-		p.config.UserInfoKeyEncAlgs = algs
-		return nil
-	}
-}
-
-// WithUserInfoContentEncryptionAlgs overrides the default content encryption
-// algorithm which is A128CBC-HS256.
-// The first element is used as the default content encryption algorithm.
-// To enable encryption of user information, see [WithUserInfoEncryption].
-func WithUserInfoContentEncryptionAlgs(algs ...goidc.ContentEncryptionAlgorithm) Option {
-	return func(p *Provider) error {
-		if len(algs) == 0 {
-			return errors.New("at least one content encryption algorithm is required")
+		if len(contentAlgs) == 0 {
+			return errors.New("at least one content encryption algorithm is required for user info encryption")
 		}
-		p.config.UserInfoDefaultContentEncAlg = algs[0]
-		p.config.UserInfoContentEncAlgs = algs
+		p.config.UserInfoEncEnabled = true
+		p.config.UserInfoKeyEncAlgs = keyAlgs
+		p.config.UserInfoContentEncAlgs = contentAlgs
 		return nil
 	}
 }
@@ -889,26 +894,22 @@ func WithJARByReferenceUnregisteredURIs() JAROption {
 }
 
 // WithJAREncryption allows authorization requests to be securely sent as
-// encrypted JWTs.
-func WithJAREncryption(algs ...goidc.KeyEncryptionAlgorithm) JAROption {
+// encrypted JWTs. Both key encryption and content encryption algorithms must
+// be provided.
+func WithJAREncryption(
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	contentAlgs []goidc.ContentEncryptionAlgorithm,
+) JAROption {
 	return func(p *Provider) error {
-		if len(algs) == 0 {
+		if len(keyAlgs) == 0 {
 			return errors.New("at least one key encryption algorithm is required for JAR encryption")
 		}
-		p.config.JAREncEnabled = true
-		p.config.JARKeyEncAlgs = algs
-		return nil
-	}
-}
-
-// WithJARContentEncryptionAlgs overrides the default content encryption
-// algorithm for request objects which is A128CBC-HS256.
-func WithJARContentEncryptionAlgs(algs ...goidc.ContentEncryptionAlgorithm) JAROption {
-	return func(p *Provider) error {
-		if len(algs) == 0 {
-			return errors.New("at least one content encryption algorithm is required")
+		if len(contentAlgs) == 0 {
+			return errors.New("at least one content encryption algorithm is required for JAR encryption")
 		}
-		p.config.JARContentEncAlgs = algs
+		p.config.JAREncEnabled = true
+		p.config.JARKeyEncAlgs = keyAlgs
+		p.config.JARContentEncAlgs = contentAlgs
 		return nil
 	}
 }
@@ -943,30 +944,23 @@ func WithJARM(sigAlgs []goidc.SignatureAlgorithm, opts ...JARMOption) AuthCodeGr
 }
 
 // WithJARMEncryption allows responses for authorization requests to be sent as encrypted JWTs.
-// The default content encryption algorithm is A128CBC-HS256.
+// The first content encryption algorithm is used as the default.
 // Clients can choose the encryption algorithms by setting the attributes
 // "authorization_encrypted_response_alg" and "authorization_encrypted_response_enc".
-func WithJARMEncryption(algs ...goidc.KeyEncryptionAlgorithm) JARMOption {
+func WithJARMEncryption(
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	contentAlgs []goidc.ContentEncryptionAlgorithm,
+) JARMOption {
 	return func(p *Provider) error {
-		if len(algs) == 0 {
+		if len(keyAlgs) == 0 {
 			return errors.New("at least one key encryption algorithm is required for JARM encryption")
 		}
-		p.config.JARMEncEnabled = true
-		p.config.JARMKeyEncAlgs = algs
-		return nil
-	}
-}
-
-// WithJARMContentEncryptionAlgs overrides the default content encryption
-// algorithm which is A128CBC-HS256.
-// The first element is used as the default content encryption algorithm.
-func WithJARMContentEncryptionAlgs(algs ...goidc.ContentEncryptionAlgorithm) JARMOption {
-	return func(p *Provider) error {
-		if len(algs) == 0 {
-			return errors.New("at least one content encryption algorithm is required")
+		if len(contentAlgs) == 0 {
+			return errors.New("at least one content encryption algorithm is required for JARM encryption")
 		}
-		p.config.JARMContentEncAlgDefault = algs[0]
-		p.config.JARMContentEncAlgs = algs
+		p.config.JARMEncEnabled = true
+		p.config.JARMKeyEncAlgs = keyAlgs
+		p.config.JARMContentEncAlgs = contentAlgs
 		return nil
 	}
 }
@@ -1887,6 +1881,18 @@ func WithOpenIDFedTrustMarks(configs ...goidc.TrustMarkConfig) OpenIDFedOption {
 // See [WithSSF] for more information.
 type SSFOption Option
 
+// SSFPushDeliveryOption is an optional configuration for SSF push delivery.
+type SSFPushDeliveryOption Option
+
+// SSFEventStreamStatusManagementOption is an optional configuration for SSF stream status management.
+type SSFEventStreamStatusManagementOption Option
+
+// SSFSubjectManagementOption is an optional configuration for SSF subject management.
+type SSFSubjectManagementOption Option
+
+// SSFEventStreamVerificationOption is an optional configuration for SSF stream verification.
+type SSFEventStreamVerificationOption Option
+
 // SSFConfig holds the required configuration for Shared Signals Framework support.
 type SSFConfig struct {
 	// Manager is responsible for persisting event stream configurations created
@@ -1954,9 +1960,21 @@ func WithSSFPollDelivery(manager goidc.SSFEventPollManager) SSFOption {
 
 // WithSSFPushDelivery enables the push delivery method, where the transmitter
 // pushes events to receiver endpoints.
-func WithSSFPushDelivery(httpClientFunc goidc.HTTPClientFunc) SSFOption {
+func WithSSFPushDelivery(opts ...SSFPushDeliveryOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFDeliveryMethods = append(p.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPush)
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithSSFPushDeliveryHTTPClient sets the HTTP client used for SSF push delivery.
+func WithSSFPushDeliveryHTTPClient(httpClientFunc goidc.HTTPClientFunc) SSFPushDeliveryOption {
+	return func(p *Provider) error {
 		p.config.SSFHTTPClientFunc = httpClientFunc
 		return nil
 	}
@@ -1965,43 +1983,54 @@ func WithSSFPushDelivery(httpClientFunc goidc.HTTPClientFunc) SSFOption {
 // WithSSFEventStreamStatusManagement enables the stream status management API,
 // allowing receivers to read and update the status of their event streams
 // (e.g., enabled, paused, disabled).
-func WithSSFEventStreamStatusManagement() SSFOption {
+func WithSSFEventStreamStatusManagement(opts ...SSFEventStreamStatusManagementOption) SSFOption {
 	return func(p *Provider) error {
-		p.config.SSFIsStatusManagementEnabled = true
-		return nil
-	}
-}
-
-// WithSSFEventStreamSubjectManagement enables the subject management API,
-// allowing receivers to add or remove specific subjects they want to receive
-// events for on a given stream.
-func WithSSFEventStreamSubjectManagement() SSFOption {
-	return func(p *Provider) error {
-		p.config.SSFIsSubjectManagementEnabled = true
+		p.config.SSFStatusManagementEnabled = true
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
 // WithSSFStatusEndpoint overrides the default endpoint for stream status management.
-func WithSSFStatusEndpoint(endpoint string) SSFOption {
+func WithSSFStatusEndpoint(endpoint string) SSFEventStreamStatusManagementOption {
 	return func(p *Provider) error {
 		p.config.SSFStatusEndpoint = endpoint
 		return nil
 	}
 }
 
-// WithSSFAddSubjectEndpoint overrides the default endpoint for adding subjects to a stream.
-func WithSSFAddSubjectEndpoint(endpoint string) SSFOption {
+// WithSSFSubjectManagement enables the subject management API,
+// allowing receivers to add or remove specific subjects they want to receive
+// events for on a given stream.
+func WithSSFSubjectManagement(manager goidc.SSFSubjectManager, opts ...SSFSubjectManagementOption) SSFOption {
 	return func(p *Provider) error {
-		p.config.SSFAddSubjectEndpoint = endpoint
+		p.config.SSFSubjectEnabled = true
+		p.config.SSFSubjectManager = manager
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithSSFAddSubjectEndpoint overrides the default endpoint for adding subjects to a stream.
+func WithSSFAddSubjectEndpoint(endpoint string) SSFSubjectManagementOption {
+	return func(p *Provider) error {
+		p.config.SSFSubjectAddEndpoint = endpoint
 		return nil
 	}
 }
 
 // WithSSFRemoveSubjectEndpoint overrides the default endpoint for removing subjects from a stream.
-func WithSSFRemoveSubjectEndpoint(endpoint string) SSFOption {
+func WithSSFRemoveSubjectEndpoint(endpoint string) SSFSubjectManagementOption {
 	return func(p *Provider) error {
-		p.config.SSFRemoveSubjectEndpoint = endpoint
+		p.config.SSFSubjectRemoveEndpoint = endpoint
 		return nil
 	}
 }
@@ -2010,17 +2039,22 @@ func WithSSFRemoveSubjectEndpoint(endpoint string) SSFOption {
 // to request verification events to confirm the stream is working correctly.
 // The transmitter responds by sending a verification event with an optional state value.
 // If the function is nil, the provider will use the default in memory verification implementation.
-func WithSSFEventStreamVerification(f goidc.SSFScheduleVerificationEventFunc) SSFOption {
+func WithSSFEventStreamVerification(f goidc.SSFScheduleVerificationEventFunc, opts ...SSFEventStreamVerificationOption) SSFOption {
 	return func(p *Provider) error {
-		p.config.SSFIsVerificationEnabled = true
+		p.config.SSFVerificationEnabled = true
 		p.config.SSFScheduleVerificationEventFunc = f
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
 // WithSSFMinVerificationInterval sets the minimum interval (in seconds) between
 // verification requests from the same receiver. This prevents abuse of the verification endpoint.
-func WithSSFMinVerificationInterval(secs int) SSFOption {
+func WithSSFMinVerificationInterval(secs int) SSFEventStreamVerificationOption {
 	return func(p *Provider) error {
 		p.config.SSFMinVerificationInterval = secs
 		return nil
@@ -2189,10 +2223,21 @@ type VCISelfConfig struct {
 	Issuer string
 }
 
-func WithVCISelf(configs map[goidc.VCConfigurationID]goidc.VCConfiguration, opts ...VCISelfOption) VCIOption {
+func WithVCISelf(configs []goidc.VCConfiguration, opts ...VCISelfOption) VCIOption {
 	return func(p *Provider) error {
+		m := make(map[goidc.VCConfigurationID]goidc.VCConfiguration, len(configs))
+		for _, config := range configs {
+			if config.ID == "" {
+				return errors.New("credential configuration ID is required")
+			}
+			if _, exists := m[config.ID]; exists {
+				return fmt.Errorf("credential configuration ID %q is duplicated", config.ID)
+			}
+			m[config.ID] = config
+		}
+
 		p.config.VCISelfEnabled = true
-		p.config.VCISelfConfigurations = configs
+		p.config.VCISelfConfigurations = m
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -2202,6 +2247,8 @@ func WithVCISelf(configs map[goidc.VCConfigurationID]goidc.VCConfiguration, opts
 	}
 }
 
+// WithVCISelfIssuer sets the Credential Issuer Identifier used by the self
+// credential issuer. By default, the OpenID Provider issuer is used.
 func WithVCISelfIssuer(iss string) VCISelfOption {
 	return func(p *Provider) error {
 		p.config.VCISelfHost = iss
@@ -2250,6 +2297,93 @@ func WithVCISelfPreAuthCodeLifetime(secs int) VCISelfOption {
 	}
 }
 
+func WithVCISelfBatchIssuance(size int) VCISelfOption {
+	return func(p *Provider) error {
+		if size < 2 {
+			return errors.New("VCI self batch issuance size must be greater than 1")
+		}
+		p.config.VCISelfBatchSize = size
+		return nil
+	}
+}
+
+// WithVCISelfDeferred enables deferred credential issuance for the self
+// credential issuer, i.e. any credential configuration that sets
+// [goidc.VCConfiguration.IsDeferred]. If manager is nil, the default
+// in-memory manager is used.
+func WithVCISelfDeferred(manager goidc.VCDeferralManager) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfDeferredEnabled = true
+		p.config.VCISelfDeferredManager = manager
+		return nil
+	}
+}
+
+// WithVCISelfDeferredInterval sets the default number of seconds a wallet
+// should wait between polls to the deferred credential endpoint. It's used
+// whenever a [goidc.VCDeferralResult] doesn't set its own IntervalSecs.
+func WithVCISelfDeferredInterval(secs int) VCISelfOption {
+	return func(p *Provider) error {
+		p.config.VCISelfDeferredIntervalSecs = secs
+		return nil
+	}
+}
+
+// WithVCISelfNotification enables the OIDC4VCI Notification Endpoint for the
+// self credential issuer. If manager is nil, the default in-memory manager is
+// used. The handler is called after the access token, notification id, and
+// notification request have been validated.
+func WithVCISelfNotification(manager goidc.VCNotificationManager, handler goidc.VCNotificationHandleFunc) VCISelfOption {
+	return func(p *Provider) error {
+		if handler == nil {
+			return errors.New("VCI self notification handler is required")
+		}
+		p.config.VCISelfNotificationEnabled = true
+		p.config.VCISelfNotificationManager = manager
+		p.config.VCISelfNotificationHandleFunc = handler
+		return nil
+	}
+}
+
+// WithVCISelfResponseEncryption enables encryption of credential responses from
+// the self credential issuer. Both key encryption and content encryption
+// algorithms must be provided. The first content encryption algorithm is used as
+// the default.
+type VCISelfResponseEncryptionOption VCISelfOption
+
+func WithVCISelfResponseEncryption(
+	keyAlgs []goidc.KeyEncryptionAlgorithm,
+	contentAlgs []goidc.ContentEncryptionAlgorithm,
+	opts ...VCISelfResponseEncryptionOption,
+) VCISelfOption {
+	return func(p *Provider) error {
+		if len(keyAlgs) == 0 {
+			return errors.New("at least one key encryption algorithm is required for VCI self response encryption")
+		}
+		if len(contentAlgs) == 0 {
+			return errors.New("at least one content encryption algorithm is required for VCI self response encryption")
+		}
+		p.config.VCISelfResponseEncEnabled = true
+		p.config.VCISelfResponseEncKeyAlgs = keyAlgs
+		p.config.VCISelfResponseEncContentAlgs = contentAlgs
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithVCISelfResponseEncryptionRequired requires wallets to request encrypted
+// credential responses.
+func WithVCISelfResponseEncryptionRequired() VCISelfResponseEncryptionOption {
+	return func(p *Provider) error {
+		p.config.VCISelfResponseEncRequired = true
+		return nil
+	}
+}
+
 type VCISelfJWTIssuerOption VCISelfOption
 
 func WithVCISelfJWTIssuer(opts ...VCISelfJWTIssuerOption) VCISelfOption {
@@ -2284,6 +2418,19 @@ type VCIExternalOption Option
 // WithVCIExternal registers external credential issuers.
 func WithVCIExternal(issuers []goidc.VCIssuer, opts ...VCIExternalOption) VCIOption {
 	return func(p *Provider) error {
+		for _, issuer := range issuers {
+			seen := make(map[goidc.VCConfigurationID]struct{}, len(issuer.Configurations))
+			for _, config := range issuer.Configurations {
+				if config.ID == "" {
+					return fmt.Errorf("credential configuration ID is required for issuer %q", issuer.Issuer)
+				}
+				if _, exists := seen[config.ID]; exists {
+					return fmt.Errorf("credential configuration ID %q is duplicated for issuer %q", config.ID, issuer.Issuer)
+				}
+				seen[config.ID] = struct{}{}
+			}
+		}
+
 		p.config.VCIIssuers = append(p.config.VCIIssuers, issuers...)
 		for _, opt := range opts {
 			if err := opt(p); err != nil {

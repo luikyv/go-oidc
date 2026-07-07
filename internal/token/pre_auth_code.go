@@ -147,7 +147,7 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		}
 
 		for id := range result.ConfigurationIDs {
-			if _, ok := issuer.Configurations[id]; !ok {
+			if !slices.ContainsFunc(issuer.Configurations, func(c goidc.VCConfiguration) bool { return c.ID == id }) {
 				return response{}, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("the pre-authorized code handler returned an unknown credential_configuration_id: "+string(id)))
 			}
 		}
@@ -168,8 +168,8 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 
 		for scope := range strings.FieldsSeq(req.scopes) {
 			isAllowed := false
-			for id, config := range issuer.Configurations {
-				if _, ok := result.ConfigurationIDs[id]; ok && config.Scope.ID == scope {
+			for _, config := range issuer.Configurations {
+				if _, ok := result.ConfigurationIDs[config.ID]; ok && config.Scope.ID == scope {
 					isAllowed = true
 					break
 				}

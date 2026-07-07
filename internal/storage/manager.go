@@ -19,21 +19,27 @@ var _ goidc.OpaqueTokenManager = &Manager{}
 var _ goidc.LogoutManager = &Manager{}
 var _ goidc.VCOfferManager = &Manager{}
 var _ goidc.VCPreAuthCodeGrantManager = &Manager{}
+var _ goidc.VCDeferralManager = &Manager{}
+var _ goidc.VCNotificationManager = &Manager{}
 
 type Manager struct {
-	Sessions       map[string]*goidc.AuthnSession
-	sessionMutex   sync.RWMutex
-	Clients        map[string]*goidc.Client
-	clientMutex    sync.RWMutex
-	Grants         map[string]*goidc.Grant
-	grantMutex     sync.RWMutex
-	Tokens         map[string]*goidc.Token
-	tokenMutex     sync.RWMutex
-	LogoutSessions map[string]*goidc.LogoutSession
-	logoutMutex    sync.RWMutex
-	Offers         map[string]*goidc.VCOffer
-	offerMutex     sync.RWMutex
-	maxSize        int
+	Sessions          map[string]*goidc.AuthnSession
+	sessionMutex      sync.RWMutex
+	Clients           map[string]*goidc.Client
+	clientMutex       sync.RWMutex
+	Grants            map[string]*goidc.Grant
+	grantMutex        sync.RWMutex
+	Tokens            map[string]*goidc.Token
+	tokenMutex        sync.RWMutex
+	LogoutSessions    map[string]*goidc.LogoutSession
+	logoutMutex       sync.RWMutex
+	Offers            map[string]*goidc.VCOffer
+	offerMutex        sync.RWMutex
+	Deferrals         map[string]*goidc.VCDeferral
+	deferralMutex     sync.RWMutex
+	Notifications     map[string]*goidc.VCNotification
+	notificationMutex sync.RWMutex
+	maxSize           int
 }
 
 func NewManager(maxSize int) *Manager {
@@ -44,6 +50,8 @@ func NewManager(maxSize int) *Manager {
 		Tokens:         make(map[string]*goidc.Token),
 		LogoutSessions: make(map[string]*goidc.LogoutSession),
 		Offers:         make(map[string]*goidc.VCOffer),
+		Deferrals:      make(map[string]*goidc.VCDeferral),
+		Notifications:  make(map[string]*goidc.VCNotification),
 		maxSize:        maxSize,
 	}
 }
@@ -336,6 +344,58 @@ func (m *Manager) CredentialOffer(_ context.Context, id string) (*goidc.VCOffer,
 	}
 
 	return offer, nil
+}
+
+func (m *Manager) SaveDeferral(_ context.Context, deferral *goidc.VCDeferral) error {
+	m.deferralMutex.Lock()
+	defer m.deferralMutex.Unlock()
+
+	if _, ok := m.Deferrals[deferral.ID]; !ok && len(m.Deferrals) >= m.maxSize {
+		removeOldest(m.Deferrals, func(deferral *goidc.VCDeferral) int {
+			return deferral.CreatedAt
+		})
+	}
+
+	m.Deferrals[deferral.ID] = deferral
+	return nil
+}
+
+func (m *Manager) Deferral(_ context.Context, id string) (*goidc.VCDeferral, error) {
+	m.deferralMutex.RLock()
+	defer m.deferralMutex.RUnlock()
+
+	deferral, ok := m.Deferrals[id]
+	if !ok {
+		return nil, goidc.ErrNotFound
+	}
+
+	return deferral, nil
+}
+
+func (m *Manager) SaveNotification(_ context.Context, notification *goidc.VCNotification) error {
+	m.notificationMutex.Lock()
+	defer m.notificationMutex.Unlock()
+
+	if _, ok := m.Notifications[notification.ID]; !ok && len(m.Notifications) >= m.maxSize {
+		removeOldest(m.Notifications, func(notification *goidc.VCNotification) int {
+			return notification.CreatedAt
+		})
+	}
+
+	m.Notifications[notification.ID] = notification
+	return nil
+}
+
+func (m *Manager) Notification(_ context.Context, id string) (*goidc.VCNotification, error) {
+	m.notificationMutex.RLock()
+	defer m.notificationMutex.RUnlock()
+
+	notification, ok := m.Notifications[id]
+	if !ok {
+		return nil, goidc.ErrNotFound
+	}
+
+	return notification, nil
 }
 
 // findFirst returns the first element in a slice for which the condition is true.

@@ -19,7 +19,6 @@ import (
 )
 
 const (
-	CredentialIssuer                string                  = "https://credential-issuer.localhost" //nolint:gosec
 	CredentialConfigurationIdentity goidc.VCConfigurationID = "identity_credential"
 	//nolint:gosec
 	CredentialIssuerJWKS string = `
@@ -42,7 +41,29 @@ const (
 			]
 		}
 	`
-	CredentialType goidc.VCType = goidc.VCType(CredentialIssuer + "/identity_credential")
+	CredentialType goidc.VCType = goidc.VCType(authutil.Issuer + "/identity_credential")
+
+	AttestationIssuer     string = "https://attestation-issuer.localhost"
+	AttestationIssuerJWKS string = `
+		{
+			"keys": [
+				{
+					"p": "9YM72-oaQX5IwAWDS_aBpmLjzfXlrHgAJxhWiB7FBdHmd5lxPkGps1AwvROv9ci0Z1ZztrXv6F7XkkFKyKtppUH5D4ifin0PADJ5FGQd_LYdA0Tw7j__NFU2pYlb9i6LJ4XSVDqZ2TyqnQ5upmWMtFo8cJ1UFdhbKghEwSlLb1c",
+					"kty": "RSA",
+					"q": "3-g44afblSZIt6kNB81P1I1X_svREVgGF65TzrD-Lvru2oUQiufr8n9iZ16AWs7nYTh0LtQFp7Cuo5T0FDYRy1sjGauPTCBH8vTbdpfsjhBRazZlDvD_VizsFmW2wtw488X-Gmoy1VukWlpsFKtKlG2rmkUUdNNggS98lSQPibE",
+					"d": "BcoCPbaPzzyNUdax5hzV3eTI5umOx8H_Zjba6M5j0us7eV2k-R7Fx9Ozk7RT8HtLTkHm4_sOYV7GrYeVaUeLGS0kob29knG8eVFDygRF7HjJzOkiMnfpQuMrMfuAIBPeXEqy9G96ss5ND9sdK_LKhehuRFqqfaZXYD-7WUX2doE-FCtELT5ysgtNaHosGTJCVUYFv2mu4YXl4zenRHp_LQBk_807TYGlN_mherUNSPfPQLXtrIhepvoQ899TYktUIesDezEFJx18CcmaqQc4tHUquaQyBtdqbJIXPQmCOf2lydC0e68BuT8fIDSqLumNMdYSs-6G0TKS4MRzSSEbsQ",
+					"e": "AQAB",
+					"use": "sig",
+					"kid": "w-NgrO2e_w7UeOSuWIbOG8YPu6ZSllB-vCThRCRSj3E",
+					"qi": "ZMCTAsvw3Xr8n89y3GDT2f7aK8878Z8iz2IOUIKrzVLV4pDqpYZxGEYeHOv07H4morkagZ_El7SuYJzoC5kL5HCVE6-919kOxdzE8zR_NdNZgv4hdcQ2C7pUE0-smj_48-gYKwPmOmVnwtiIgiANyaPaIe56FxNIfSZGKzT1pmc",
+					"dp": "ySloKH6eWL9iWIOr2tf1zyEDysQKFdCVP3M_o3SitmwPzDsbgIlIxLWV2baB3H9A4dMCKNjV462iMCHzZoycmV1-9u1Y254wZlb0wnJt55xIFV-tkWk6b-TKS8RKZ2InfpC1j3IckNSWbu1eWFSofzXYg-VE-kk2GTCBNUvilS0",
+					"alg": "PS256",
+					"dq": "z57j78rYwErJrxQgsxVcavnNmMShznVS4O6TY9uXNzUT-qjcmBFKJoicVMG6P3oP74SLp0iPHdmldqYOVhd1FJ4jxA_jRnHAhbcrMaLahTj4ZnP_7YTnH590I6iZecL_RHxZjWDgVhsuIWIrSlczRsMTFm_r8hB3MhM4cIsJpWE",
+					"n": "1rwGn-6j8LGfH7WVhllMfOULbT4jZjzH4pNTJKDr4W-ZgM1QESgxcl2P6ZOFWHEtmaPGBrSi0uOJIuJoyQ4iJ2W15Sb_RzX13YaxSr_HslgunJIEuUjE4QgBU3AW7auXaUXNHTXYxozdOXmkDQjuTcCDrPeZE2pUjrv2lS_x9weLfOSfga2TrW40GywGTRUyhXOP6rVPmpNVOhPqNcGosHgCrKGUoBMVlpxDkwkSdekjsr6cHw82Fapf8XovV3quQLCpH_iBY7FJver1FruDXQD9_mESz03693noQ-UYjMnSbyq4EE7Ucs6rlPfD9rKkYnj23akBoq-IceFdrdaKJw"
+				}
+			]
+		}
+	`
 )
 
 var (
@@ -54,6 +75,9 @@ func main() {
 	_ = json.Unmarshal([]byte(CredentialIssuerJWKS), &credIssuerJWKS)
 	credIssuerJWK := credIssuerJWKS.Keys[0]
 
+	var attestationIssuerJWKS goidc.JSONWebKeySet
+	_ = json.Unmarshal([]byte(CredentialIssuerJWKS), &attestationIssuerJWKS)
+
 	clientOne, _ := authutil.ClientPrivateKeyJWT("client_one")
 	clientTwo, _ := authutil.ClientPrivateKeyJWT("client_two")
 	op, err := provider.New(
@@ -64,8 +88,13 @@ func main() {
 		},
 		provider.WithStaticClients(clientOne, clientTwo),
 		provider.WithScopes(goidc.ScopeOpenID, ScopeIdentityCredential),
-		provider.WithPrivateKeyJWTAuthn(goidc.RS256),
-		provider.WithAttestationJWTAuthn(goidc.AttestationIssuer{}),
+		provider.WithPrivateKeyJWTAuthn(goidc.RS256, goidc.PS256),
+		provider.WithAttestationJWTAuthn([]goidc.AttestationIssuer{{
+			Issuer: AttestationIssuer,
+			JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+				return attestationIssuerJWKS.Public(), nil
+			},
+		}}),
 		provider.WithAuthCodeGrant(
 			provider.AuthCodeGrantConfig{ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode}},
 			provider.WithPAR(nil),
@@ -83,6 +112,7 @@ func main() {
 						"postal_code":    "62701",
 						"country":        "USA",
 					}
+					as.Store["nationalities"] = []string{"US"}
 					as.GrantedScopes = as.Scopes
 					for _, detail := range as.AuthDetails {
 						detail = maps.Clone(detail)
@@ -97,50 +127,59 @@ func main() {
 		),
 		provider.WithVCI(
 			provider.WithVCISelf(
-				map[goidc.VCConfigurationID]goidc.VCConfiguration{
-					CredentialConfigurationIdentity: {
-						Format:         goidc.VCFormatDCSDJWT,
-						Type:           CredentialType,
-						Scope:          ScopeIdentityCredential,
-						SigAlgs:        []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(credIssuerJWK.Algorithm)},
-						BindingMethods: []goidc.VCBindingMethod{goidc.VCBindingMethodJWK},
-						ProofTypes: map[goidc.VCProofType]goidc.VCProofConfiguration{
-							goidc.VCProofTypeJWT: {
-								SigAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256},
-							},
-						},
-						Issue: func(ctx context.Context, grant *goidc.Grant, opts goidc.VCIssuanceOptions) (string, error) {
-							claims := map[string]any{
-								goidc.ClaimSubject:                 grant.Subject,
-								goidc.ClaimEmail:                   sdjwt.SD(grant.Store["email"]),
-								goidc.ClaimAddress:                 sdjwt.SD(grant.Store["address"]),
-								goidc.ClaimVerifiableCredentilType: CredentialType,
-							}
-							if opts.ProofKey != nil {
-								claims[goidc.ClaimConfirmation] = map[string]any{
-									goidc.ClaimJWK: jose.JSONWebKey{Key: opts.ProofKey},
-								}
-							}
-							signer, _ := jose.NewSigner(
-								jose.SigningKey{Algorithm: jose.SignatureAlgorithm(credIssuerJWK.Algorithm), Key: credIssuerJWK},
-								(&jose.SignerOptions{}).WithType(jose.ContentType(goidc.VCFormatDCSDJWT)),
-							)
-							return sdjwt.Signed(signer).Claims(
-								jwt.Claims{
-									Issuer:   CredentialIssuer,
-									Subject:  grant.Subject,
-									IssuedAt: jwt.NewNumericDate(time.Now()),
-									Expiry:   jwt.NewNumericDate(time.Now().Add(time.Hour)),
-								},
-								claims,
-							).Serialize()
+				[]goidc.VCConfiguration{{
+					ID:             CredentialConfigurationIdentity,
+					Format:         goidc.VCFormatDCSDJWT,
+					Type:           CredentialType,
+					Scope:          ScopeIdentityCredential,
+					SigAlgs:        []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(credIssuerJWK.Algorithm)},
+					BindingMethods: []goidc.VCBindingMethod{goidc.VCBindingMethodJWK},
+					ProofTypes: map[goidc.VCProofType]goidc.VCProofConfiguration{
+						goidc.VCProofTypeJWT: {
+							SigAlgs: []goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256},
 						},
 					},
-				},
-				provider.WithVCISelfIssuer(CredentialIssuer),
-				provider.WithVCISelfJWTIssuer(provider.WithVCISelfJWTIssuerJWKS(func(ctx context.Context) (goidc.JSONWebKeySet, error) {
-					return credIssuerJWKS.Public(), nil
-				})),
+					Issue: func(ctx context.Context, grant *goidc.Grant, opts goidc.VCIssuanceOptions) (string, error) {
+						address, _ := grant.Store["address"].(map[string]any)
+						nationalities, _ := grant.Store["nationalities"].([]string)
+						claims := map[string]any{
+							goidc.ClaimSubject: grant.Subject,
+							goidc.ClaimEmail:   sdjwt.SD(grant.Store["email"]),
+							goidc.ClaimAddress: map[string]any{
+								"street_address": sdjwt.SD(address["street_address"]),
+								"nationalities":  []any{sdjwt.SD(nationalities[0])},
+								"locality":       address["locality"],
+								"region":         address["region"],
+								"postal_code":    address["postal_code"],
+								"country":        address["country"],
+							},
+							goidc.ClaimVerifiableCredentilType: CredentialType,
+						}
+						if opts.ProofKey != nil {
+							claims[goidc.ClaimConfirmation] = map[string]any{
+								goidc.ClaimJWK: goidc.JSONWebKey{Key: opts.ProofKey},
+							}
+						}
+						signer, _ := jose.NewSigner(
+							jose.SigningKey{Algorithm: jose.SignatureAlgorithm(credIssuerJWK.Algorithm), Key: credIssuerJWK},
+							(&jose.SignerOptions{}).WithType(jose.ContentType(goidc.VCFormatDCSDJWT)),
+						)
+						return sdjwt.Signed(signer).Claims(
+							jwt.Claims{
+								Issuer:   authutil.Issuer,
+								Subject:  grant.Subject,
+								IssuedAt: jwt.NewNumericDate(time.Now()),
+								Expiry:   jwt.NewNumericDate(time.Now().Add(time.Hour)),
+							},
+							claims,
+						).Serialize()
+					},
+				}},
+				provider.WithVCISelfJWTIssuer(
+					provider.WithVCISelfJWTIssuerJWKS(func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+						return credIssuerJWKS.Public(), nil
+					}),
+				),
 				provider.WithVCISelfPreAuthCodeGrant(nil)),
 		),
 		provider.WithRAR([]goidc.AuthDetailType{goidc.AuthDetailTypeOpenIDCredential}),

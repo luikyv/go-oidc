@@ -624,11 +624,11 @@ func (ctx Context) SSFDeleteEventStream(id string) error {
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
-	return ctx.SSFEventStreamManager.AddSubject(ctx, id, subject, opts)
+	return ctx.SSFSubjectManager.AddSubject(ctx, id, subject, opts)
 }
 
 func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
-	return ctx.SSFEventStreamManager.RemoveSubject(ctx, id, subject)
+	return ctx.SSFSubjectManager.RemoveSubject(ctx, id, subject)
 }
 
 func (ctx Context) SSFEventStreamID() string {
@@ -747,6 +747,34 @@ func (ctx Context) VCOffer(id string) (*goidc.VCOffer, error) {
 
 func (ctx Context) VCIOfferID() string {
 	return ctx.VCISelfOfferIDFunc(ctx)
+}
+
+func (ctx Context) VCSaveDeferral(deferral *goidc.VCDeferral) error {
+	return ctx.VCISelfDeferredManager.SaveDeferral(ctx, deferral)
+}
+
+func (ctx Context) VCDeferral(id string) (*goidc.VCDeferral, error) {
+	return ctx.VCISelfDeferredManager.Deferral(ctx, id)
+}
+
+func (ctx Context) VCDeferredID() string {
+	return ctx.VCISelfDeferredIDFunc(ctx)
+}
+
+func (ctx Context) VCNotificationID() string {
+	return ctx.VCISelfNotificationIDFunc(ctx)
+}
+
+func (ctx Context) VCSaveNotification(notification *goidc.VCNotification) error {
+	return ctx.VCISelfNotificationManager.SaveNotification(ctx, notification)
+}
+
+func (ctx Context) VCNotification(id string) (*goidc.VCNotification, error) {
+	return ctx.VCISelfNotificationManager.Notification(ctx, id)
+}
+
+func (ctx Context) VCNotificationHandle(notification *goidc.VCNotification, event goidc.VCNotificationEvent) error {
+	return ctx.VCISelfNotificationHandleFunc(ctx, notification, event)
 }
 
 func (ctx Context) VCIssuer(iss string) (goidc.VCIssuer, bool) {
@@ -947,4 +975,11 @@ func (ctx Context) OpenIDFedSign(claims any, opts *jose.SignerOptions, algs ...g
 
 func (ctx Context) TokenExchangeHandle(req goidc.TokenExchangeRequest) (goidc.TokenExchangeResult, error) {
 	return ctx.TokenExchangeHandleFunc(ctx, req)
+}
+
+func (ctx Context) AuthnMethodAttestationJWTHTTPClient() *http.Client {
+	if ctx.AuthnMethodAttestationJWTHTTPClientFunc == nil {
+		return ctx.HTTPClient()
+	}
+	return ctx.AuthnMethodAttestationJWTHTTPClientFunc(ctx)
 }

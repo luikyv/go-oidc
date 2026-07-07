@@ -22,7 +22,7 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 	}
 
 	// Return an error if the stream did not subscribe to the event type and the event is not a verification event.
-	if !slices.Contains(stream.EventsDelivered, event.Type) && (!ctx.SSFIsVerificationEnabled || event.Type != goidc.SSFEventTypeVerification) {
+	if !slices.Contains(stream.EventsDelivered, event.Type) && (!ctx.SSFVerificationEnabled || event.Type != goidc.SSFEventTypeVerification) {
 		return fmt.Errorf("stream did not subscribe to event type %s", event.Type)
 	}
 
@@ -90,14 +90,14 @@ func newConfiguration(ctx oidc.Context) Configuration {
 		DefaultSubjects:        ctx.SSFDefaultSubjects,
 		ConfigurationEndpoint:  ctx.BaseURL() + ctx.SSFConfigurationEndpoint,
 	}
-	if ctx.SSFIsStatusManagementEnabled {
+	if ctx.SSFStatusManagementEnabled {
 		config.StatusEndpoint = ctx.BaseURL() + ctx.SSFStatusEndpoint
 	}
-	if ctx.SSFIsSubjectManagementEnabled {
-		config.AddSubjectEndpoint = ctx.BaseURL() + ctx.SSFAddSubjectEndpoint
-		config.RemoveSubjectEndpoint = ctx.BaseURL() + ctx.SSFRemoveSubjectEndpoint
+	if ctx.SSFSubjectEnabled {
+		config.AddSubjectEndpoint = ctx.BaseURL() + ctx.SSFSubjectAddEndpoint
+		config.RemoveSubjectEndpoint = ctx.BaseURL() + ctx.SSFSubjectRemoveEndpoint
 	}
-	if ctx.SSFIsVerificationEnabled {
+	if ctx.SSFVerificationEnabled {
 		config.VerificationEndpoint = ctx.BaseURL() + ctx.SSFVerificationEndpoint
 	}
 	return config

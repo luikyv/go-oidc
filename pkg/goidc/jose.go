@@ -39,12 +39,19 @@ const (
 type ContentEncryptionAlgorithm = jose.ContentEncryption
 
 const (
-	A128CBC_HS256 ContentEncryptionAlgorithm = jose.A128CBC_HS256
+	A128CBC_HS256 ContentEncryptionAlgorithm = jose.A128CBC_HS256 // TODO: use go-oidc pattern.
 	A192CBC_HS384 ContentEncryptionAlgorithm = jose.A192CBC_HS384
 	A256CBC_HS512 ContentEncryptionAlgorithm = jose.A256CBC_HS512
 	A128GCM       ContentEncryptionAlgorithm = jose.A128GCM
 	A192GCM       ContentEncryptionAlgorithm = jose.A192GCM
 	A256GCM       ContentEncryptionAlgorithm = jose.A256GCM
+)
+
+type CompressionAlgorithm = jose.CompressionAlgorithm
+
+const (
+	CompressionAlgorithmNone    CompressionAlgorithm = jose.NONE
+	CompressionAlgorithmDeflate CompressionAlgorithm = jose.DEFLATE
 )
 
 type JSONWebKey = jose.JSONWebKey

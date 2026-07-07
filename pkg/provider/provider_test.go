@@ -99,7 +99,10 @@ func TestNew(t *testing.T) {
 								goidc.ResponseTypeCodeAndToken, goidc.ResponseTypeCodeAndIDTokenAndToken},
 						},
 							WithPAR(manager),
-							WithJAR([]goidc.SignatureAlgorithm{goidc.RS256}, WithJAREncryption(goidc.RSA_OAEP)),
+							WithJAR([]goidc.SignatureAlgorithm{goidc.RS256}, WithJAREncryption(
+								[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+								[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+							)),
 							WithJARM([]goidc.SignatureAlgorithm{goidc.RS256}),
 							WithFormPostResponseMode(),
 						),
@@ -115,7 +118,10 @@ func TestNew(t *testing.T) {
 						WithTokenIntrospection(nil),
 						WithTokenRevocation(nil),
 						WithUserInfoSignatureAlgs(goidc.PS256),
-						WithUserInfoEncryption(goidc.RSA_OAEP),
+						WithUserInfoEncryption(
+							[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+							[]goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
+						),
 					}
 			},
 			want: oidc.Configuration{
@@ -188,7 +194,6 @@ func TestNew(t *testing.T) {
 				CIBAPollingIntervalSecs:        5,
 				UserInfoEncEnabled:             true,
 				UserInfoKeyEncAlgs:             []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
-				UserInfoDefaultContentEncAlg:   goidc.A128CBC_HS256,
 				UserInfoContentEncAlgs:         []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256},
 				AuthCodeLifetimeSecs:           60,
 			},
@@ -257,6 +262,45 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNew_DefaultsVCISelfBatchSize(t *testing.T) {
+	p, err := New(Config{
+		Issuer:      "https://example.com",
+		JWKSFunc:    func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
+		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+	}, WithVCI(WithVCISelf(nil)))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if p.config.VCISelfBatchSize != 1 {
+		t.Fatalf("VCISelfBatchSize = %d, want 1", p.config.VCISelfBatchSize)
+	}
+	if p.config.VCISelfCredentialEndpoint != "/credential" {
+		t.Fatalf("VCISelfCredentialEndpoint = %q, want /credential", p.config.VCISelfCredentialEndpoint)
+	}
+}
+
+func TestNew_DefaultsVCISelfNotification(t *testing.T) {
+	p, err := New(Config{
+		Issuer:      "https://example.com",
+		JWKSFunc:    func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
+		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
+	}, WithVCI(WithVCISelf(nil, WithVCISelfNotification(nil, func(context.Context, *goidc.VCNotification, goidc.VCNotificationEvent) error {
+		return nil
+	}))))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+	if p.config.VCISelfNotificationEndpoint != "/notification" {
+		t.Fatalf("VCISelfNotificationEndpoint = %q, want /notification", p.config.VCISelfNotificationEndpoint)
+	}
+	if p.config.VCISelfNotificationIDFunc == nil {
+		t.Fatal("VCISelfNotificationIDFunc must be set")
+	}
+	if p.config.VCISelfNotificationManager == nil {
+		t.Fatal("VCISelfNotificationManager must be set")
+	}
+}
+
 func TestDefaultHTTPClientFuncDoesNotFollowRedirects(t *testing.T) {
 	redirected := false
 	target := httptest.NewServer(http.HandlerFunc(func(http.ResponseWriter, *http.Request) {
@@ -319,50 +363,48 @@ func TestNew_ValidationErrors(t *testing.T) {
 		{
 			name: "dc sd-jwt credential configuration requires type",
 			opts: []Option{
-				WithVCI(WithVCISelf(VCISelfConfig{
-					Issuer: "https://credential-issuer.example.com",
-					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-						"identity": {
-							Format: goidc.VCFormatDCSDJWT,
-						},
+				WithVCI(WithVCISelf([]goidc.VCConfiguration{
+					{
+						ID:     "identity",
+						Format: goidc.VCFormatDCSDJWT,
 					},
-				})),
+				}, WithVCISelfIssuer("https://credential-issuer.example.com"))),
 			},
 			wantErr: "credential configuration \"identity\" requires Type when Format is \"dc+sd-jwt\"",
 		},
 		{
 			name: "dc sd-jwt credential configuration requires self jwt issuer",
 			opts: []Option{
-				WithVCI(WithVCISelf(VCISelfConfig{
-					Issuer: "https://credential-issuer.example.com",
-					Configs: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-						"identity": {
-							Format: goidc.VCFormatDCSDJWT,
-							Type:   "IdentityCredential",
-						},
+				WithVCI(WithVCISelf([]goidc.VCConfiguration{
+					{
+						ID:     "identity",
+						Format: goidc.VCFormatDCSDJWT,
+						Type:   "IdentityCredential",
 					},
-				})),
+				}, WithVCISelfIssuer("https://credential-issuer.example.com"))),
 			},
 			wantErr: "credential configuration \"identity\" with Format \"dc+sd-jwt\" requires WithVCISelfJWTIssuer",
 		},
 		{
 			name: "self jwt issuer requires jwks source",
 			opts: []Option{
-				WithVCI(WithVCISelf(VCISelfConfig{
-					Issuer: "https://credential-issuer.example.com",
-				}, WithVCISelfJWTIssuer())),
+				WithVCI(WithVCISelf(nil,
+					WithVCISelfIssuer("https://credential-issuer.example.com"),
+					WithVCISelfJWTIssuer(),
+				)),
 			},
 			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI",
 		},
 		{
 			name: "self jwt issuer requires one jwks source",
 			opts: []Option{
-				WithVCI(WithVCISelf(VCISelfConfig{
-					Issuer: "https://credential-issuer.example.com",
-				}, WithVCISelfJWTIssuer(
-					WithVCISelfJWTIssuerJWKS(jwksFunc),
-					WithVCISelfJWTIssuerJWKSURI("https://credential-issuer.example.com/jwks"),
-				))),
+				WithVCI(WithVCISelf(nil,
+					WithVCISelfIssuer("https://credential-issuer.example.com"),
+					WithVCISelfJWTIssuer(
+						WithVCISelfJWTIssuerJWKS(jwksFunc),
+						WithVCISelfJWTIssuerJWKSURI("https://credential-issuer.example.com/jwks"),
+					),
+				)),
 			},
 			wantErr: "WithVCISelfJWTIssuer requires either JWKS or JWKS URI, not both",
 		},

@@ -92,7 +92,17 @@ func (o OpaqueDecrypter) DecryptKey(encryptedKey []byte, _ jose.Header) ([]byte,
 	return o.Decrypter.Decrypt(rand.Reader, encryptedKey, opts)
 }
 
-func Encrypt(jws string, jwk goidc.JSONWebKey, alg goidc.ContentEncryptionAlgorithm) (string, error) {
+func Encrypt(jws string, jwk goidc.JSONWebKey, alg goidc.ContentEncryptionAlgorithm, opts *jose.EncrypterOptions) (string, error) {
+	if opts == nil {
+		opts = &jose.EncrypterOptions{}
+	}
+	if opts.ExtraHeaders[jose.HeaderType] == nil {
+		opts = opts.WithType("JWT")
+	}
+	if opts.ExtraHeaders[jose.HeaderContentType] == nil {
+		opts = opts.WithContentType("JWT")
+	}
+
 	encrypter, err := jose.NewEncrypter(
 		alg,
 		jose.Recipient{
@@ -100,7 +110,7 @@ func Encrypt(jws string, jwk goidc.JSONWebKey, alg goidc.ContentEncryptionAlgori
 			Key:       jwk.Key,
 			KeyID:     jwk.KeyID,
 		},
-		(&jose.EncrypterOptions{}).WithType("jwt").WithContentType("jwt"),
+		opts,
 	)
 	if err != nil {
 		return "", err

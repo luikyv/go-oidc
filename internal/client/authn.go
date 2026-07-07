@@ -494,10 +494,48 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 		return err
 	}
 
+	var issuerJWKS goidc.JSONWebKeySet
+	if issuer.JWKSURI != "" {
+		// Fetch the issuer's JWKS and find the verification key.
+		resp, err := ctx.AuthnMethodAttestationJWTHTTPClient().Get(issuer.JWKSURI)
+		if err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
+				fmt.Errorf("could not fetch attestation issuer JWKS: %w", err))
+		}
+		defer resp.Body.Close() //nolint:errcheck
+
+		if resp.StatusCode != http.StatusOK {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
+				fmt.Errorf("fetching attestation issuer JWKS returned status %d", resp.StatusCode))
+		}
+
+		if resp.ContentLength > maxResponseByteSize {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
+				fmt.Errorf("attestation issuer JWKS exceeds max size of %d bytes", maxResponseByteSize))
+		}
+
+		if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseByteSize+1)).Decode(&issuerJWKS); err != nil {
+			return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
+				fmt.Errorf("could not decode attestation issuer JWKS: %w", err))
+		}
+	} else {
+		jwks, err := issuer.JWKSFunc(ctx)
+		if err != nil {
+			return fmt.Errorf("could not fetch attestation issuer JWKS: %w", err)
+		}
+		issuerJWKS = jwks
+	}
+
 	// Re-parse with the issuer's allowed algorithms if configured.
-	sigAlgs := allAsymmetricAlgs
+	var sigAlgs []goidc.SignatureAlgorithm
 	if len(issuer.SigAlgs) > 0 {
 		sigAlgs = issuer.SigAlgs
+	} else {
+		for _, jwk := range issuerJWKS.Keys {
+			if slices.Contains(allAsymmetricAlgs, goidc.SignatureAlgorithm(jwk.Algorithm)) {
+				sigAlgs = append(sigAlgs, goidc.SignatureAlgorithm(jwk.Algorithm))
+			}
+		}
 	}
 	parsedAttestation, err = jwt.ParseSigned(attestationJWS, sigAlgs)
 	if err != nil {
@@ -513,30 +551,6 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 	if parsedAttestation.Headers[0].ExtraHeaders["typ"] != "oauth-client-attestation+jwt" {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
 			errors.New("invalid client attestation type header"))
-	}
-
-	// Fetch the issuer's JWKS and find the verification key.
-	resp, err := ctx.HTTPClient().Get(issuer.JWKSURI)
-	if err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
-			fmt.Errorf("could not fetch attestation issuer JWKS: %w", err))
-	}
-	defer resp.Body.Close() //nolint:errcheck
-
-	if resp.StatusCode != http.StatusOK {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
-			fmt.Errorf("fetching attestation issuer JWKS returned status %d", resp.StatusCode))
-	}
-
-	if resp.ContentLength > maxResponseByteSize {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
-			fmt.Errorf("attestation issuer JWKS exceeds max size of %d bytes", maxResponseByteSize))
-	}
-
-	var issuerJWKS goidc.JSONWebKeySet
-	if err := json.NewDecoder(io.LimitReader(resp.Body, maxResponseByteSize+1)).Decode(&issuerJWKS); err != nil {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
-			fmt.Errorf("could not decode attestation issuer JWKS: %w", err))
 	}
 
 	issuerJWK, err := func() (goidc.JSONWebKey, error) {
@@ -558,6 +572,10 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 	}()
 	if err != nil {
 		return err
+	}
+
+	if !issuerJWK.IsPublic() {
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", errors.New("the attestation issuer key must be public"))
 	}
 
 	// Verify the attestation JWT signature and extract claims.

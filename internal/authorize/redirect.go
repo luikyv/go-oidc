@@ -118,11 +118,11 @@ func createJARMResponse(ctx oidc.Context, c *goidc.Client, redirectParams respon
 			"could not fetch the client encryption jwk for jarm", err)
 	}
 
-	contentEncAlg := ctx.JARMContentEncAlgDefault
+	contentEncAlg := ctx.JARMContentEncAlgs[0]
 	if slices.Contains(ctx.JARMContentEncAlgs, c.JARMContentEncAlg) && c.JARMContentEncAlg != "" {
 		contentEncAlg = c.JARMContentEncAlg
 	}
-	responseJWE, err := joseutil.Encrypt(responseJWT, jwk, contentEncAlg)
+	responseJWE, err := joseutil.Encrypt(responseJWT, jwk, contentEncAlg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not encrypt the response object: %w", err)
 	}

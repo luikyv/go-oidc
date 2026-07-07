@@ -32,17 +32,17 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 	router.Handle("DELETE "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleDeleteStream), middlewares...))
 
-	if config.SSFIsStatusManagementEnabled {
+	if config.SSFStatusManagementEnabled {
 		router.Handle("GET "+config.EndpointPrefix+config.SSFStatusEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleFetchStreamStatus), middlewares...))
 		router.Handle("POST "+config.EndpointPrefix+config.SSFStatusEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleUpdateStreamStatus), middlewares...))
 	}
 
-	if config.SSFIsSubjectManagementEnabled {
-		router.Handle("POST "+config.EndpointPrefix+config.SSFAddSubjectEndpoint,
+	if config.SSFSubjectEnabled {
+		router.Handle("POST "+config.EndpointPrefix+config.SSFSubjectAddEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleAddSubject), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.SSFRemoveSubjectEndpoint,
+		router.Handle("POST "+config.EndpointPrefix+config.SSFSubjectRemoveEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleRemoveSubject), middlewares...))
 	}
 
@@ -51,7 +51,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlePollEvents), middlewares...))
 	}
 
-	if config.SSFIsVerificationEnabled {
+	if config.SSFVerificationEnabled {
 		router.Handle("POST "+config.EndpointPrefix+config.SSFVerificationEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleCreateVerificationEvent), middlewares...))
 	}

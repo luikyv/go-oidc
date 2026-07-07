@@ -810,8 +810,8 @@ func TestInitAuth(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}
@@ -867,8 +867,8 @@ func TestInitAuth(t *testing.T) {
 				ctx.VCIIssuers = []goidc.VCIssuer{
 					{
 						Issuer: "https://issuer.example.com",
-						Configurations: map[goidc.VCConfigurationID]goidc.VCConfiguration{
-							"cred1": {Scope: goidc.NewScope("vc_scope1")},
+						Configurations: []goidc.VCConfiguration{
+							{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
 						},
 					},
 				}

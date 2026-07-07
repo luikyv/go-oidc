@@ -213,7 +213,6 @@ func TestMakeIDToken(t *testing.T) {
 				ctx := oidctest.NewContext(t)
 				ctx.IDTokenEncEnabled = true
 				ctx.IDTokenKeyEncAlgs = []goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP_256}
-				ctx.IDTokenDefaultContentEncAlg = goidc.A128CBC_HS256
 				ctx.IDTokenContentEncAlgs = []goidc.ContentEncryptionAlgorithm{goidc.A128CBC_HS256}
 
 				encJWK := oidctest.PrivateRSAOAEP256JWK(t, "enc_key")

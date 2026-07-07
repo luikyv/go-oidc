@@ -49,11 +49,15 @@ func main() {
 				EventTypes: []goidc.SSFEventType{goidc.SSFEventTypeCAEPCredentialChange, goidc.SSFEventTypeCAEPSessionRevoked},
 			},
 			provider.WithSSFPollDelivery(nil),
-			provider.WithSSFPushDelivery(authutil.HTTPClient),
+			provider.WithSSFPushDelivery(
+				provider.WithSSFPushDeliveryHTTPClient(authutil.HTTPClient),
+			),
 			provider.WithSSFEventStreamStatusManagement(),
-			provider.WithSSFEventStreamSubjectManagement(),
-			provider.WithSSFEventStreamVerification(nil),
-			provider.WithSSFMinVerificationInterval(5),
+			provider.WithSSFSubjectManagement(nil),
+			provider.WithSSFEventStreamVerification(
+				nil,
+				provider.WithSSFMinVerificationInterval(5),
+			),
 			provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
 			provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),
 			provider.WithSSFInactivityTimeout(30, func(ctx context.Context, stream *goidc.SSFEventStream) error {

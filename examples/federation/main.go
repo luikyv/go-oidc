@@ -149,8 +149,10 @@ func main() {
 		},
 			provider.WithJAR(
 				[]goidc.SignatureAlgorithm{goidc.RS256, goidc.PS256},
-				provider.WithJAREncryption(goidc.RSA_OAEP),
-				provider.WithJARContentEncryptionAlgs(goidc.A256GCM),
+				provider.WithJAREncryption(
+					[]goidc.KeyEncryptionAlgorithm{goidc.RSA_OAEP},
+					[]goidc.ContentEncryptionAlgorithm{goidc.A256GCM},
+				),
 			),
 			provider.WithPAR(nil),
 			provider.WithAuthPolicies(authutil.Policy()),

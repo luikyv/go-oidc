@@ -930,9 +930,21 @@ type HandleClientFunc func(context.Context, *Client) error
 
 type RenderFunc func(http.ResponseWriter, *http.Request) error
 
+// AttestationIssuer identifies a trusted issuer for attestation-based client
+// authentication.
+//
+// It is used with the attestation-based client authentication method defined by
+// the OAuth client attestation RFC.
 type AttestationIssuer struct {
-	Issuer  string
+	// Issuer is the expected attestation JWT issuer identifier.
+	Issuer string
+	// JWKSURI is the issuer's JWKS endpoint. When set, it is used instead of
+	// JWKSFunc.
 	JWKSURI string
+	// JWKSFunc returns the issuer's JWKS when JWKSURI is not set.
+	JWKSFunc JWKSFunc
+	// SigAlgs overrides the default supported signature algorithms
+	// when parsing attestation JWTs from this issuer.
 	SigAlgs []SignatureAlgorithm
 }
 

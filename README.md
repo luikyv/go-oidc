@@ -39,6 +39,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 * [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
+* [OpenID for Verifiable Credential Issuance 1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html)
 
 ### Drafts
 
@@ -1209,7 +1210,7 @@ Additional options:
 // Allow receivers to update stream status (enabled/paused/disabled).
 provider.WithSSFEventStreamStatusManagement()
 // Allow receivers to add/remove subjects from a stream.
-provider.WithSSFEventStreamSubjectManagement()
+provider.WithSSFSubjectManagement(nil)
 // Allow receivers to request verification events.
 provider.WithSSFEventStreamVerification(func(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
   // Schedule the verification event for async delivery.
@@ -1244,3 +1245,6 @@ Clients can then request `response_mode=form_post` at the authorization
 endpoint.
 
 ## OpenID For Verifiable Credentials Issuance (OIDC4VCI)
+
+# TODO
+* Document https://www.rfc-editor.org/info/rfc8414.

@@ -33,6 +33,16 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		router.Handle("GET /.well-known/jwt-vc-issuer"+path,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleJWTIssuerMetadata), middlewares...))
 	}
+
+	if config.VCISelfDeferredEnabled {
+		router.Handle("POST "+config.EndpointPrefix+config.VCISelfDeferredCredentialEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleDeferredCredential), middlewares...))
+	}
+
+	if config.VCISelfNotificationEnabled {
+		router.Handle("POST "+config.EndpointPrefix+config.VCISelfNotificationEndpoint,
+			goidc.ApplyMiddlewares(oidc.Handler(config, handleNotification), middlewares...))
+	}
 }
 
 func handleMetadata(ctx oidc.Context) {
@@ -54,9 +64,66 @@ func handleCredential(ctx oidc.Context) {
 		return
 	}
 
-	if err := ctx.Write(resp, http.StatusOK); err != nil {
+	status := http.StatusOK
+	if resp.Deferred {
+		status = http.StatusAccepted
+	}
+
+	if resp.JWT != "" {
+		if err := ctx.WriteJWT(resp.JWT, status); err != nil {
+			ctx.WriteError(err)
+		}
+		return
+	}
+
+	if err := ctx.Write(resp, status); err != nil {
 		ctx.WriteError(err)
 	}
+}
+
+func handleDeferredCredential(ctx oidc.Context) {
+	var req deferredRequest
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request"))
+		return
+	}
+
+	resp, err := deferredCredential(ctx, req)
+	if err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	status := http.StatusOK
+	if resp.Deferred {
+		status = http.StatusAccepted
+	}
+
+	if resp.JWT != "" {
+		if err := ctx.WriteJWT(resp.JWT, status); err != nil {
+			ctx.WriteError(err)
+		}
+		return
+	}
+
+	if err := ctx.Write(resp, status); err != nil {
+		ctx.WriteError(err)
+	}
+}
+
+func handleNotification(ctx oidc.Context) {
+	var req notificationRequest
+	if err := json.NewDecoder(ctx.Request.Body).Decode(&req); err != nil {
+		ctx.WriteError(goidc.NewError(goidc.ErrorCodeInvalidRequest, "invalid request"))
+		return
+	}
+
+	if err := notify(ctx, req); err != nil {
+		ctx.WriteError(err)
+		return
+	}
+
+	ctx.WriteStatus(http.StatusNoContent)
 }
 
 func handleOffer(ctx oidc.Context) {

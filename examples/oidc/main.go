@@ -26,17 +26,18 @@ func main() {
 		provider.WithSecretBasicAuthn(),
 		provider.WithSecretPostAuthn(),
 		provider.WithPrivateKeyJWTAuthn(goidc.RS256),
-		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
-			ResponseTypes: []goidc.ResponseType{
-				goidc.ResponseTypeCode,
-				goidc.ResponseTypeIDToken,
-				goidc.ResponseTypeToken,
-				goidc.ResponseTypeCodeAndIDToken,
-				goidc.ResponseTypeCodeAndToken,
-				goidc.ResponseTypeIDTokenAndToken,
-				goidc.ResponseTypeCodeAndIDTokenAndToken,
+		provider.WithAuthCodeGrant(
+			provider.AuthCodeGrantConfig{
+				ResponseTypes: []goidc.ResponseType{
+					goidc.ResponseTypeCode,
+					goidc.ResponseTypeIDToken,
+					goidc.ResponseTypeToken,
+					goidc.ResponseTypeCodeAndIDToken,
+					goidc.ResponseTypeCodeAndToken,
+					goidc.ResponseTypeIDTokenAndToken,
+					goidc.ResponseTypeCodeAndIDTokenAndToken,
+				},
 			},
-		},
 			provider.WithPAR(nil),
 			provider.WithJAR(
 				[]goidc.SignatureAlgorithm{goidc.RS256, goidc.None},

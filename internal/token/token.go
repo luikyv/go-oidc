@@ -213,12 +213,12 @@ func MakeIDToken(ctx oidc.Context, c *goidc.Client, opts IDTokenOptions) (string
 		return "", fmt.Errorf("could not resolve an encryption key for the id token: %w", err)
 	}
 
-	contentEncAlg := ctx.IDTokenDefaultContentEncAlg
+	contentEncAlg := ctx.IDTokenContentEncAlgs[0]
 	if c.IDTokenContentEncAlg != "" && slices.Contains(ctx.IDTokenContentEncAlgs, c.IDTokenContentEncAlg) {
 		contentEncAlg = c.IDTokenContentEncAlg
 	}
 
-	encIDToken, err := joseutil.Encrypt(idToken, jwk, contentEncAlg)
+	encIDToken, err := joseutil.Encrypt(idToken, jwk, contentEncAlg, nil)
 	if err != nil {
 		return "", fmt.Errorf("could not encrypt the id token: %w", err)
 	}

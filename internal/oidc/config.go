@@ -63,11 +63,12 @@ type Configuration struct {
 	RenderErrorFunc    goidc.RenderErrorFunc
 	HandleErrorFunc    goidc.HandleErrorFunc
 
-	AuthnMethods                     []goidc.AuthnMethod
-	AuthnMethodDefault               goidc.AuthnMethod
-	AuthnMethodPrivateKeyJWTSigAlgs  []goidc.SignatureAlgorithm
-	AuthnMethodSecretJWTSigAlgs      []goidc.SignatureAlgorithm
-	AuthnMethodAttestationJWTIssuers []goidc.AttestationIssuer
+	AuthnMethods                            []goidc.AuthnMethod
+	AuthnMethodDefault                      goidc.AuthnMethod
+	AuthnMethodPrivateKeyJWTSigAlgs         []goidc.SignatureAlgorithm
+	AuthnMethodSecretJWTSigAlgs             []goidc.SignatureAlgorithm
+	AuthnMethodAttestationJWTIssuers        []goidc.AttestationIssuer
+	AuthnMethodAttestationJWTHTTPClientFunc goidc.HTTPClientFunc
 
 	TokenEndpoint          string
 	OpaqueTokenFunc        goidc.OpaqueTokenFunc
@@ -82,20 +83,18 @@ type Configuration struct {
 	AuthorizationEndpoint string
 	EndpointPrefix        string // TODO: Do I need this?
 
-	UserInfoEndpoint             string
-	UserInfoDefaultSigAlg        goidc.SignatureAlgorithm
-	UserInfoSigAlgs              []goidc.SignatureAlgorithm
-	UserInfoEncEnabled           bool
-	UserInfoKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
-	UserInfoDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
-	UserInfoContentEncAlgs       []goidc.ContentEncryptionAlgorithm
+	UserInfoEndpoint       string
+	UserInfoDefaultSigAlg  goidc.SignatureAlgorithm
+	UserInfoSigAlgs        []goidc.SignatureAlgorithm
+	UserInfoEncEnabled     bool
+	UserInfoKeyEncAlgs     []goidc.KeyEncryptionAlgorithm
+	UserInfoContentEncAlgs []goidc.ContentEncryptionAlgorithm
 
-	IDTokenDefaultSigAlg        goidc.SignatureAlgorithm
-	IDTokenSigAlgs              []goidc.SignatureAlgorithm
-	IDTokenEncEnabled           bool
-	IDTokenKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
-	IDTokenDefaultContentEncAlg goidc.ContentEncryptionAlgorithm
-	IDTokenContentEncAlgs       []goidc.ContentEncryptionAlgorithm
+	IDTokenDefaultSigAlg  goidc.SignatureAlgorithm
+	IDTokenSigAlgs        []goidc.SignatureAlgorithm
+	IDTokenEncEnabled     bool
+	IDTokenKeyEncAlgs     []goidc.KeyEncryptionAlgorithm
+	IDTokenContentEncAlgs []goidc.ContentEncryptionAlgorithm
 	// IDTokenLifetimeSecs defines the expiry time of ID tokens.
 	IDTokenLifetimeSecs int
 
@@ -136,11 +135,10 @@ type Configuration struct {
 	JARMSigAlgDefault goidc.SignatureAlgorithm
 	JARMSigAlgs       []goidc.SignatureAlgorithm
 	// JARMLifetimeSecs defines how long response objects are valid for.
-	JARMLifetimeSecs         int
-	JARMEncEnabled           bool
-	JARMKeyEncAlgs           []goidc.KeyEncryptionAlgorithm
-	JARMContentEncAlgDefault goidc.ContentEncryptionAlgorithm
-	JARMContentEncAlgs       []goidc.ContentEncryptionAlgorithm
+	JARMLifetimeSecs   int
+	JARMEncEnabled     bool
+	JARMKeyEncAlgs     []goidc.KeyEncryptionAlgorithm
+	JARMContentEncAlgs []goidc.ContentEncryptionAlgorithm
 
 	JAREnabled  bool
 	JARRequired bool
@@ -260,12 +258,13 @@ type Configuration struct {
 	SSFConfigurationEndpoint             string
 	SSFPollingEndpoint                   string
 	SSFEventPollManager                  goidc.SSFEventPollManager
-	SSFIsStatusManagementEnabled         bool
+	SSFStatusManagementEnabled           bool
 	SSFStatusEndpoint                    string
-	SSFIsSubjectManagementEnabled        bool
-	SSFAddSubjectEndpoint                string
-	SSFRemoveSubjectEndpoint             string
-	SSFIsVerificationEnabled             bool
+	SSFSubjectEnabled                    bool
+	SSFSubjectManager                    goidc.SSFSubjectManager
+	SSFSubjectAddEndpoint                string
+	SSFSubjectRemoveEndpoint             string
+	SSFVerificationEnabled               bool
 	SSFScheduleVerificationEventFunc     goidc.SSFScheduleVerificationEventFunc
 	SSFVerificationEndpoint              string
 	SSFMinVerificationInterval           int
@@ -299,11 +298,28 @@ type Configuration struct {
 	VCISelfJWTIssuerEnabled              bool
 	VCISelfJWTIssuerJWKSFunc             goidc.JWKSFunc
 	VCISelfJWTIssuerJWKSURI              string
+	VCISelfBatchSize                     int
+	VCISelfResponseEncEnabled            bool
+	VCISelfResponseEncRequired           bool
+	VCISelfResponseEncKeyAlgs            []goidc.KeyEncryptionAlgorithm
+	VCISelfResponseEncContentAlgs        []goidc.ContentEncryptionAlgorithm
+	VCISelfResponseEncCompressionEnabled bool
+	VCISelfResponseEncCompressionAlgs    []goidc.CompressionAlgorithm
 	VCIExternalPreAuthCodeGrantEnabled   bool
 	VCIExternalPreAuthCodeHandleFunc     goidc.VCIPreAuthCodeHandleFunc
 	VCIIssuerStateEnabled                bool
 	VCIIssuerStateHandleFunc             goidc.VCIIssuerStateHandleFunc
 	VCIPreAuthCodeAnonymousAccessEnabled bool
+	VCISelfDeferredEnabled               bool
+	VCISelfDeferredManager               goidc.VCDeferralManager
+	VCISelfDeferredCredentialEndpoint    string
+	VCISelfDeferredIDFunc                goidc.RandomFunc
+	VCISelfDeferredIntervalSecs          int
+	VCISelfNotificationEnabled           bool
+	VCISelfNotificationManager           goidc.VCNotificationManager
+	VCISelfNotificationEndpoint          string
+	VCISelfNotificationIDFunc            goidc.RandomFunc
+	VCISelfNotificationHandleFunc        goidc.VCNotificationHandleFunc
 
 	DeviceAuthManager                        goidc.DeviceAuthManager
 	DeviceAuthEndpoint                       string

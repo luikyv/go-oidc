@@ -101,7 +101,7 @@ func TestOpaqueSigner_PS256(t *testing.T) {
 func TestOpaqueDecrypter_RSA_OAEP(t *testing.T) {
 	jwk := oidctest.PrivateRSAOAEPJWK(t, "dec-key")
 
-	encrypted, err := joseutil.Encrypt("secret-payload", jwk.Public(), goidc.A128CBC_HS256)
+	encrypted, err := joseutil.Encrypt("secret-payload", jwk.Public(), goidc.A128CBC_HS256, nil)
 	if err != nil {
 		t.Fatalf("unexpected error encrypting: %v", err)
 	}
@@ -134,7 +134,7 @@ func TestOpaqueDecrypter_RSA_OAEP(t *testing.T) {
 func TestOpaqueDecrypter_RSA_OAEP_256(t *testing.T) {
 	jwk := oidctest.PrivateRSAOAEP256JWK(t, "dec-key-256")
 
-	encrypted, err := joseutil.Encrypt("secret-256", jwk.Public(), goidc.A128CBC_HS256)
+	encrypted, err := joseutil.Encrypt("secret-256", jwk.Public(), goidc.A128CBC_HS256, nil)
 	if err != nil {
 		t.Fatalf("unexpected error encrypting: %v", err)
 	}
@@ -337,7 +337,7 @@ func TestEncrypt(t *testing.T) {
 	jwk := oidctest.PrivateRSAOAEPJWK(t, "enc_key")
 
 	// When.
-	encryptedStr, err := joseutil.Encrypt("test", jwk.Public(), goidc.A128CBC_HS256)
+	encryptedStr, err := joseutil.Encrypt("test", jwk.Public(), goidc.A128CBC_HS256, nil)
 
 	// Then.
 	if err != nil {

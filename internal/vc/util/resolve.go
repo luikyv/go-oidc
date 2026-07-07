@@ -3,6 +3,7 @@ package util
 import (
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -68,7 +69,9 @@ func Resolve(ctx oidc.Context, req Request) (goidc.VCIssuer, []goidc.VCConfigura
 					errors.New("openid_credential authorization details must contain at most one location"))
 			}
 
-			if _, exists := issuer.Configurations[goidc.VCConfigurationID(credID)]; !exists {
+			if !slices.ContainsFunc(issuer.Configurations, func(c goidc.VCConfiguration) bool {
+				return c.ID == goidc.VCConfigurationID(credID)
+			}) {
 				return goidc.VCIssuer{}, nil, goidc.WrapError(goidc.ErrorCodeInvalidAuthDetails, "invalid authorization details",
 					errors.New("the authorization detail references an unknown credential configuration"))
 			}
@@ -80,7 +83,7 @@ func Resolve(ctx oidc.Context, req Request) (goidc.VCIssuer, []goidc.VCConfigura
 	if req.Scopes != "" {
 		for s := range strings.FieldsSeq(req.Scopes) {
 			for _, iss := range ctx.VCIIssuers {
-				for configID, config := range iss.Configurations {
+				for _, config := range iss.Configurations {
 					if config.Scope.ID != "" && config.Scope.ID == s {
 						if issuer.Issuer == "" {
 							issuer = iss
@@ -89,7 +92,7 @@ func Resolve(ctx oidc.Context, req Request) (goidc.VCIssuer, []goidc.VCConfigura
 							return goidc.VCIssuer{}, nil, goidc.WrapError(goidc.ErrorCodeInvalidScope, "invalid scope",
 								errors.New("the requested VC scopes resolve to different issuers"))
 						}
-						credentials[configID] = struct{}{}
+						credentials[config.ID] = struct{}{}
 					}
 				}
 			}
