@@ -15,7 +15,7 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 	if !config.OpenIDFedEnabled {
 		return
 	}
-	router.Handle("GET "+config.EndpointPrefix+config.OpenIDFedEndpoint,
+	router.Handle("GET /.well-known/openid-federation",
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleFetchStatement), middlewares...))
 
 	if slices.Contains(config.OpenIDFedClientRegTypes, goidc.ClientRegistrationTypeExplicit) {

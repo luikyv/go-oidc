@@ -604,11 +604,11 @@ func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
 }
 
 func (ctx Context) SSFCreateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.Create(ctx, stream)
+	return ctx.SSFEventStreamManager.CreateStream(ctx, stream)
 }
 
 func (ctx Context) SSFUpdateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.Update(ctx, stream)
+	return ctx.SSFEventStreamManager.UpdateStream(ctx, stream)
 }
 
 func (ctx Context) SSFEventStream(id string) (*goidc.SSFEventStream, error) {
@@ -620,15 +620,15 @@ func (ctx Context) SSFEventStreams(receiverID string) ([]*goidc.SSFEventStream, 
 }
 
 func (ctx Context) SSFDeleteEventStream(id string) error {
-	return ctx.SSFEventStreamManager.Delete(ctx, id)
+	return ctx.SSFEventStreamManager.DeleteStream(ctx, id)
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
-	return ctx.SSFSubjectManager.AddSubject(ctx, id, subject, opts)
+	return ctx.SSFSubjectManager.AddStreamSubject(ctx, id, subject, opts)
 }
 
 func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
-	return ctx.SSFSubjectManager.RemoveSubject(ctx, id, subject)
+	return ctx.SSFSubjectManager.RemoveStreamSubject(ctx, id, subject)
 }
 
 func (ctx Context) SSFEventStreamID() string {
@@ -681,20 +681,16 @@ func (ctx Context) SSFJWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, 
 	return jwks.KeyByAlg(string(alg))
 }
 
-func (ctx Context) SSFSaveEvent(streamID string, event goidc.SSFEvent) error {
-	return ctx.SSFEventPollManager.Save(ctx, streamID, event)
-}
-
 func (ctx Context) SSFPollEvents(streamID string, opts goidc.SSFPollOptions) (goidc.SSFEvents, error) {
-	return ctx.SSFEventPollManager.Poll(ctx, streamID, opts)
+	return ctx.SSFEventPollManager.PollEvents(ctx, streamID, opts)
 }
 
-func (ctx Context) SSFAcknowledgeEvents(streamID string, jtis []string, opts goidc.SSFAcknowledgementOptions) error {
-	return ctx.SSFEventPollManager.Acknowledge(ctx, streamID, jtis, opts)
+func (ctx Context) SSFAcknowledgeEvents(streamID string, ids []string, opts goidc.SSFAcknowledgementOptions) error {
+	return ctx.SSFEventPollManager.AcknowledgeEvents(ctx, streamID, ids, opts)
 }
 
-func (ctx Context) SSFAcknowledgeErrors(streamID string, errs map[string]goidc.SSFEventError, opts goidc.SSFAcknowledgementOptions) error {
-	return ctx.SSFEventPollManager.AcknowledgeErrors(ctx, streamID, errs, opts)
+func (ctx Context) SSFAcknowledgeErrors(streamID string, errs []goidc.SSFEventError, opts goidc.SSFAcknowledgementOptions) error {
+	return ctx.SSFEventPollManager.AcknowledgeEventErrors(ctx, streamID, errs, opts)
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {

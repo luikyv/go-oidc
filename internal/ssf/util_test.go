@@ -3,6 +3,9 @@ package ssf
 import (
 	"context"
 	"fmt"
+	"io"
+	"net/http"
+	"strings"
 	"testing"
 
 	"github.com/google/go-cmp/cmp"
@@ -15,6 +18,12 @@ import (
 )
 
 const testReceiverID = "test_receiver_id"
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) {
+	return f(r)
+}
 
 func TestCompareSubjects(t *testing.T) {
 	testCases := []struct {
@@ -376,13 +385,11 @@ func TestPollEvents(t *testing.T) {
 	// Save some events.
 	for i := range 5 {
 		event := goidc.SSFEvent{
-			JWTID:   fmt.Sprintf("jti_%d", i),
+			ID:      fmt.Sprintf("jti_%d", i),
 			Type:    goidc.SSFEventTypeCAEPSessionRevoked,
 			Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
 		}
-		if err := ctx.SSFSaveEvent(stream.ID, event); err != nil {
-			t.Fatalf("error saving event: %v", err)
-		}
+		saveTestEvent(t, ctx, stream.ID, event)
 	}
 
 	// When.
@@ -410,13 +417,11 @@ func TestPollEvents_Acknowledgement(t *testing.T) {
 	// Save events.
 	for i := range 3 {
 		event := goidc.SSFEvent{
-			JWTID:   fmt.Sprintf("jti_%d", i),
+			ID:      fmt.Sprintf("jti_%d", i),
 			Type:    goidc.SSFEventTypeCAEPSessionRevoked,
 			Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
 		}
-		if err := ctx.SSFSaveEvent(stream.ID, event); err != nil {
-			t.Fatalf("error saving event: %v", err)
-		}
+		saveTestEvent(t, ctx, stream.ID, event)
 	}
 
 	// When - poll with acknowledgement.
@@ -442,13 +447,11 @@ func TestPollEvents_MaxEventsZero(t *testing.T) {
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	event := goidc.SSFEvent{
-		JWTID:   "jti_a",
+		ID:      "jti_a",
 		Type:    goidc.SSFEventTypeCAEPSessionRevoked,
 		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
 	}
-	if err := ctx.SSFSaveEvent(stream.ID, event); err != nil {
-		t.Fatalf("error saving event: %v", err)
-	}
+	saveTestEvent(t, ctx, stream.ID, event)
 
 	// When - maxEvents = 0 means no events should be returned.
 	maxEvents := 0
@@ -1134,132 +1137,106 @@ func TestScheduleVerificationEvent_NotFound(t *testing.T) {
 	}
 }
 
-func TestPublishEvent_PollDelivery(t *testing.T) {
-	// Given.
-	ctx := setUp(t)
-	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
-
-	event := goidc.SSFEvent{
-		Type:    goidc.SSFEventTypeCAEPSessionRevoked,
-		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
+func TestPushEvent(t *testing.T) {
+	testCases := []struct {
+		name         string
+		streamMethod goidc.SSFDeliveryMethod
+		eventType    goidc.SSFEventType
+		setup        func(oidc.Context, *goidc.SSFEventStream) string
+		wantErr      bool
+		wantRequests int
+	}{
+		{
+			name:         "pushes subscribed event",
+			streamMethod: goidc.SSFDeliveryMethodPush,
+			eventType:    goidc.SSFEventTypeCAEPSessionRevoked,
+			wantRequests: 1,
+		},
+		{
+			name:         "rejects unsupported poll stream",
+			streamMethod: goidc.SSFDeliveryMethodPoll,
+			eventType:    goidc.SSFEventTypeCAEPSessionRevoked,
+			wantErr:      true,
+		},
+		{
+			name:         "rejects unsubscribed event type",
+			streamMethod: goidc.SSFDeliveryMethodPush,
+			eventType:    goidc.SSFEventTypeStreamUpdated,
+			wantErr:      true,
+		},
+		{
+			name:         "ignores disabled stream",
+			streamMethod: goidc.SSFDeliveryMethodPush,
+			eventType:    goidc.SSFEventTypeCAEPSessionRevoked,
+			setup: func(ctx oidc.Context, stream *goidc.SSFEventStream) string {
+				_, _ = updateStreamStatus(ctx, requestStatus{
+					ID:     stream.ID,
+					Status: goidc.SSFEventStreamStatusDisabled,
+				})
+				return stream.ID
+			},
+		},
+		{
+			name:         "allows verification event",
+			streamMethod: goidc.SSFDeliveryMethodPush,
+			eventType:    goidc.SSFEventTypeVerification,
+			wantRequests: 1,
+		},
+		{
+			name:         "returns error for missing stream",
+			streamMethod: goidc.SSFDeliveryMethodPush,
+			eventType:    goidc.SSFEventTypeCAEPSessionRevoked,
+			setup: func(ctx oidc.Context, stream *goidc.SSFEventStream) string {
+				return "nonexistent"
+			},
+			wantErr: true,
+		},
 	}
 
-	// When.
-	err := PublishEvent(ctx, stream.ID, event)
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := setUp(t)
+			requests := 0
+			ctx.SSFHTTPClientFunc = func(context.Context) *http.Client {
+				return &http.Client{
+					Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+						requests++
+						if req.Header.Get("Content-Type") != contentTypeSecurityEventJWT {
+							t.Errorf("Content-Type = %q, want %q", req.Header.Get("Content-Type"), contentTypeSecurityEventJWT)
+						}
+						body, err := io.ReadAll(req.Body)
+						if err != nil {
+							t.Fatalf("could not read push request body: %v", err)
+						}
+						if len(body) == 0 {
+							t.Error("push request body cannot be empty")
+						}
+						return &http.Response{
+							StatusCode: http.StatusAccepted,
+							Body:       io.NopCloser(strings.NewReader("{}")),
+							Header:     make(http.Header),
+						}, nil
+					}),
+				}
+			}
 
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
+			stream := createTestStream(t, ctx, tc.streamMethod)
+			streamID := stream.ID
+			if tc.setup != nil {
+				streamID = tc.setup(ctx, stream)
+			}
 
-	// Verify event was saved.
-	events, _ := ctx.SSFPollEvents(stream.ID, goidc.SSFPollOptions{})
-	if len(events.Events) != 1 {
-		t.Errorf("got %d events, want 1", len(events.Events))
-	}
-}
-
-func TestPublishEvent_GeneratesJTI(t *testing.T) {
-	// Given.
-	ctx := setUp(t)
-	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
-
-	event := goidc.SSFEvent{
-		JWTID:   "", // No JTI provided.
-		Type:    goidc.SSFEventTypeCAEPSessionRevoked,
-		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
-	}
-
-	// When.
-	err := PublishEvent(ctx, stream.ID, event)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	events, _ := ctx.SSFPollEvents(stream.ID, goidc.SSFPollOptions{})
-	if len(events.Events) == 0 {
-		t.Fatal("expected at least one event")
-	}
-	if events.Events[0].JWTID == "" {
-		t.Error("expected JTI to be generated")
-	}
-}
-
-func TestPublishEvent_StreamNotSubscribed(t *testing.T) {
-	// Given.
-	ctx := setUp(t)
-	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
-
-	// Event type not in stream's delivered events (stream only subscribes to CAEPSessionRevoked).
-	event := goidc.SSFEvent{
-		Type:    goidc.SSFEventTypeStreamUpdated, // Not subscribed to this type.
-		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
-	}
-
-	// When.
-	err := PublishEvent(ctx, stream.ID, event)
-
-	// Then.
-	if err == nil {
-		t.Error("expected error for unsubscribed event type")
-	}
-}
-
-func TestPublishEvent_StreamDisabled(t *testing.T) {
-	// Given.
-	ctx := setUp(t)
-	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
-
-	// Disable the stream.
-	_, _ = updateStreamStatus(ctx, requestStatus{ID: stream.ID, Status: goidc.SSFEventStreamStatusDisabled})
-
-	event := goidc.SSFEvent{
-		Type:    goidc.SSFEventTypeCAEPSessionRevoked,
-		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
-	}
-
-	// When.
-	err := PublishEvent(ctx, stream.ID, event)
-
-	// Then - no error, but event is not saved.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-
-	events, _ := ctx.SSFPollEvents(stream.ID, goidc.SSFPollOptions{})
-	if len(events.Events) != 0 {
-		t.Error("no events should be saved for disabled stream")
-	}
-}
-
-func TestPublishEvent_VerificationBypassesSubscription(t *testing.T) {
-	// Given.
-	ctx := setUp(t)
-	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
-
-	// Verification event should work even if not subscribed.
-	event := goidc.SSFEvent{
-		Type:    goidc.SSFEventTypeVerification,
-		Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
-	}
-
-	// When.
-	err := PublishEvent(ctx, stream.ID, event)
-
-	// Then.
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-}
-
-func TestPublishEvent_StreamNotFound(t *testing.T) {
-	ctx := setUp(t)
-
-	err := PublishEvent(ctx, "nonexistent", goidc.SSFEvent{Type: goidc.SSFEventTypeCAEPSessionRevoked})
-	if err == nil {
-		t.Error("expected error for nonexistent stream")
+			err := PushEvent(ctx, streamID, goidc.SSFEvent{
+				Type:    tc.eventType,
+				Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
+			})
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("PushEvent() error = %v, wantErr %v", err, tc.wantErr)
+			}
+			if requests != tc.wantRequests {
+				t.Fatalf("push requests = %d, want %d", requests, tc.wantRequests)
+			}
+		})
 	}
 }
 
@@ -1420,13 +1397,11 @@ func TestPollEvents_WithErrors(t *testing.T) {
 	// Save events.
 	for i := range 3 {
 		event := goidc.SSFEvent{
-			JWTID:   fmt.Sprintf("jti_%d", i),
+			ID:      fmt.Sprintf("jti_%d", i),
 			Type:    goidc.SSFEventTypeCAEPSessionRevoked,
 			Subject: goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"},
 		}
-		if err := ctx.SSFSaveEvent(stream.ID, event); err != nil {
-			t.Fatalf("error saving event: %v", err)
-		}
+		saveTestEvent(t, ctx, stream.ID, event)
 	}
 
 	// When - poll with error acknowledgement.
@@ -1850,7 +1825,7 @@ func TestPublishEvent_UnsupportedDeliveryMethod(t *testing.T) {
 	}
 
 	// When.
-	err := PublishEvent(ctx, stream.ID, event)
+	err := PushEvent(ctx, stream.ID, event)
 
 	// Then.
 	if err == nil {
@@ -1907,9 +1882,23 @@ func setUp(t *testing.T) oidc.Context {
 	ctx.SSFVerificationEnabled = true
 	ctx.SSFJWKSFunc = ctx.JWKSFunc
 	ctx.SSFDefaultSigAlg = goidc.PS256
+	ctx.SSFHost = ctx.Issuer()
 	ctx.SSFPollingEndpoint = "/ssf/poll"
 
 	return ctx
+}
+
+func saveTestEvent(t *testing.T, ctx oidc.Context, streamID string, event goidc.SSFEvent) {
+	t.Helper()
+
+	manager, ok := ctx.SSFEventPollManager.(*EventManager)
+	if !ok {
+		t.Fatalf("SSFEventPollManager = %T, want *EventManager", ctx.SSFEventPollManager)
+	}
+
+	if err := manager.SaveEvent(ctx, streamID, event); err != nil {
+		t.Fatalf("error saving event: %v", err)
+	}
 }
 
 func createTestStream(t *testing.T, ctx oidc.Context, method goidc.SSFDeliveryMethod) *goidc.SSFEventStream {

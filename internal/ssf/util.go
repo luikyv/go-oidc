@@ -15,7 +15,22 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
+func signEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEvent) (string, error) {
+	token := securityEventToken{
+		Issuer:      ctx.SSFHost,
+		JWTID:       event.ID,
+		Audience:    stream.Audiences,
+		IssuedAt:    event.CreatedAt,
+		Transaction: event.Transaction,
+		Subject:     event.Subject,
+		Events:      map[goidc.SSFEventType]any{event.Type: event.Claims},
+	}
+
+	opts := (&jose.SignerOptions{}).WithType(jwtTypeSecurityEventJWT)
+	return ctx.SSFSign(token, opts)
+}
+
+func PushEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 	stream, err := ctx.SSFEventStream(streamID)
 	if err != nil {
 		return fmt.Errorf("could not load the event stream %q: %w", streamID, err)
@@ -26,33 +41,26 @@ func PublishEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error
 		return fmt.Errorf("stream did not subscribe to event type %s", event.Type)
 	}
 
+	if stream.DeliveryMethod != goidc.SSFDeliveryMethodPush {
+		return fmt.Errorf("unsupported SSF delivery method %q", stream.DeliveryMethod)
+	}
+
 	if stream.Status != goidc.SSFEventStreamStatusEnabled {
 		return nil
 	}
 
-	// Ensure the event has a JWTID.
-	if event.JWTID == "" {
-		event.JWTID = ctx.JWTID()
+	if event.ID == "" {
+		event.ID = ctx.JWTID()
+	}
+
+	if event.CreatedAt == 0 {
+		event.CreatedAt = timeutil.TimestampNow()
 	}
 
 	if event.Claims == nil {
 		event.Claims = make(map[string]any)
 	}
 
-	switch stream.DeliveryMethod {
-	case goidc.SSFDeliveryMethodPush:
-		return pushEvent(ctx, stream, event)
-	case goidc.SSFDeliveryMethodPoll:
-		if err := ctx.SSFSaveEvent(streamID, event); err != nil {
-			return fmt.Errorf("could not save the security event for polling delivery: %w", err)
-		}
-		return nil
-	default:
-		return fmt.Errorf("unsupported SSF delivery method %q", stream.DeliveryMethod)
-	}
-}
-
-func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEvent) error {
 	set, err := signEvent(ctx, stream, event)
 	if err != nil {
 		return fmt.Errorf("could not sign the security event token: %w", err)
@@ -62,7 +70,7 @@ func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEv
 	if err != nil {
 		return fmt.Errorf("could not create the event push request: %w", err)
 	}
-	req.Header.Set("Content-Type", contentTypeSecurityEvent)
+	req.Header.Set("Content-Type", contentTypeSecurityEventJWT)
 	if stream.AuthorizationHeader != "" {
 		req.Header.Set("Authorization", stream.AuthorizationHeader)
 	}
@@ -82,23 +90,23 @@ func pushEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEv
 func newConfiguration(ctx oidc.Context) Configuration {
 	config := Configuration{
 		SpecVersion:            specVersion,
-		Issuer:                 ctx.Issuer(),
-		JWKSURI:                ctx.BaseURL() + ctx.SSFJWKSEndpoint,
+		Issuer:                 ctx.SSFHost,
+		JWKSURI:                ctx.SSFHost + ctx.SSFJWKSEndpoint,
 		DeliveryMethods:        ctx.SSFDeliveryMethods,
 		CriticalSubjectMembers: ctx.SSFCriticalSubjectMembers,
 		AuthorizationSchemes:   ctx.SSFAuthorizationSchemes,
 		DefaultSubjects:        ctx.SSFDefaultSubjects,
-		ConfigurationEndpoint:  ctx.BaseURL() + ctx.SSFConfigurationEndpoint,
+		ConfigurationEndpoint:  ctx.SSFHost + ctx.SSFConfigurationEndpoint,
 	}
 	if ctx.SSFStatusManagementEnabled {
-		config.StatusEndpoint = ctx.BaseURL() + ctx.SSFStatusEndpoint
+		config.StatusEndpoint = ctx.SSFHost + ctx.SSFStatusEndpoint
 	}
 	if ctx.SSFSubjectEnabled {
-		config.AddSubjectEndpoint = ctx.BaseURL() + ctx.SSFSubjectAddEndpoint
-		config.RemoveSubjectEndpoint = ctx.BaseURL() + ctx.SSFSubjectRemoveEndpoint
+		config.AddSubjectEndpoint = ctx.SSFHost + ctx.SSFSubjectAddEndpoint
+		config.RemoveSubjectEndpoint = ctx.SSFHost + ctx.SSFSubjectRemoveEndpoint
 	}
 	if ctx.SSFVerificationEnabled {
-		config.VerificationEndpoint = ctx.BaseURL() + ctx.SSFVerificationEndpoint
+		config.VerificationEndpoint = ctx.SSFHost + ctx.SSFVerificationEndpoint
 	}
 	return config
 }
@@ -546,7 +554,7 @@ func toResponse(ctx oidc.Context, stream *goidc.SSFEventStream) response {
 	}
 	return response{
 		ID:              stream.ID,
-		Issuer:          ctx.Issuer(),
+		Issuer:          ctx.SSFHost,
 		Audience:        stream.Audiences,
 		EventsSupported: stream.EventsSupported,
 		EventsRequested: stream.EventsRequested,
@@ -590,7 +598,12 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 	}
 
 	if req.Errors != nil {
-		if err := ctx.SSFAcknowledgeErrors(streamID, req.Errors, goidc.SSFAcknowledgementOptions{
+		errs := make([]goidc.SSFEventError, 0, len(req.Errors))
+		for id, err := range req.Errors {
+			err.ID = id
+			errs = append(errs, err)
+		}
+		if err := ctx.SSFAcknowledgeErrors(streamID, errs, goidc.SSFAcknowledgementOptions{
 			ReturnImmediately: req.ReturnImmediately,
 		}); err != nil {
 			return responsePollEvents{}, fmt.Errorf("could not acknowledge the polled security event errors: %w", err)
@@ -618,27 +631,12 @@ func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (respo
 		if err != nil {
 			return responsePollEvents{}, fmt.Errorf("could not sign the polled security event token: %w", err)
 		}
-		sets[event.JWTID] = set
+		sets[event.ID] = set
 	}
 	return responsePollEvents{
 		SecurityEventTokens: sets,
 		MoreAvailable:       events.MoreAvailable,
 	}, nil
-}
-
-func signEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEvent) (string, error) {
-	token := securityEventToken{
-		Issuer:      ctx.Issuer(),
-		JWTID:       event.JWTID,
-		Audience:    stream.Audiences,
-		IssuedAt:    timeutil.TimestampNow(),
-		Transaction: event.Transaction,
-		Subject:     event.Subject,
-		Events:      map[goidc.SSFEventType]any{event.Type: event.Claims},
-	}
-
-	opts := (&jose.SignerOptions{}).WithType(jwtTypeSecurityEvent)
-	return ctx.SSFSign(token, opts)
 }
 
 func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) error {

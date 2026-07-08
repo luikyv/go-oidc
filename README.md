@@ -37,6 +37,8 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Federation for OpenID Connect 1.1](https://openid.net/specs/openid-federation-connect-1_1.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
 * [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
+* [`RFC 8935` - Push-Based Security Event Token (SET) Delivery Using HTTP](https://datatracker.ietf.org/doc/html/rfc8935)
+* [`RFC 8936` - Poll-Based Security Event Token (SET) Delivery Using HTTP](https://datatracker.ietf.org/doc/html/rfc8936)
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 * [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
 * [OpenID for Verifiable Credential Issuance 1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html)
@@ -1174,17 +1176,22 @@ The [Shared Signals Framework](https://openid.net/specs/openid-sharedsignals-fra
 op, _ := provider.New(
   ...,
   provider.WithSSF(
-    nil, // event stream manager (nil uses in-memory default)
-    func(_ context.Context) (goidc.JSONWebKeySet, error) {
-      return ssfJWKS, nil
+    provider.SSFConfig{
+      Manager: nil, // nil uses ad hoc in-memory storage.
+      JWKSFunc: func(_ context.Context) (goidc.JSONWebKeySet, error) {
+        return ssfJWKS, nil
+      },
+      SigAlg: goidc.RS256,
+      AuthenticatedReceiver: func(ctx context.Context) (goidc.SSFReceiver, error) {
+        return goidc.SSFReceiver{ID: "receiver"}, nil
+      },
+      EventTypes: []goidc.SSFEventType{
+        goidc.SSFEventTypeCAEPSessionRevoked,
+        goidc.SSFEventTypeCAEPCredentialChange,
+      },
     },
-    goidc.RS256,
-    func(ctx context.Context) (goidc.SSFReceiver, error) {
-      return goidc.SSFReceiver{ID: "receiver"}, nil
-    },
-    []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange},
-    provider.SSFPollDelivery(nil),
-    provider.SSFPushDelivery(nil),
+    provider.WithSSFPoll(nil),
+    provider.WithSSFPush(),
   ),
   ...,
 )
@@ -1208,11 +1215,11 @@ op.PublishSSFEvent(ctx, streamID, goidc.SSFEvent{
 Additional options:
 ```go
 // Allow receivers to update stream status (enabled/paused/disabled).
-provider.WithSSFEventStreamStatusManagement()
+provider.WithSSFStatusManagement()
 // Allow receivers to add/remove subjects from a stream.
 provider.WithSSFSubjectManagement(nil)
 // Allow receivers to request verification events.
-provider.WithSSFEventStreamVerification(func(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+provider.WithSSFVerification(func(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
   // Schedule the verification event for async delivery.
   return nil
 })

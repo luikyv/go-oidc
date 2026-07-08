@@ -21,8 +21,8 @@ func (auds Audiences) MarshalJSON() ([]byte, error) {
 }
 
 const (
-	jwtTypeSecurityEvent     = "secevent+jwt"
-	contentTypeSecurityEvent = "application/secevent+jwt"
+	jwtTypeSecurityEventJWT     = "secevent+jwt"
+	contentTypeSecurityEventJWT = "application/secevent+jwt"
 )
 
 type Configuration struct {

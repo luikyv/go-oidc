@@ -32,7 +32,7 @@ func NewEventManager(maxStreams int) *EventManager {
 	}
 }
 
-func (m *EventManager) Create(_ context.Context, stream *goidc.SSFEventStream) error {
+func (m *EventManager) CreateStream(_ context.Context, stream *goidc.SSFEventStream) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -46,7 +46,7 @@ func (m *EventManager) Create(_ context.Context, stream *goidc.SSFEventStream) e
 	return nil
 }
 
-func (m *EventManager) Update(_ context.Context, stream *goidc.SSFEventStream) error {
+func (m *EventManager) UpdateStream(_ context.Context, stream *goidc.SSFEventStream) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streams[stream.ID] = stream
@@ -74,7 +74,7 @@ func (m *EventManager) EventStreams(_ context.Context, receiverID string) ([]*go
 	return streams, nil
 }
 
-func (m *EventManager) Delete(_ context.Context, id string) error {
+func (m *EventManager) DeleteStream(_ context.Context, id string) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	delete(m.streams, id)
@@ -83,7 +83,7 @@ func (m *EventManager) Delete(_ context.Context, id string) error {
 	return nil
 }
 
-func (m *EventManager) AddSubject(_ context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
+func (m *EventManager) AddStreamSubject(_ context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 
@@ -96,7 +96,7 @@ func (m *EventManager) AddSubject(_ context.Context, streamID string, sub goidc.
 	return nil
 }
 
-func (m *EventManager) RemoveSubject(_ context.Context, streamID string, sub goidc.SSFSubject) error {
+func (m *EventManager) RemoveStreamSubject(_ context.Context, streamID string, sub goidc.SSFSubject) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streamSubjects[streamID] = slices.DeleteFunc(m.streamSubjects[streamID], func(s goidc.SSFSubject) bool {
@@ -105,14 +105,14 @@ func (m *EventManager) RemoveSubject(_ context.Context, streamID string, sub goi
 	return nil
 }
 
-func (m *EventManager) Save(_ context.Context, streamID string, event goidc.SSFEvent) error {
+func (m *EventManager) SaveEvent(_ context.Context, streamID string, event goidc.SSFEvent) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streamPollEvents[streamID] = append(m.streamPollEvents[streamID], event)
 	return nil
 }
 
-func (m *EventManager) Poll(_ context.Context, streamID string, opts goidc.SSFPollOptions) (goidc.SSFEvents, error) {
+func (m *EventManager) PollEvents(_ context.Context, streamID string, opts goidc.SSFPollOptions) (goidc.SSFEvents, error) {
 	m.lock.RLock()
 	defer m.lock.RUnlock()
 
@@ -134,21 +134,22 @@ func (m *EventManager) Poll(_ context.Context, streamID string, opts goidc.SSFPo
 	return goidc.SSFEvents{Events: events, MoreAvailable: moreAvailable}, nil
 }
 
-func (m *EventManager) Acknowledge(_ context.Context, streamID string, jtis []string, _ goidc.SSFAcknowledgementOptions) error {
+func (m *EventManager) AcknowledgeEvents(_ context.Context, streamID string, ids []string, _ goidc.SSFAcknowledgementOptions) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streamPollEvents[streamID] = slices.DeleteFunc(m.streamPollEvents[streamID], func(e goidc.SSFEvent) bool {
-		return slices.Contains(jtis, e.JWTID)
+		return slices.Contains(ids, e.ID)
 	})
 	return nil
 }
 
-func (m *EventManager) AcknowledgeErrors(_ context.Context, streamID string, errs map[string]goidc.SSFEventError, _ goidc.SSFAcknowledgementOptions) error {
+func (m *EventManager) AcknowledgeEventErrors(_ context.Context, streamID string, errs []goidc.SSFEventError, _ goidc.SSFAcknowledgementOptions) error {
 	m.lock.Lock()
 	defer m.lock.Unlock()
 	m.streamPollEvents[streamID] = slices.DeleteFunc(m.streamPollEvents[streamID], func(e goidc.SSFEvent) bool {
-		_, hasError := errs[e.JWTID]
-		return hasError
+		return slices.ContainsFunc(errs, func(err goidc.SSFEventError) bool {
+			return err.ID == e.ID
+		})
 	})
 	return nil
 }
@@ -162,7 +163,7 @@ func (m *EventManager) ScheduleVerificationEvent(ctx context.Context, streamID s
 	go func() {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
-		_ = PublishEvent(oidc.NewContext(ctx, oidcCtx.Configuration), streamID, goidc.NewSSFVerificationEvent(streamID, opts))
+		_ = PushEvent(oidc.NewContext(ctx, oidcCtx.Configuration), streamID, goidc.NewSSFVerificationEvent(streamID, opts))
 	}()
 	return nil
 }

@@ -218,7 +218,6 @@ type Configuration struct {
 
 	OpenIDFedEnabled              bool
 	OpenIDFedManager              goidc.OpenIDFedManager
-	OpenIDFedEndpoint             string
 	OpenIDFedRegistrationEndpoint string
 	OpenIDFedJWKSFunc             goidc.JWKSFunc
 	OpenIDFedSignerFunc           goidc.SignerFunc
@@ -251,6 +250,7 @@ type Configuration struct {
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
 	SSFEnabled                           bool
+	SSFHost                              string
 	SSFJWKSEndpoint                      string
 	SSFEventTypes                        []goidc.SSFEventType
 	SSFDeliveryMethods                   []goidc.SSFDeliveryMethod

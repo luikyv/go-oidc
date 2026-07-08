@@ -37,9 +37,9 @@ func main() {
 		provider.WithStaticClients(client),
 		provider.WithSSF(
 			provider.SSFConfig{
-				JWKSFunc: authutil.PrivateJWKSFunc(),
-				SigAlg:   goidc.RS256,
-				ReceiverFunc: func(ctx context.Context) (goidc.SSFReceiver, error) {
+				JWKS:   authutil.PrivateJWKSFunc(),
+				SigAlg: goidc.RS256,
+				AuthenticatedReceiver: func(ctx context.Context) (goidc.SSFReceiver, error) {
 					clientID := ctx.Value(ctxKeyClientID).(string)
 					if clientID == "" {
 						return goidc.SSFReceiver{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "client id is required")
@@ -48,16 +48,11 @@ func main() {
 				},
 				EventTypes: []goidc.SSFEventType{goidc.SSFEventTypeCAEPCredentialChange, goidc.SSFEventTypeCAEPSessionRevoked},
 			},
-			provider.WithSSFPollDelivery(nil),
-			provider.WithSSFPushDelivery(
-				provider.WithSSFPushDeliveryHTTPClient(authutil.HTTPClient),
-			),
-			provider.WithSSFEventStreamStatusManagement(),
+			provider.WithSSFPoll(nil),
+			provider.WithSSFPush(provider.WithSSFPushHTTPClient(authutil.HTTPClient)),
+			provider.WithSSFStatusManagement(),
 			provider.WithSSFSubjectManagement(nil),
-			provider.WithSSFEventStreamVerification(
-				nil,
-				provider.WithSSFMinVerificationInterval(5),
-			),
+			provider.WithSSFVerification(nil, provider.WithSSFMinVerificationInterval(5)),
 			provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
 			provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),
 			provider.WithSSFInactivityTimeout(30, func(ctx context.Context, stream *goidc.SSFEventStream) error {

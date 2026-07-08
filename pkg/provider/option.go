@@ -1881,33 +1881,36 @@ func WithOpenIDFedTrustMarks(configs ...goidc.TrustMarkConfig) OpenIDFedOption {
 // See [WithSSF] for more information.
 type SSFOption Option
 
-// SSFPushDeliveryOption is an optional configuration for SSF push delivery.
-type SSFPushDeliveryOption Option
+// SSFPollOption is an optional configuration for SSF poll delivery.
+type SSFPollOption Option
 
-// SSFEventStreamStatusManagementOption is an optional configuration for SSF stream status management.
-type SSFEventStreamStatusManagementOption Option
+// SSFPushOption is an optional configuration for SSF push delivery.
+type SSFPushOption Option
+
+// SSFStatusOption is an optional configuration for SSF stream status management.
+type SSFStatusOption Option
 
 // SSFSubjectManagementOption is an optional configuration for SSF subject management.
 type SSFSubjectManagementOption Option
 
-// SSFEventStreamVerificationOption is an optional configuration for SSF stream verification.
-type SSFEventStreamVerificationOption Option
+// SSFVerificationOption is an optional configuration for SSF stream verification.
+type SSFVerificationOption Option
 
 // SSFConfig holds the required configuration for Shared Signals Framework support.
 type SSFConfig struct {
 	// Manager is responsible for persisting event stream configurations created
-	// by receivers. If nil, the default in-memory storage is used.
+	// by receivers. Pass nil only for ad hoc in-memory storage.
 	Manager goidc.SSFEventStreamManager
-	// JWKSFunc returns the provider's SSF JWKS, used to sign Security Event
+	// JWKS returns the provider's SSF JWKS, used to sign Security Event
 	// Tokens (SETs). This JWKS is separate from the provider's regular signing keys.
-	// See [WithSigner] if the private keys are not available.
-	JWKSFunc goidc.JWKSFunc
+	// See [WithSSFSigner] if the private keys are not available.
+	JWKS goidc.JWKSFunc
 	// SigAlg is the algorithm used to sign SETs.
 	// The JWKSFunc must return a key matching this algorithm.
 	SigAlg goidc.SignatureAlgorithm
-	// ReceiverFunc authenticates incoming requests and returns the SSF receiver
+	// AuthenticatedReceiver authenticates incoming requests and returns the SSF receiver
 	// (relying party) information. Called on every SSF API request.
-	ReceiverFunc goidc.SSFAuthenticatedReceiverFunc
+	AuthenticatedReceiver goidc.SSFAuthenticatedReceiverFunc
 	// EventTypes are the security event types supported by this SSF transmitter.
 	EventTypes []goidc.SSFEventType
 }
@@ -1920,23 +1923,23 @@ type SSFConfig struct {
 // [OpenID Shared Signals Framework specification]: https://openid.net/specs/openid-sharedsignals-framework-1_0.html
 func WithSSF(cfg SSFConfig, opts ...SSFOption) Option {
 	return func(p *Provider) error {
-		if cfg.JWKSFunc == nil {
+		if cfg.JWKS == nil {
 			return errors.New("the ssf jwks function cannot be nil")
 		}
 		if cfg.SigAlg == "" {
 			return errors.New("a ssf signature algorithm must be provided")
 		}
-		if cfg.ReceiverFunc == nil {
-			return errors.New("the ssf receiver function cannot be nil")
+		if cfg.AuthenticatedReceiver == nil {
+			return errors.New("the ssf authenticated receiver function cannot be nil")
 		}
 		if len(cfg.EventTypes) == 0 {
 			return errors.New("at least one ssf event type must be provided")
 		}
 		p.config.SSFEnabled = true
 		p.config.SSFEventStreamManager = cfg.Manager
-		p.config.SSFJWKSFunc = cfg.JWKSFunc
+		p.config.SSFJWKSFunc = cfg.JWKS
 		p.config.SSFDefaultSigAlg = cfg.SigAlg
-		p.config.SSFAuthenticatedReceiverFunc = cfg.ReceiverFunc
+		p.config.SSFAuthenticatedReceiverFunc = cfg.AuthenticatedReceiver
 		p.config.SSFEventTypes = cfg.EventTypes
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
@@ -1947,20 +1950,36 @@ func WithSSF(cfg SSFConfig, opts ...SSFOption) Option {
 	}
 }
 
-// WithSSFPollDelivery enables the poll delivery method, where receivers poll the
-// transmitter for events. The manager is responsible for queuing events and
-// tracking acknowledgements.
-func WithSSFPollDelivery(manager goidc.SSFEventPollManager) SSFOption {
+// WithSSFSigner sets a custom signing function for SSF Security Event Tokens
+// (SETs). Use this when the private keys for [SSFConfig.JWKSFunc] are not
+// directly available to the provider, for example when signing through an HSM
+// or remote key service.
+func WithSSFSigner(f goidc.SignerFunc) SSFOption {
 	return func(p *Provider) error {
-		p.config.SSFDeliveryMethods = append(p.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll)
-		p.config.SSFEventPollManager = manager
+		p.config.SSFSignerFunc = f
 		return nil
 	}
 }
 
-// WithSSFPushDelivery enables the push delivery method, where the transmitter
+// WithSSFPoll enables the poll delivery method, where receivers poll the
+// transmitter for events. The manager is responsible for queuing events and
+// tracking acknowledgements.
+func WithSSFPoll(manager goidc.SSFEventPollManager, opts ...SSFPollOption) SSFOption {
+	return func(p *Provider) error {
+		p.config.SSFDeliveryMethods = append(p.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll)
+		p.config.SSFEventPollManager = manager
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
+		return nil
+	}
+}
+
+// WithSSFPush enables the push delivery method, where the transmitter
 // pushes events to receiver endpoints.
-func WithSSFPushDelivery(opts ...SSFPushDeliveryOption) SSFOption {
+func WithSSFPush(opts ...SSFPushOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFDeliveryMethods = append(p.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPush)
 		for _, opt := range opts {
@@ -1972,18 +1991,18 @@ func WithSSFPushDelivery(opts ...SSFPushDeliveryOption) SSFOption {
 	}
 }
 
-// WithSSFPushDeliveryHTTPClient sets the HTTP client used for SSF push delivery.
-func WithSSFPushDeliveryHTTPClient(httpClientFunc goidc.HTTPClientFunc) SSFPushDeliveryOption {
+// WithSSFPushHTTPClient sets the HTTP client used for SSF push delivery.
+func WithSSFPushHTTPClient(httpClientFunc goidc.HTTPClientFunc) SSFPushOption {
 	return func(p *Provider) error {
 		p.config.SSFHTTPClientFunc = httpClientFunc
 		return nil
 	}
 }
 
-// WithSSFEventStreamStatusManagement enables the stream status management API,
+// WithSSFStatusManagement enables the stream status management API,
 // allowing receivers to read and update the status of their event streams
 // (e.g., enabled, paused, disabled).
-func WithSSFEventStreamStatusManagement(opts ...SSFEventStreamStatusManagementOption) SSFOption {
+func WithSSFStatusManagement(opts ...SSFStatusOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFStatusManagementEnabled = true
 		for _, opt := range opts {
@@ -1996,7 +2015,7 @@ func WithSSFEventStreamStatusManagement(opts ...SSFEventStreamStatusManagementOp
 }
 
 // WithSSFStatusEndpoint overrides the default endpoint for stream status management.
-func WithSSFStatusEndpoint(endpoint string) SSFEventStreamStatusManagementOption {
+func WithSSFStatusEndpoint(endpoint string) SSFStatusOption {
 	return func(p *Provider) error {
 		p.config.SSFStatusEndpoint = endpoint
 		return nil
@@ -2035,11 +2054,11 @@ func WithSSFRemoveSubjectEndpoint(endpoint string) SSFSubjectManagementOption {
 	}
 }
 
-// WithSSFEventStreamVerification enables the verification API, allowing receivers
+// WithSSFVerification enables the verification API, allowing receivers
 // to request verification events to confirm the stream is working correctly.
 // The transmitter responds by sending a verification event with an optional state value.
 // If the function is nil, the provider will use the default in memory verification implementation.
-func WithSSFEventStreamVerification(f goidc.SSFScheduleVerificationEventFunc, opts ...SSFEventStreamVerificationOption) SSFOption {
+func WithSSFVerification(f goidc.SSFScheduleVerificationEventFunc, opts ...SSFVerificationOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFVerificationEnabled = true
 		p.config.SSFScheduleVerificationEventFunc = f
@@ -2054,8 +2073,11 @@ func WithSSFEventStreamVerification(f goidc.SSFScheduleVerificationEventFunc, op
 
 // WithSSFMinVerificationInterval sets the minimum interval (in seconds) between
 // verification requests from the same receiver. This prevents abuse of the verification endpoint.
-func WithSSFMinVerificationInterval(secs int) SSFEventStreamVerificationOption {
+func WithSSFMinVerificationInterval(secs int) SSFVerificationOption {
 	return func(p *Provider) error {
+		if secs < 0 {
+			return errors.New("the ssf minimum verification interval cannot be negative")
+		}
 		p.config.SSFMinVerificationInterval = secs
 		return nil
 	}
@@ -2064,6 +2086,7 @@ func WithSSFMinVerificationInterval(secs int) SSFEventStreamVerificationOption {
 // WithSSFDefaultSubjects indicates how subjects are handled when a stream is created.
 // Use [goidc.SSFDefaultSubjectAll] when automatically including all subjects by default, or
 // [goidc.SSFDefaultSubjectNone] when requiring explicit subject registration via the subject management API.
+// If not provided, the transmitter behavior in this regard is unspecified.
 func WithSSFDefaultSubjects(defaultSubjects goidc.SSFDefaultSubject) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFDefaultSubjects = defaultSubjects
@@ -2100,6 +2123,9 @@ func WithSSFAuthorizationSchemes(schemes ...goidc.SSFAuthorizationScheme) SSFOpt
 // is called to handle the expired stream (e.g., pause or delete it).
 func WithSSFInactivityTimeout(secs int, handleFunc goidc.SSFHandleExpiredEventStreamFunc) SSFOption {
 	return func(p *Provider) error {
+		if secs < 0 {
+			return errors.New("the ssf inactivity timeout cannot be negative")
+		}
 		p.config.SSFInactivityTimeoutSecs = secs
 		p.config.SSFHandleExpiredEventStreamFunc = handleFunc
 		return nil

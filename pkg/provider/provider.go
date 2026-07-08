@@ -270,7 +270,6 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 
 	if op.config.OpenIDFedEnabled {
 		op.config.OpenIDFedManager = nonZeroOrDefault(op.config.OpenIDFedManager, goidc.OpenIDFedManager(inmemoryManager))
-		op.config.OpenIDFedEndpoint = nonZeroOrDefault(op.config.OpenIDFedEndpoint, defaultEndpointOpenIDFederation)
 		op.config.OpenIDFedSigAlgs = nonZeroOrDefault(op.config.OpenIDFedSigAlgs, []goidc.SignatureAlgorithm{op.config.OpenIDFedSigAlg})
 		op.config.OpenIDFedTrustChainMaxDepth = nonZeroOrDefault(op.config.OpenIDFedTrustChainMaxDepth, defaultOpenIDFedTrustChainMaxDepth)
 		op.config.OpenIDFedClientRegTypes = nonZeroOrDefault(op.config.OpenIDFedClientRegTypes, []goidc.ClientRegistrationType{defaultOpenIDFedRegType})
@@ -294,6 +293,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	}
 
 	if op.config.SSFEnabled {
+		op.config.SSFHost = nonZeroOrDefault(op.config.SSFHost, op.config.Host)
 		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
@@ -629,12 +629,15 @@ func (op *Provider) ResolveFederationEntity(ctx context.Context, id string) (goi
 	return federation.Resolve(oidc.NewContext(ctx, &op.config), id)
 }
 
-func (p *Provider) PublishSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
-	return ssf.PublishEvent(oidc.NewContext(ctx, &p.config), streamID, event)
-}
-
-func (p *Provider) PublishSSFVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	return ssf.PublishEvent(oidc.NewContext(ctx, &p.config), streamID, goidc.NewSSFVerificationEvent(streamID, opts))
+// PushSSFEvent delivers an SSF event to the push delivery event stream
+// identified by streamID.
+//
+// The event is signed as a Security Event Token (SET) and sent to the stream's
+// configured endpoint. The caller is responsible for selecting the target
+// stream.
+// This method does not discover matching streams or apply subject filtering.
+func (op *Provider) PushSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
+	return ssf.PushEvent(oidc.NewContext(ctx, &op.config), streamID, event)
 }
 
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.
@@ -687,7 +690,6 @@ const (
 	defaultEndpointTokenIntrospection           = "/introspect"
 	defaultEndpointTokenRevocation              = "/revoke"
 	defaultEndpointCIBA                         = "/bc-authorize"
-	defaultEndpointOpenIDFederation             = "/.well-known/openid-federation"
 	defaultEndpointOpenIDFederationRegistration = "/federation/register"
 	defaultEndpointOpenIDFederationSignedJWKS   = "/signed-jwks"
 	defaultEndpointEndSession                   = "/logout"
@@ -700,7 +702,7 @@ const (
 	defaultEndpointSSFPolling                   = "/ssf/poll"
 	defaultEndpointDeviceAuthorization          = "/device_authorization"
 	defaultEndpointDeviceVerification           = "/device"
-	defaultEndpointVCICredential                = "/credential"
+	defaultEndpointVCICredential                = "/credential"          //nolint:gosec
 	defaultEndpointVCIDeferredCredential        = "/deferred_credential" //nolint:gosec
 	defaultEndpointVCINotification              = "/notification"
 )

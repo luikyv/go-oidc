@@ -2732,10 +2732,10 @@ func TestWithSSF(t *testing.T) {
 
 	// When.
 	err := WithSSF(SSFConfig{
-		JWKSFunc:     jwksFunc,
-		SigAlg:       goidc.RS256,
-		ReceiverFunc: receiverFunc,
-		EventTypes:   eventTypes,
+		JWKS:                  jwksFunc,
+		SigAlg:                goidc.RS256,
+		AuthenticatedReceiver: receiverFunc,
+		EventTypes:            eventTypes,
 	})(p)
 
 	// Then.
@@ -2767,6 +2767,28 @@ func TestWithSSF(t *testing.T) {
 	}
 }
 
+func TestSSFSigner(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	signerFunc := func(ctx context.Context, alg goidc.SignatureAlgorithm) (string, crypto.Signer, error) {
+		return "kid", nil, nil
+	}
+
+	// When.
+	err := WithSSFSigner(signerFunc)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	if p.config.SSFSignerFunc == nil {
+		t.Error("SSFSignerFunc cannot be nil")
+	}
+}
+
 func TestSSFPollDelivery(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -2774,7 +2796,7 @@ func TestSSFPollDelivery(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFPollDelivery(nil)(p)
+	err := WithSSFPoll(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -2799,8 +2821,8 @@ func TestSSFPushDelivery(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFPushDelivery(
-		WithSSFPushDeliveryHTTPClient(clientFunc),
+	err := WithSSFPush(
+		WithSSFPushHTTPClient(clientFunc),
 	)(p)
 
 	// Then.
@@ -2827,7 +2849,7 @@ func TestSSFEventStreamStatusManagement(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFEventStreamStatusManagement()(p)
+	err := WithSSFStatusManagement()(p)
 
 	// Then.
 	if err != nil {
@@ -2851,7 +2873,7 @@ func TestSSFStatusEndpoint(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFEventStreamStatusManagement(
+	err := WithSSFStatusManagement(
 		WithSSFStatusEndpoint("/ssf/status"),
 	)(p)
 
@@ -2914,7 +2936,7 @@ func TestSSFAddSubjectEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFSubjectEnabled:      true,
+			SSFSubjectEnabled:     true,
 			SSFSubjectAddEndpoint: "/ssf/subjects/add",
 		},
 	}
@@ -2951,14 +2973,14 @@ func TestSSFRemoveSubjectEndpoint(t *testing.T) {
 	}
 }
 
-func TestSSFEventStreamVerification(t *testing.T) {
+func TestSSFVerification(t *testing.T) {
 	// Given.
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithSSFEventStreamVerification(nil)(p)
+	err := WithSSFVerification(nil)(p)
 
 	// Then.
 	if err != nil {
@@ -2982,7 +3004,7 @@ func TestSSFMinVerificationInterval(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFEventStreamVerification(
+	err := WithSSFVerification(
 		nil,
 		WithSSFMinVerificationInterval(60),
 	)(p)
@@ -3000,6 +3022,21 @@ func TestSSFMinVerificationInterval(t *testing.T) {
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestSSFMinVerificationIntervalNegative(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithSSFVerification(nil, WithSSFMinVerificationInterval(-1))(p)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 
@@ -3099,6 +3136,21 @@ func TestSSFInactivityTimeout(t *testing.T) {
 
 	if p.config.SSFHandleExpiredEventStreamFunc == nil {
 		t.Error("SSFHandleExpiredEventStreamFunc cannot be nil")
+	}
+}
+
+func TestSSFInactivityTimeoutNegative(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+
+	// When.
+	err := WithSSFInactivityTimeout(-1, nil)(p)
+
+	// Then.
+	if err == nil {
+		t.Fatal("expected error")
 	}
 }
 

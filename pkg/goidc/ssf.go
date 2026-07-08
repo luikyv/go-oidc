@@ -6,33 +6,36 @@ import (
 
 // SSFEventStreamManager manages the lifecycle of SSF event streams.
 type SSFEventStreamManager interface {
-	Create(context.Context, *SSFEventStream) error
-	Update(context.Context, *SSFEventStream) error
+	CreateStream(context.Context, *SSFEventStream) error
+	UpdateStream(context.Context, *SSFEventStream) error
 	// EventStream returns the event stream identified by id.
 	// It must return [ErrNotFound] when the stream does not exist.
 	EventStream(context.Context, string) (*SSFEventStream, error)
 	// EventStreams returns the event streams associated with the receiver.
 	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
-	Delete(context.Context, string) error
+	DeleteStream(context.Context, string) error
 }
 
+// SSFSubjectManager manages the subjects associated with an event stream.
+// It is used by the SSF subject management API.
+// See [SSF 1.0 §8.1.3].
 type SSFSubjectManager interface {
-	AddSubject(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error
-	RemoveSubject(ctx context.Context, streamID string, sub SSFSubject) error
+	// AddStreamSubject adds a subject to the event stream identified by streamID.
+	AddStreamSubject(ctx context.Context, streamID string, subject SSFSubject, opts SSFSubjectOptions) error
+	// RemoveStreamSubject removes a subject from the event stream identified by streamID.
+	RemoveStreamSubject(ctx context.Context, streamID string, sub SSFSubject) error
 }
 
 // SSFEventPollManager manages event queuing and polling for poll-based delivery [RFC 8936].
 // This interface is only used when the stream's delivery method is [SSFDeliveryMethodPoll].
 type SSFEventPollManager interface {
-	// Save saves an event to the stream's pending queue for later polling.
-	Save(ctx context.Context, streamID string, event SSFEvent) error
-	// Poll retrieves pending events without removing them from the queue.
-	// Events remain pending until explicitly acknowledged via [SSFEventPollManager.Acknowledge].
-	Poll(ctx context.Context, streamID string, opts SSFPollOptions) (SSFEvents, error)
-	// Acknowledge marks events as successfully delivered and removes them from the queue.
-	Acknowledge(ctx context.Context, streamID string, jtis []string, opts SSFAcknowledgementOptions) error
-	// AcknowledgeErrors reports delivery errors for specific events.
-	AcknowledgeErrors(ctx context.Context, streamID string, errs map[string]SSFEventError, opts SSFAcknowledgementOptions) error
+	// PollEvents retrieves pending events without removing them from the queue.
+	// Events remain pending until explicitly acknowledged via [SSFEventPollManager.AcknowledgeEvents].
+	PollEvents(ctx context.Context, streamID string, opts SSFPollOptions) (SSFEvents, error)
+	// AcknowledgeEvents marks events as successfully delivered and removes them from the queue.
+	AcknowledgeEvents(ctx context.Context, streamID string, ids []string, opts SSFAcknowledgementOptions) error
+	// AcknowledgeEventErrors reports delivery errors for specific events.
+	AcknowledgeEventErrors(ctx context.Context, streamID string, errs []SSFEventError, opts SSFAcknowledgementOptions) error
 }
 
 type SSFScheduleVerificationEventFunc func(context.Context, string, SSFStreamVerificationOptions) error
@@ -184,18 +187,32 @@ const (
 	SSFSubjectIPAddresses             SSFSubjectFormat = "ip-addresses"
 )
 
+// SSFSubjectOptions carries options for adding a subject to an event stream.
+// See [SSF 1.0 §8.1.3].
 type SSFSubjectOptions struct {
+	// Verified indicates whether the receiver has verified the subject before
+	// adding it to the stream. It defaults to true when omitted by the request.
 	Verified bool
 }
 
+// SSFAuthorizationScheme describes an authorization scheme supported by the
+// transmitter's SSF management APIs.
+// See [SSF 1.0 §7.1].
 type SSFAuthorizationScheme struct {
+	// SpecificationURN identifies the authorization scheme specification.
 	SpecificationURN string `json:"spec_urn"`
 }
 
+// SSFDefaultSubject defines whether newly created streams include subjects by
+// default or require explicit subject registration.
+// See [SSF 1.0 §7.1].
 type SSFDefaultSubject string
 
 const (
-	SSFDefaultSubjectAll  SSFDefaultSubject = "ALL"
+	// SSFDefaultSubjectAll means events for all subjects are delivered by default.
+	SSFDefaultSubjectAll SSFDefaultSubject = "ALL"
+	// SSFDefaultSubjectNone means subjects must be explicitly added before
+	// events are delivered for them.
 	SSFDefaultSubjectNone SSFDefaultSubject = "NONE"
 )
 
@@ -210,35 +227,64 @@ type SSFReceiver struct {
 	Audiences []string
 }
 
+// SSFEvents is the result of polling pending SETs for an event stream.
+// See [RFC 8936 §2.3].
 type SSFEvents struct {
-	Events        []SSFEvent
+	// Events is the list of pending events returned by the poll operation.
+	Events []SSFEvent
+	// MoreAvailable indicates whether more unacknowledged SETs are available
+	// after this response.
 	MoreAvailable bool
 }
 
+// SSFPollOptions carries options for retrieving pending SETs through
+// poll-based delivery.
+// See [RFC 8936 §2.2, §2.4.1].
 type SSFPollOptions struct {
 	// MaxEvents is the maximum number of events to return.
 	// If nil, there's no limit on the number of events to return.
-	MaxEvents         *int
+	MaxEvents *int
+	// ReturnImmediately indicates whether the transmitter should return
+	// immediately when no SETs are available, instead of waiting as a long poll.
 	ReturnImmediately bool
 }
 
+// SSFAcknowledgementOptions carries options for processing event
+// acknowledgements or acknowledgement errors.
+// See [RFC 8936 §2.2, §2.4.2-2.4.4].
 type SSFAcknowledgementOptions struct {
+	// ReturnImmediately indicates whether the transmitter should return
+	// immediately after processing the acknowledgement when no SETs are
+	// available, instead of waiting as a long poll.
 	ReturnImmediately bool
 }
 
+// SSFEvent is an instance of a security event that will be delivered to, or
+// polled by, the receiver as a Security Event Token (SET).
 type SSFEvent struct {
-	JWTID   string
-	Type    SSFEventType
-	Subject SSFSubject
+	// ID is the event identifier. It is used as the SET "jti" claim.
+	ID string `json:"id"`
+	// Type is the event type URI.
+	Type SSFEventType `json:"type"`
+	// Subject identifies the subject of the event.
+	Subject SSFSubject `json:"sub_id"`
 	// Transaction is the transaction ID of the event.
-	Transaction string
+	Transaction string `json:"txn,omitempty"`
 	// Claims is the claims of the event.
-	Claims any
+	Claims any `json:"claims,omitempty"`
+	// CreatedAt is the event creation time as a Unix timestamp.
+	CreatedAt int `json:"created_at"`
 }
 
+// SSFEventError describes a receiver-reported error for a polled SET.
+// See [RFC 8936 §2.4.3].
 type SSFEventError struct {
-	Error       SSFEventErrorCode `json:"err"`
-	Description string            `json:"description"`
+	// ID is the SET "jti" claim identifying the event with an error.
+	ID string `json:"-"`
+	// Error is the machine-readable error code.
+	Error SSFEventErrorCode `json:"err"`
+	// Description is a human-readable explanation of the error.
+	Description string `json:"description"`
 }
 
 type SSFEventErrorCode string

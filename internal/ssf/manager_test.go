@@ -7,7 +7,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestEventManager_CreateAndEventStream(t *testing.T) {
+func TestEventManager_CreateStreamAndEventStream(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
 	stream := &goidc.SSFEventStream{
@@ -17,7 +17,7 @@ func TestEventManager_CreateAndEventStream(t *testing.T) {
 	}
 
 	// When.
-	err := manager.Create(context.Background(), stream)
+	err := manager.CreateStream(context.Background(), stream)
 
 	// Then.
 	if err != nil {
@@ -45,9 +45,9 @@ func TestEventManager_EventStream_NotFound(t *testing.T) {
 func TestEventManager_EventStreams(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1", ReceiverID: "receiver_1"})
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_2", ReceiverID: "receiver_1"})
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_3", ReceiverID: "receiver_2"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", ReceiverID: "receiver_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", ReceiverID: "receiver_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", ReceiverID: "receiver_2"})
 
 	// When.
 	streams, err := manager.EventStreams(context.Background(), "receiver_1")
@@ -61,15 +61,15 @@ func TestEventManager_EventStreams(t *testing.T) {
 	}
 }
 
-func TestEventManager_Update(t *testing.T) {
+func TestEventManager_UpdateStream(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
 	stream := &goidc.SSFEventStream{ID: "stream_1", Status: goidc.SSFEventStreamStatusEnabled}
-	_ = manager.Create(context.Background(), stream)
+	_ = manager.CreateStream(context.Background(), stream)
 
 	// When.
 	stream.Status = goidc.SSFEventStreamStatusPaused
-	err := manager.Update(context.Background(), stream)
+	err := manager.UpdateStream(context.Background(), stream)
 
 	// Then.
 	if err != nil {
@@ -82,15 +82,15 @@ func TestEventManager_Update(t *testing.T) {
 	}
 }
 
-func TestEventManager_Delete(t *testing.T) {
+func TestEventManager_DeleteStream(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
-	_ = manager.AddSubject(context.Background(), "stream_1", goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}, goidc.SSFSubjectOptions{})
-	_ = manager.Save(context.Background(), "stream_1", goidc.SSFEvent{JWTID: "jti_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.AddStreamSubject(context.Background(), "stream_1", goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}, goidc.SSFSubjectOptions{})
+	_ = manager.SaveEvent(context.Background(), "stream_1", goidc.SSFEvent{ID: "jti_1"})
 
 	// When.
-	err := manager.Delete(context.Background(), "stream_1")
+	err := manager.DeleteStream(context.Background(), "stream_1")
 
 	// Then.
 	if err != nil {
@@ -106,11 +106,11 @@ func TestEventManager_Delete(t *testing.T) {
 func TestEventManager_MaxStreams(t *testing.T) {
 	// Given.
 	manager := NewEventManager(2)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAt: 100})
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAt: 200})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAt: 100})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAt: 200})
 
 	// When - create third stream, should evict oldest.
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAt: 300})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAt: 300})
 
 	// Then.
 	_, err := manager.EventStream(context.Background(), "stream_1")
@@ -129,14 +129,14 @@ func TestEventManager_MaxStreams(t *testing.T) {
 	}
 }
 
-func TestEventManager_AddAndRemoveSubject(t *testing.T) {
+func TestEventManager_AddAndRemoveStreamSubject(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 	subject := goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}
 
 	// When - add subject.
-	err := manager.AddSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
+	err := manager.AddStreamSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
 	if err != nil {
 		t.Fatalf("unexpected error adding subject: %v", err)
 	}
@@ -147,13 +147,13 @@ func TestEventManager_AddAndRemoveSubject(t *testing.T) {
 	}
 
 	// When - add same subject again (should not duplicate).
-	_ = manager.AddSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
+	_ = manager.AddStreamSubject(context.Background(), "stream_1", subject, goidc.SSFSubjectOptions{})
 	if len(manager.streamSubjects["stream_1"]) != 1 {
 		t.Errorf("got %d subjects after duplicate add, want 1", len(manager.streamSubjects["stream_1"]))
 	}
 
 	// When - remove subject.
-	err = manager.RemoveSubject(context.Background(), "stream_1", subject)
+	err = manager.RemoveStreamSubject(context.Background(), "stream_1", subject)
 	if err != nil {
 		t.Fatalf("unexpected error removing subject: %v", err)
 	}
@@ -167,21 +167,21 @@ func TestEventManager_AddAndRemoveSubject(t *testing.T) {
 func TestEventManager_SaveAndPoll(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
-		{JWTID: "jti_1", Type: goidc.SSFEventTypeCAEPSessionRevoked},
-		{JWTID: "jti_2", Type: goidc.SSFEventTypeCAEPSessionRevoked},
-		{JWTID: "jti_3", Type: goidc.SSFEventTypeCAEPSessionRevoked},
-		{JWTID: "jti_4", Type: goidc.SSFEventTypeCAEPSessionRevoked},
+		{ID: "jti_1", Type: goidc.SSFEventTypeCAEPSessionRevoked},
+		{ID: "jti_2", Type: goidc.SSFEventTypeCAEPSessionRevoked},
+		{ID: "jti_3", Type: goidc.SSFEventTypeCAEPSessionRevoked},
+		{ID: "jti_4", Type: goidc.SSFEventTypeCAEPSessionRevoked},
 	}
 
 	for _, e := range events {
-		_ = manager.Save(context.Background(), "stream_1", e)
+		_ = manager.SaveEvent(context.Background(), "stream_1", e)
 	}
 
 	// When - poll with default maxEvents (3).
-	result, err := manager.Poll(context.Background(), "stream_1", goidc.SSFPollOptions{})
+	result, err := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{})
 
 	// Then.
 	if err != nil {
@@ -198,15 +198,15 @@ func TestEventManager_SaveAndPoll(t *testing.T) {
 func TestEventManager_Poll_WithMaxEvents(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	for i := 0; i < 5; i++ {
-		_ = manager.Save(context.Background(), "stream_1", goidc.SSFEvent{JWTID: string(rune('a' + i))})
+		_ = manager.SaveEvent(context.Background(), "stream_1", goidc.SSFEvent{ID: string(rune('a' + i))})
 	}
 
 	// When - poll with custom maxEvents.
 	maxEvents := 2
-	result, err := manager.Poll(context.Background(), "stream_1", goidc.SSFPollOptions{MaxEvents: &maxEvents})
+	result, err := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{MaxEvents: &maxEvents})
 
 	// Then.
 	if err != nil {
@@ -220,10 +220,10 @@ func TestEventManager_Poll_WithMaxEvents(t *testing.T) {
 func TestEventManager_Poll_EmptyQueue(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When.
-	result, err := manager.Poll(context.Background(), "stream_1", goidc.SSFPollOptions{})
+	result, err := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{})
 
 	// Then.
 	if err != nil {
@@ -237,69 +237,69 @@ func TestEventManager_Poll_EmptyQueue(t *testing.T) {
 	}
 }
 
-func TestEventManager_Acknowledge(t *testing.T) {
+func TestEventManager_AcknowledgeEvents(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
-		{JWTID: "jti_1"},
-		{JWTID: "jti_2"},
-		{JWTID: "jti_3"},
+		{ID: "jti_1"},
+		{ID: "jti_2"},
+		{ID: "jti_3"},
 	}
 	for _, e := range events {
-		_ = manager.Save(context.Background(), "stream_1", e)
+		_ = manager.SaveEvent(context.Background(), "stream_1", e)
 	}
 
 	// When.
-	err := manager.Acknowledge(context.Background(), "stream_1", []string{"jti_1", "jti_3"}, goidc.SSFAcknowledgementOptions{})
+	err := manager.AcknowledgeEvents(context.Background(), "stream_1", []string{"jti_1", "jti_3"}, goidc.SSFAcknowledgementOptions{})
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	result, _ := manager.Poll(context.Background(), "stream_1", goidc.SSFPollOptions{})
+	result, _ := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{})
 	if len(result.Events) != 1 {
 		t.Errorf("got %d events after ack, want 1", len(result.Events))
 	}
-	if result.Events[0].JWTID != "jti_2" {
-		t.Errorf("remaining event JWTID = %s, want jti_2", result.Events[0].JWTID)
+	if result.Events[0].ID != "jti_2" {
+		t.Errorf("remaining event ID = %s, want jti_2", result.Events[0].ID)
 	}
 }
 
-func TestEventManager_AcknowledgeErrors(t *testing.T) {
+func TestEventManager_AcknowledgeEventErrors(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
-		{JWTID: "jti_1"},
-		{JWTID: "jti_2"},
-		{JWTID: "jti_3"},
+		{ID: "jti_1"},
+		{ID: "jti_2"},
+		{ID: "jti_3"},
 	}
 	for _, e := range events {
-		_ = manager.Save(context.Background(), "stream_1", e)
+		_ = manager.SaveEvent(context.Background(), "stream_1", e)
 	}
 
 	// When.
-	errs := map[string]goidc.SSFEventError{
-		"jti_1": {Error: goidc.SSFEventErrorCodeInvalidRequest, Description: "bad event"},
-		"jti_2": {Error: goidc.SSFEventErrorCodeAccessDenied, Description: "not allowed"},
+	errs := []goidc.SSFEventError{
+		{ID: "jti_1", Error: goidc.SSFEventErrorCodeInvalidRequest, Description: "bad event"},
+		{ID: "jti_2", Error: goidc.SSFEventErrorCodeAccessDenied, Description: "not allowed"},
 	}
-	err := manager.AcknowledgeErrors(context.Background(), "stream_1", errs, goidc.SSFAcknowledgementOptions{})
+	err := manager.AcknowledgeEventErrors(context.Background(), "stream_1", errs, goidc.SSFAcknowledgementOptions{})
 
 	// Then.
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
 
-	result, _ := manager.Poll(context.Background(), "stream_1", goidc.SSFPollOptions{})
+	result, _ := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{})
 	if len(result.Events) != 1 {
 		t.Errorf("got %d events after ack errors, want 1", len(result.Events))
 	}
-	if result.Events[0].JWTID != "jti_3" {
-		t.Errorf("remaining event JWTID = %s, want jti_3", result.Events[0].JWTID)
+	if result.Events[0].ID != "jti_3" {
+		t.Errorf("remaining event ID = %s, want jti_3", result.Events[0].ID)
 	}
 }
 
@@ -310,7 +310,7 @@ func TestEventManager_AcknowledgeErrors(t *testing.T) {
 func TestEventManager_Schedule_NoPublishFunc(t *testing.T) {
 	// Given.
 	manager := NewEventManager(100)
-	_ = manager.Create(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When - no publish func, should return early without panic.
 	err := manager.ScheduleVerificationEvent(context.Background(), "stream_1", goidc.SSFStreamVerificationOptions{})
