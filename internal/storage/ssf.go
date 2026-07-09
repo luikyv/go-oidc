@@ -140,11 +140,6 @@ func (m *Manager) AcknowledgeEventErrors(_ context.Context, streamID string, err
 }
 
 func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	oidcCtx, ok := ctx.(oidc.Context)
-	if !ok {
-		return nil
-	}
-
 	go func() {
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
@@ -155,7 +150,9 @@ func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string
 			return
 		}
 
-		event := goidc.NewSSFVerificationEvent(streamID, opts)
+		oidcCtx := ctx.(oidc.Context)
+
+		event := goidc.NewSSFVerificationEvent(oidcCtx.JWTID(), streamID, opts)
 		if stream.DeliveryMethod == goidc.SSFDeliveryMethodPoll {
 			_ = m.SaveEvent(ctx, streamID, event)
 			return
@@ -165,7 +162,7 @@ func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string
 			log.Printf("could not push SSF verification event for stream %s: push function is not configured\n", streamID)
 			return
 		}
-		_ = SSFPushEvent(oidc.NewContext(ctx, oidcCtx.Configuration), streamID, event)
+		_ = SSFPushEvent(oidcCtx, streamID, event)
 	}()
 	return nil
 }

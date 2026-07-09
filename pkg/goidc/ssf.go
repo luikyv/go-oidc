@@ -2,6 +2,8 @@ package goidc
 
 import (
 	"context"
+
+	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // SSFEventStreamManager manages the lifecycle of SSF event streams.
@@ -313,18 +315,20 @@ type SSFStreamVerificationOptions struct {
 	State string
 }
 
-func NewSSFVerificationEvent(streamID string, opts SSFStreamVerificationOptions) SSFEvent {
+func NewSSFVerificationEvent(id, streamID string, opts SSFStreamVerificationOptions) SSFEvent {
 	claims := make(map[string]any)
 	if opts.State != "" {
 		claims["state"] = opts.State
 	}
 	return SSFEvent{
+		ID:   id,
 		Type: SSFEventTypeVerification,
 		Subject: SSFSubject{
 			Format: SSFSubjectFormatOpaque,
 			ID:     streamID,
 		},
-		Claims: claims,
+		Claims:    claims,
+		CreatedAt: timeutil.TimestampNow(),
 	}
 }
 

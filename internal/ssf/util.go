@@ -54,14 +54,6 @@ func PushEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 		return nil
 	}
 
-	if event.ID == "" {
-		event.ID = ctx.JWTID()
-	}
-
-	if event.CreatedAt == 0 {
-		event.CreatedAt = timeutil.TimestampNow()
-	}
-
 	if event.Claims == nil {
 		event.Claims = make(map[string]any)
 	}
