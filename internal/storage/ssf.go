@@ -140,8 +140,12 @@ func (m *Manager) AcknowledgeEventErrors(_ context.Context, streamID string, err
 }
 
 func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+	oidcCtx, ok := ctx.(oidc.Context)
+	if !ok {
+		return nil
+	}
+
 	go func() {
-		oidcCtx := ctx.(oidc.Context)
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
 		oidcCtx = oidc.NewContext(ctx, oidcCtx.Configuration)
