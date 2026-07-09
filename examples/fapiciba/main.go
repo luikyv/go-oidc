@@ -35,9 +35,9 @@ func main() {
 		),
 		provider.WithRefreshTokenGrant(nil),
 		provider.WithMTLS(provider.MTLSConfig{
-			Host:           authutil.MTLSHost,
-			ClientCertFunc: authutil.ClientCertFunc,
-		}, provider.WithMTLSTokenBindingRequired()),
+			Host:       authutil.MTLSHost,
+			ClientCert: authutil.ClientCertFunc,
+		}, provider.WithMTLSTokenBinding(provider.WithMTLSTokenBindingRequired())),
 		provider.WithPrivateKeyJWTAuthn(goidc.PS256),
 		provider.WithTLSAuthn(),
 		provider.WithClaims(authutil.Claims...),

@@ -431,11 +431,11 @@ func WithSelfSignedTLSAuthn() Option {
 	}
 }
 
-type AttestionJWTAuthnOption Option
+type AttestationJWTAuthnOption Option
 
 // WithAttestationJWTAuthn enables the "attest_jwt_client_auth" client
 // authentication method with the given trusted attestation issuers.
-func WithAttestationJWTAuthn(issuers []goidc.AttestationIssuer, opts ...AttestionJWTAuthnOption) Option {
+func WithAttestationJWTAuthn(issuers []goidc.AttestationIssuer, opts ...AttestationJWTAuthnOption) Option {
 	return func(p *Provider) error {
 		if len(issuers) == 0 {
 			return errors.New("at least one attestation issuer is required")
@@ -459,7 +459,7 @@ func WithAttestationJWTAuthn(issuers []goidc.AttestationIssuer, opts ...Attestio
 	}
 }
 
-func WithAttestionIssuerHTTPClient(f goidc.HTTPClientFunc) AttestionJWTAuthnOption {
+func WithAttestationIssuerHTTPClient(f goidc.HTTPClientFunc) AttestationJWTAuthnOption {
 	return func(p *Provider) error {
 		p.config.AuthnMethodAttestationJWTHTTPClientFunc = f
 		return nil
@@ -1170,6 +1170,8 @@ func WithDevicePolicies(policies ...goidc.AuthnPolicy) DeviceGrantOption {
 // See [WithCIBAGrant] for more information.
 type CIBAOption Option
 
+type CIBAJAROption Option
+
 // CIBAGrantConfig holds the required configuration for the CIBA grant.
 type CIBAGrantConfig struct {
 	// Manager persists pending CIBA sessions. If nil, the default in-memory
@@ -1232,19 +1234,24 @@ func WithCIBAHTTPClientFunc(f goidc.HTTPClientFunc) CIBAOption {
 }
 
 // WithCIBAJAR enables JAR for CIBA requests.
-func WithCIBAJAR(sigAlgs []goidc.SignatureAlgorithm) CIBAOption {
+func WithCIBAJAR(sigAlgs []goidc.SignatureAlgorithm, opts ...CIBAJAROption) CIBAOption {
 	return func(p *Provider) error {
 		p.config.CIBAJAREnabled = true
 		p.config.CIBAJARSigAlgs = sigAlgs
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
-// WithCIBAJARRequired enables and requires JAR for CIBA requests.
-func WithCIBAJARRequired(sigAlgs []goidc.SignatureAlgorithm) CIBAOption {
+// WithCIBAJARRequired requires JAR for CIBA requests.
+func WithCIBAJARRequired() CIBAJAROption {
 	return func(p *Provider) error {
 		p.config.CIBAJARRequired = true
-		return WithCIBAJAR(sigAlgs)(p)
+		return nil
 	}
 }
 
@@ -1347,9 +1354,9 @@ func WithDCRRegistrationTokenFunc(f goidc.RandomFunc) DCROption {
 	}
 }
 
-// WithDCRClientID sets the function used to generate client IDs for dynamically
+// WithDCRClientIDFunc sets the function used to generate client IDs for dynamically
 // registered clients.
-func WithDCRClientID(f goidc.ClientIDFunc) DCROption {
+func WithDCRClientIDFunc(f goidc.ClientIDFunc) DCROption {
 	return func(p *Provider) error {
 		p.config.DCRClientIDFunc = f
 		return nil
@@ -1475,8 +1482,8 @@ type MTLSConfig struct {
 	// Host is the mTLS-specific host the provider listens on. Client
 	// certificate-authenticated requests must be routed to this host.
 	Host string
-	// ClientCertFunc extracts the client certificate from the request.
-	ClientCertFunc goidc.ClientCertFunc
+	// ClientCert extracts the client certificate from the request.
+	ClientCert goidc.ClientCertFunc
 }
 
 // WithMTLS allows requests to be established with mutual TLS.
@@ -1485,12 +1492,12 @@ func WithMTLS(cfg MTLSConfig, opts ...MTLSOption) Option {
 		if cfg.Host == "" {
 			return errors.New("the mtls host cannot be empty")
 		}
-		if cfg.ClientCertFunc == nil {
+		if cfg.ClientCert == nil {
 			return errors.New("the mtls client certificate function cannot be nil")
 		}
 		p.config.MTLSEnabled = true
 		p.config.MTLSHost = cfg.Host
-		p.config.ClientCertFunc = cfg.ClientCertFunc
+		p.config.ClientCertFunc = cfg.ClientCert
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -1500,20 +1507,27 @@ func WithMTLS(cfg MTLSConfig, opts ...MTLSOption) Option {
 	}
 }
 
+// MTLSTokenBindingOption is an optional configuration for mTLS token binding.
+type MTLSTokenBindingOption MTLSOption
+
 // WithMTLSTokenBinding makes requests to /token return tokens bound to the
 // client certificate if any is sent.
-func WithMTLSTokenBinding() MTLSOption {
+func WithMTLSTokenBinding(opts ...MTLSTokenBindingOption) MTLSOption {
 	return func(p *Provider) error {
 		p.config.MTLSTokenBindingEnabled = true
+		for _, opt := range opts {
+			if err := opt(p); err != nil {
+				return err
+			}
+		}
 		return nil
 	}
 }
 
 // WithMTLSTokenBindingRequired makes requests to /token return tokens bound to the
 // client certificate.
-func WithMTLSTokenBindingRequired() MTLSOption {
+func WithMTLSTokenBindingRequired() MTLSTokenBindingOption {
 	return func(p *Provider) error {
-		p.config.MTLSTokenBindingEnabled = true
 		p.config.MTLSTokenBindingRequired = true
 		return nil
 	}

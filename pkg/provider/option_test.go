@@ -693,14 +693,14 @@ func TestWithLocalhostRedirectURIs(t *testing.T) {
 	}
 }
 
-func TestWithDCRClientID(t *testing.T) {
+func TestWithDCRClientIDFunc(t *testing.T) {
 	// Given.
 	op := &Provider{
 		config: oidc.Configuration{},
 	}
 
 	// When.
-	err := WithDCRClientID(func(context.Context) string {
+	err := WithDCRClientIDFunc(func(context.Context) string {
 		return "client_id"
 	})(op)
 
@@ -1384,8 +1384,8 @@ func TestWithMTLS(t *testing.T) {
 
 	// When.
 	err := WithMTLS(MTLSConfig{
-		Host:           "https://matls-example.com",
-		ClientCertFunc: clientCertFunc,
+		Host:       "https://matls-example.com",
+		ClientCert: clientCertFunc,
 	})(p)
 
 	// Then.
@@ -1464,7 +1464,7 @@ func TestWithTLSCertTokenBindingRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithMTLSTokenBindingRequired()(p)
+	err := WithMTLSTokenBinding(WithMTLSTokenBindingRequired())(p)
 
 	// Then.
 	if err != nil {
@@ -2212,7 +2212,7 @@ func TestWithCIBAJARRequired(t *testing.T) {
 	}
 
 	// When.
-	err := WithCIBAJARRequired([]goidc.SignatureAlgorithm{goidc.PS256})(p)
+	err := WithCIBAJAR([]goidc.SignatureAlgorithm{goidc.PS256}, WithCIBAJARRequired())(p)
 
 	// Then.
 	if err != nil {

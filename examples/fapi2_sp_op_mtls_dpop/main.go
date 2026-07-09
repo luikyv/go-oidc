@@ -26,8 +26,8 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
 		provider.WithMTLS(provider.MTLSConfig{
-			Host:           authutil.MTLSHost,
-			ClientCertFunc: authutil.ClientCertFunc,
+			Host:       authutil.MTLSHost,
+			ClientCert: authutil.ClientCertFunc,
 		}),
 		provider.WithTLSAuthn(),
 		provider.WithDPoP([]goidc.SignatureAlgorithm{goidc.PS256, goidc.ES256}, provider.WithDPoPRequired()),

@@ -26,9 +26,9 @@ func main() {
 		provider.WithScopes(authutil.Scopes...),
 		provider.WithUserInfoSignatureAlgs(goidc.PS256),
 		provider.WithMTLS(provider.MTLSConfig{
-			Host:           authutil.MTLSHost,
-			ClientCertFunc: authutil.ClientCertFunc,
-		}, provider.WithMTLSTokenBindingRequired()),
+			Host:       authutil.MTLSHost,
+			ClientCert: authutil.ClientCertFunc,
+		}, provider.WithMTLSTokenBinding(provider.WithMTLSTokenBindingRequired())),
 		provider.WithTLSAuthn(),
 		provider.WithAuthCodeGrant(provider.AuthCodeGrantConfig{
 			ResponseTypes: []goidc.ResponseType{goidc.ResponseTypeCode},
