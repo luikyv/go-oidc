@@ -141,16 +141,16 @@ func (m *Manager) AcknowledgeEventErrors(_ context.Context, streamID string, err
 
 func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
 	go func() {
+		oidcCtx := ctx.(oidc.Context)
 		ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), 10*time.Second)
 		defer cancel()
+		oidcCtx = oidc.NewContext(ctx, oidcCtx.Configuration)
 
 		stream, err := m.EventStream(ctx, streamID)
 		if err != nil {
 			log.Printf("could not fetch stream %s\n", streamID)
 			return
 		}
-
-		oidcCtx := ctx.(oidc.Context)
 
 		event := goidc.NewSSFVerificationEvent(oidcCtx.JWTID(), streamID, opts)
 		if stream.DeliveryMethod == goidc.SSFDeliveryMethodPoll {
