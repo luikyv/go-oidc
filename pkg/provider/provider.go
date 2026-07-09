@@ -294,29 +294,28 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 
 	if op.config.SSFEnabled {
 		op.config.SSFHost = nonZeroOrDefault(op.config.SSFHost, op.config.Host)
-		ssfManager := ssf.NewEventManager(defaultStorageMaxSize)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
-		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(inmemoryManager))
 		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
 		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
 		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
 		if op.config.SSFStatusManagementEnabled {
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
-			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(ssfManager))
+			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(inmemoryManager))
 		}
 		if op.config.SSFSubjectEnabled {
 			op.config.SSFSubjectAddEndpoint = nonZeroOrDefault(op.config.SSFSubjectAddEndpoint, defaultEndpointSSFAddSubject)
 			op.config.SSFSubjectRemoveEndpoint = nonZeroOrDefault(op.config.SSFSubjectRemoveEndpoint, defaultEndpointSSFRemoveSubject)
-			op.config.SSFSubjectManager = nonZeroOrDefault(op.config.SSFSubjectManager, goidc.SSFSubjectManager(ssfManager))
+			op.config.SSFSubjectManager = nonZeroOrDefault(op.config.SSFSubjectManager, goidc.SSFSubjectManager(inmemoryManager))
 		}
 		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
 			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
-			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(ssfManager))
+			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(inmemoryManager))
 		}
 		if op.config.SSFVerificationEnabled {
 			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
-			op.config.SSFScheduleVerificationEventFunc = nonZeroOrDefault(op.config.SSFScheduleVerificationEventFunc, ssfManager.ScheduleVerificationEvent)
+			op.config.SSFVerificationManager = nonZeroOrDefault(op.config.SSFVerificationManager, goidc.SSFVerificationManager(inmemoryManager))
 		}
 	}
 
@@ -866,10 +865,6 @@ func defaultOpenIDFedRequiredTrustMarksFunc(context.Context, *goidc.Client) []go
 
 func defaultOpenIDFedHandleClientFunc(context.Context, *goidc.Client) error {
 	return nil
-}
-
-func defaultVCHandlePreAuthCodeFunc(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
-	return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
 }
 
 func defaultCIBAHandleSessionFunc(context.Context, *goidc.AuthnSession, *goidc.Client) error {

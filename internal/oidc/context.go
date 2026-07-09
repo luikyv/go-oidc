@@ -604,11 +604,11 @@ func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
 }
 
 func (ctx Context) SSFCreateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.CreateStream(ctx, stream)
+	return ctx.SSFEventStreamManager.CreateEventStream(ctx, stream)
 }
 
 func (ctx Context) SSFUpdateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.UpdateStream(ctx, stream)
+	return ctx.SSFEventStreamManager.UpdateEventStream(ctx, stream)
 }
 
 func (ctx Context) SSFEventStream(id string) (*goidc.SSFEventStream, error) {
@@ -620,7 +620,7 @@ func (ctx Context) SSFEventStreams(receiverID string) ([]*goidc.SSFEventStream, 
 }
 
 func (ctx Context) SSFDeleteEventStream(id string) error {
-	return ctx.SSFEventStreamManager.DeleteStream(ctx, id)
+	return ctx.SSFEventStreamManager.DeleteEventStream(ctx, id)
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
@@ -694,7 +694,7 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs []goidc.SSFEventEr
 }
 
 func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	return ctx.SSFScheduleVerificationEventFunc(ctx, streamID, opts)
+	return ctx.SSFVerificationManager.ScheduleVerificationEvent(ctx, streamID, opts)
 }
 
 func (ctx Context) SSFHTTPClient() *http.Client {

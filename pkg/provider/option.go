@@ -2058,10 +2058,10 @@ func WithSSFRemoveSubjectEndpoint(endpoint string) SSFSubjectManagementOption {
 // to request verification events to confirm the stream is working correctly.
 // The transmitter responds by sending a verification event with an optional state value.
 // If the function is nil, the provider will use the default in memory verification implementation.
-func WithSSFVerification(f goidc.SSFScheduleVerificationEventFunc, opts ...SSFVerificationOption) SSFOption {
+func WithSSFVerification(m goidc.SSFVerificationManager, opts ...SSFVerificationOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFVerificationEnabled = true
-		p.config.SSFScheduleVerificationEventFunc = f
+		p.config.SSFVerificationManager = m
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -2078,7 +2078,7 @@ func WithSSFMinVerificationInterval(secs int) SSFVerificationOption {
 		if secs < 0 {
 			return errors.New("the ssf minimum verification interval cannot be negative")
 		}
-		p.config.SSFMinVerificationInterval = secs
+		p.config.SSFVerificationMinInterval = secs
 		return nil
 	}
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/internal/oidctest"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
@@ -1107,7 +1108,7 @@ func TestScheduleVerificationEvent(t *testing.T) {
 func TestScheduleVerificationEvent_RateLimited(t *testing.T) {
 	// Given.
 	ctx := setUp(t)
-	ctx.SSFMinVerificationInterval = 60
+	ctx.SSFVerificationMinInterval = 60
 	stream := createTestStream(t, ctx, goidc.SSFDeliveryMethodPoll)
 
 	req := requestVerificationEvent{
@@ -1864,7 +1865,7 @@ func setUp(t *testing.T) oidc.Context {
 	t.Helper()
 
 	ctx := oidctest.NewContext(t)
-	manager := NewEventManager(100)
+	manager := storage.NewManager(100)
 	ctx.SSFAuthenticatedReceiverFunc = func(_ context.Context) (goidc.SSFReceiver, error) {
 		return goidc.SSFReceiver{
 			ID: testReceiverID,
@@ -1876,7 +1877,7 @@ func setUp(t *testing.T) oidc.Context {
 	ctx.SSFEventStreamManager = manager
 	ctx.SSFSubjectManager = manager
 	ctx.SSFEventPollManager = manager
-	ctx.SSFScheduleVerificationEventFunc = manager.ScheduleVerificationEvent
+	ctx.SSFVerificationManager = manager
 	ctx.SSFDeliveryMethods = []goidc.SSFDeliveryMethod{goidc.SSFDeliveryMethodPush, goidc.SSFDeliveryMethodPoll}
 	ctx.SSFEventTypes = []goidc.SSFEventType{goidc.SSFEventTypeCAEPSessionRevoked, goidc.SSFEventTypeCAEPCredentialChange}
 	ctx.SSFVerificationEnabled = true
@@ -1891,9 +1892,11 @@ func setUp(t *testing.T) oidc.Context {
 func saveTestEvent(t *testing.T, ctx oidc.Context, streamID string, event goidc.SSFEvent) {
 	t.Helper()
 
-	manager, ok := ctx.SSFEventPollManager.(*EventManager)
+	manager, ok := ctx.SSFEventPollManager.(interface {
+		SaveEvent(context.Context, string, goidc.SSFEvent) error
+	})
 	if !ok {
-		t.Fatalf("SSFEventPollManager = %T, want *EventManager", ctx.SSFEventPollManager)
+		t.Fatalf("SSFEventPollManager = %T, want SaveEvent support", ctx.SSFEventPollManager)
 	}
 
 	if err := manager.SaveEvent(ctx, streamID, event); err != nil {

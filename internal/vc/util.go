@@ -509,7 +509,7 @@ func deferredCredential(ctx oidc.Context, req deferredRequest) (response, error)
 			return response{}, goidc.NewError(goidc.ErrorCodeInvalidTransactionID, "invalid transaction id")
 		}
 
-		credConfig, ok := ctx.VCISelfConfigurations[goidc.VCConfigurationID(deferral.CredentialConfigurationID)]
+		credConfig, ok := ctx.VCISelfConfigurations[deferral.CredentialConfigurationID]
 		if !ok || credConfig.IsDeferred == nil {
 			return response{}, fmt.Errorf("could not find a deferrable credential configuration %q for the deferral", deferral.CredentialConfigurationID)
 		}
@@ -547,7 +547,7 @@ func deferredCredential(ctx oidc.Context, req deferredRequest) (response, error)
 		var credentials []string
 		if len(deferral.ProofKeys) == 0 {
 			cred, err := credConfig.Issue(ctx, grant, goidc.VCIssuanceOptions{
-				CredentialID:   goidc.VCIdentifier(deferral.CredentialIdentifier),
+				CredentialID:   deferral.CredentialIdentifier,
 				NotificationID: notificationID,
 			})
 			if err != nil {
@@ -557,7 +557,7 @@ func deferredCredential(ctx oidc.Context, req deferredRequest) (response, error)
 		} else {
 			for _, proofKey := range deferral.ProofKeys {
 				cred, err := credConfig.Issue(ctx, grant, goidc.VCIssuanceOptions{
-					CredentialID:   goidc.VCIdentifier(deferral.CredentialIdentifier),
+					CredentialID:   deferral.CredentialIdentifier,
 					NotificationID: notificationID,
 					ProofKey:       &proofKey,
 				})

@@ -478,8 +478,8 @@ func TestIssue(t *testing.T) {
 			ctx := test.ctx(t)
 			resp, err := issue(ctx, test.req)
 			if test.wantCode != "" {
-				oidcErr, ok := err.(goidc.Error)
-				if !ok || oidcErr.Code != test.wantCode {
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantCode {
 					t.Fatalf("error = %v, want code %q", err, test.wantCode)
 				}
 				return
@@ -618,8 +618,8 @@ func TestDeferredCredential_Errors(t *testing.T) {
 			}
 
 			_, err := deferredCredential(ctx, test.req)
-			oidcErr, ok := err.(goidc.Error)
-			if !ok || oidcErr.Code != test.wantCode {
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) || oidcErr.Code != test.wantCode {
 				t.Fatalf("error = %v, want code %q", err, test.wantCode)
 			}
 		})
@@ -686,8 +686,8 @@ func TestDeferredCredential_Poll(t *testing.T) {
 
 				// Polling again after resolution must fail, since the deferral was consumed.
 				_, err = deferredCredential(ctx, deferredRequest{TransactionID: "txn_id"})
-				oidcErr, ok := err.(goidc.Error)
-				if !ok || oidcErr.Code != goidc.ErrorCodeInvalidTransactionID {
+				var oidcErr goidc.Error
+				if !errors.As(err, &oidcErr) || oidcErr.Code != goidc.ErrorCodeInvalidTransactionID {
 					t.Fatalf("error = %v, want code %q", err, goidc.ErrorCodeInvalidTransactionID)
 				}
 			},
@@ -801,8 +801,8 @@ func TestDeferredCredential_ResponseEncryptionValidation(t *testing.T) {
 			}
 
 			_, err := deferredCredential(ctx, test.req)
-			oidcErr, ok := err.(goidc.Error)
-			if !ok || oidcErr.Code != goidc.ErrorCodeInvalidRequest {
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) || oidcErr.Code != goidc.ErrorCodeInvalidRequest {
 				t.Fatalf("error = %v, want code %q", err, goidc.ErrorCodeInvalidRequest)
 			}
 		})

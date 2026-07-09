@@ -182,9 +182,6 @@ func NewContext(tb testing.TB) oidc.Context {
 		CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
 			return errors.New("ciba init back auth function is not set")
 		},
-		SSFScheduleVerificationEventFunc: func(context.Context, string, goidc.SSFStreamVerificationOptions) error {
-			return errors.New("schedule verification event function is not set")
-		},
 		SSFHandleExpiredEventStreamFunc: func(context.Context, *goidc.SSFEventStream) error {
 			return nil
 		},

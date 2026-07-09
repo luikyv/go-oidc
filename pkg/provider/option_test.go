@@ -3017,7 +3017,7 @@ func TestSSFMinVerificationInterval(t *testing.T) {
 	want := &Provider{
 		config: oidc.Configuration{
 			SSFVerificationEnabled:     true,
-			SSFMinVerificationInterval: 60,
+			SSFVerificationMinInterval: 60,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {

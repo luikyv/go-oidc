@@ -265,9 +265,9 @@ type Configuration struct {
 	SSFSubjectAddEndpoint                string
 	SSFSubjectRemoveEndpoint             string
 	SSFVerificationEnabled               bool
-	SSFScheduleVerificationEventFunc     goidc.SSFScheduleVerificationEventFunc
+	SSFVerificationManager               goidc.SSFVerificationManager
 	SSFVerificationEndpoint              string
-	SSFMinVerificationInterval           int
+	SSFVerificationMinInterval           int
 	SSFCriticalSubjectMembers            []string
 	SSFAuthorizationSchemes              []goidc.SSFAuthorizationScheme
 	SSFDefaultSubjects                   goidc.SSFDefaultSubject

@@ -11,9 +11,14 @@ import (
 
 	"github.com/go-jose/go-jose/v4"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+func init() {
+	storage.SSFPushEvent = PushEvent
+}
 
 func signEvent(ctx oidc.Context, stream *goidc.SSFEventStream, event goidc.SSFEvent) (string, error) {
 	token := securityEventToken{
@@ -84,6 +89,7 @@ func PushEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 	if resp.StatusCode >= 400 {
 		return fmt.Errorf("sending the event push request returned status %d", resp.StatusCode)
 	}
+
 	return nil
 }
 
@@ -564,7 +570,7 @@ func toResponse(ctx oidc.Context, stream *goidc.SSFEventStream) response {
 			Endpoint: deliveryEndpoint,
 		},
 		Description:             stream.Description,
-		MinVerificationInterval: ctx.SSFMinVerificationInterval,
+		MinVerificationInterval: ctx.SSFVerificationMinInterval,
 		InactivityTimeout:       inactivityTimeout,
 	}
 }
@@ -645,8 +651,8 @@ func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) e
 		return err
 	}
 
-	if ctx.SSFMinVerificationInterval != 0 {
-		if stream.VerifiedAt != 0 && stream.VerifiedAt+ctx.SSFMinVerificationInterval > timeutil.TimestampNow() {
+	if ctx.SSFVerificationMinInterval != 0 {
+		if stream.VerifiedAt != 0 && stream.VerifiedAt+ctx.SSFVerificationMinInterval > timeutil.TimestampNow() {
 			return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request", errors.New("verification event cannot be triggered within the minimum verification interval")).WithStatusCode(http.StatusTooManyRequests)
 		}
 		stream.VerifiedAt = timeutil.TimestampNow()

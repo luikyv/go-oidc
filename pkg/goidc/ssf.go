@@ -6,14 +6,14 @@ import (
 
 // SSFEventStreamManager manages the lifecycle of SSF event streams.
 type SSFEventStreamManager interface {
-	CreateStream(context.Context, *SSFEventStream) error
-	UpdateStream(context.Context, *SSFEventStream) error
+	CreateEventStream(context.Context, *SSFEventStream) error
+	UpdateEventStream(context.Context, *SSFEventStream) error
 	// EventStream returns the event stream identified by id.
 	// It must return [ErrNotFound] when the stream does not exist.
 	EventStream(context.Context, string) (*SSFEventStream, error)
 	// EventStreams returns the event streams associated with the receiver.
 	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
-	DeleteStream(context.Context, string) error
+	DeleteEventStream(context.Context, string) error
 }
 
 // SSFSubjectManager manages the subjects associated with an event stream.
@@ -38,7 +38,9 @@ type SSFEventPollManager interface {
 	AcknowledgeEventErrors(ctx context.Context, streamID string, errs []SSFEventError, opts SSFAcknowledgementOptions) error
 }
 
-type SSFScheduleVerificationEventFunc func(context.Context, string, SSFStreamVerificationOptions) error
+type SSFVerificationManager interface {
+	ScheduleVerificationEvent(ctx context.Context, streamID string, opts SSFStreamVerificationOptions) error
+}
 
 // SSFEventStream represents a configured event stream between a transmitter and receiver.
 // See [SSF 1.0 §8.1.1] for the stream configuration schema.

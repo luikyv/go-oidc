@@ -237,7 +237,7 @@ func TestHandleDeferredCredential(t *testing.T) {
 			body, _ := json.Marshal(map[string]string{"transaction_id": "txn_id"})
 			req := httptest.NewRequest(
 				http.MethodPost,
-				ctx.Configuration.EndpointPrefix+ctx.Configuration.VCISelfDeferredCredentialEndpoint,
+				ctx.EndpointPrefix+ctx.VCISelfDeferredCredentialEndpoint,
 				bytes.NewReader(body),
 			)
 			req.Header.Set("Authorization", "Bearer access_token")

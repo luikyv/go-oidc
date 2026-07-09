@@ -1,4 +1,4 @@
-package ssf
+package storage
 
 import (
 	"context"
@@ -7,9 +7,9 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func TestEventManager_CreateStreamAndEventStream(t *testing.T) {
+func TestManager_SSFCreateStreamAndEventStream(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
+	manager := NewManager(100)
 	stream := &goidc.SSFEventStream{
 		ID:         "stream_1",
 		ReceiverID: "receiver_1",
@@ -17,7 +17,7 @@ func TestEventManager_CreateStreamAndEventStream(t *testing.T) {
 	}
 
 	// When.
-	err := manager.CreateStream(context.Background(), stream)
+	err := manager.CreateEventStream(context.Background(), stream)
 
 	// Then.
 	if err != nil {
@@ -33,8 +33,8 @@ func TestEventManager_CreateStreamAndEventStream(t *testing.T) {
 	}
 }
 
-func TestEventManager_EventStream_NotFound(t *testing.T) {
-	manager := NewEventManager(100)
+func TestManager_SSFEventStream_NotFound(t *testing.T) {
+	manager := NewManager(100)
 
 	_, err := manager.EventStream(context.Background(), "nonexistent")
 	if err == nil {
@@ -42,12 +42,12 @@ func TestEventManager_EventStream_NotFound(t *testing.T) {
 	}
 }
 
-func TestEventManager_EventStreams(t *testing.T) {
+func TestManager_SSFEventStreams(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", ReceiverID: "receiver_1"})
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", ReceiverID: "receiver_1"})
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", ReceiverID: "receiver_2"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", ReceiverID: "receiver_1"})
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", ReceiverID: "receiver_1"})
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", ReceiverID: "receiver_2"})
 
 	// When.
 	streams, err := manager.EventStreams(context.Background(), "receiver_1")
@@ -61,15 +61,15 @@ func TestEventManager_EventStreams(t *testing.T) {
 	}
 }
 
-func TestEventManager_UpdateStream(t *testing.T) {
+func TestManager_SSFUpdateStream(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
+	manager := NewManager(100)
 	stream := &goidc.SSFEventStream{ID: "stream_1", Status: goidc.SSFEventStreamStatusEnabled}
-	_ = manager.CreateStream(context.Background(), stream)
+	_ = manager.CreateEventStream(context.Background(), stream)
 
 	// When.
 	stream.Status = goidc.SSFEventStreamStatusPaused
-	err := manager.UpdateStream(context.Background(), stream)
+	err := manager.UpdateEventStream(context.Background(), stream)
 
 	// Then.
 	if err != nil {
@@ -82,15 +82,15 @@ func TestEventManager_UpdateStream(t *testing.T) {
 	}
 }
 
-func TestEventManager_DeleteStream(t *testing.T) {
+func TestManager_SSFDeleteStream(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 	_ = manager.AddStreamSubject(context.Background(), "stream_1", goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}, goidc.SSFSubjectOptions{})
 	_ = manager.SaveEvent(context.Background(), "stream_1", goidc.SSFEvent{ID: "jti_1"})
 
 	// When.
-	err := manager.DeleteStream(context.Background(), "stream_1")
+	err := manager.DeleteEventStream(context.Background(), "stream_1")
 
 	// Then.
 	if err != nil {
@@ -103,14 +103,14 @@ func TestEventManager_DeleteStream(t *testing.T) {
 	}
 }
 
-func TestEventManager_MaxStreams(t *testing.T) {
+func TestManager_SSFMaxStreams(t *testing.T) {
 	// Given.
-	manager := NewEventManager(2)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAt: 100})
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAt: 200})
+	manager := NewManager(2)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1", CreatedAt: 100})
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_2", CreatedAt: 200})
 
 	// When - create third stream, should evict oldest.
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAt: 300})
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_3", CreatedAt: 300})
 
 	// Then.
 	_, err := manager.EventStream(context.Background(), "stream_1")
@@ -129,10 +129,10 @@ func TestEventManager_MaxStreams(t *testing.T) {
 	}
 }
 
-func TestEventManager_AddAndRemoveStreamSubject(t *testing.T) {
+func TestManager_SSFAddAndRemoveStreamSubject(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 	subject := goidc.SSFSubject{Format: goidc.SSFSubjectFormatEmail, Email: "user@example.com"}
 
 	// When - add subject.
@@ -164,10 +164,10 @@ func TestEventManager_AddAndRemoveStreamSubject(t *testing.T) {
 	}
 }
 
-func TestEventManager_SaveAndPoll(t *testing.T) {
+func TestManager_SSFSaveAndPoll(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
 		{ID: "jti_1", Type: goidc.SSFEventTypeCAEPSessionRevoked},
@@ -195,10 +195,10 @@ func TestEventManager_SaveAndPoll(t *testing.T) {
 	}
 }
 
-func TestEventManager_Poll_WithMaxEvents(t *testing.T) {
+func TestManager_SSFPoll_WithMaxEvents(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	for i := 0; i < 5; i++ {
 		_ = manager.SaveEvent(context.Background(), "stream_1", goidc.SSFEvent{ID: string(rune('a' + i))})
@@ -217,10 +217,10 @@ func TestEventManager_Poll_WithMaxEvents(t *testing.T) {
 	}
 }
 
-func TestEventManager_Poll_EmptyQueue(t *testing.T) {
+func TestManager_SSFPoll_EmptyQueue(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When.
 	result, err := manager.PollEvents(context.Background(), "stream_1", goidc.SSFPollOptions{})
@@ -237,10 +237,10 @@ func TestEventManager_Poll_EmptyQueue(t *testing.T) {
 	}
 }
 
-func TestEventManager_AcknowledgeEvents(t *testing.T) {
+func TestManager_SSFAcknowledgeEvents(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
 		{ID: "jti_1"},
@@ -268,10 +268,10 @@ func TestEventManager_AcknowledgeEvents(t *testing.T) {
 	}
 }
 
-func TestEventManager_AcknowledgeEventErrors(t *testing.T) {
+func TestManager_SSFAcknowledgeEventErrors(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	events := []goidc.SSFEvent{
 		{ID: "jti_1"},
@@ -303,14 +303,10 @@ func TestEventManager_AcknowledgeEventErrors(t *testing.T) {
 	}
 }
 
-// Note: TestEventManager_Schedule is not included because Schedule() has a bug
-// where it wraps the context with WithTimeout and then tries to type-assert
-// back to oidc.Context, which fails. This needs to be fixed in production code.
-
-func TestEventManager_Schedule_NoPublishFunc(t *testing.T) {
+func TestManager_SSFScheduleVerificationEvent_NoOIDCContext(t *testing.T) {
 	// Given.
-	manager := NewEventManager(100)
-	_ = manager.CreateStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
+	manager := NewManager(100)
+	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When - no publish func, should return early without panic.
 	err := manager.ScheduleVerificationEvent(context.Background(), "stream_1", goidc.SSFStreamVerificationOptions{})
