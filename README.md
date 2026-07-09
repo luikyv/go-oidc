@@ -1178,7 +1178,7 @@ op, _ := provider.New(
   provider.WithSSF(
     provider.SSFConfig{
       Manager: nil, // nil uses ad hoc in-memory storage.
-      JWKSFunc: func(_ context.Context) (goidc.JSONWebKeySet, error) {
+      JWKS: func(_ context.Context) (goidc.JSONWebKeySet, error) {
         return ssfJWKS, nil
       },
       SigAlg: goidc.RS256,
@@ -1201,9 +1201,9 @@ The transmitter configuration is exposed at `GET /.well-known/ssf-configuration`
 
 Push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) sends SETs to a receiver-provided endpoint. Poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)) lets receivers fetch pending events from `/ssf/poll`.
 
-To publish events:
+To push events:
 ```go
-op.PublishSSFEvent(ctx, streamID, goidc.SSFEvent{
+op.PushSSFEvent(ctx, streamID, goidc.SSFEvent{
   Type: goidc.SSFEventTypeCAEPSessionRevoked,
   Subject: goidc.SSFSubject{
     Format: goidc.SSFSubjectFormatEmail,
@@ -1219,10 +1219,20 @@ provider.WithSSFStatusManagement()
 // Allow receivers to add/remove subjects from a stream.
 provider.WithSSFSubjectManagement(nil)
 // Allow receivers to request verification events.
-provider.WithSSFVerification(func(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+provider.WithSSFVerification(nil)
+// Or provide custom verification scheduling.
+provider.WithSSFVerification(verificationManager)
+```
+
+A custom verification manager receives the verification event already built by
+the protocol layer:
+```go
+type verificationManager struct{}
+
+func (verificationManager) ScheduleVerificationEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
   // Schedule the verification event for async delivery.
   return nil
-})
+}
 ```
 
 For a complete example, see [`examples/ssf`](examples/ssf).

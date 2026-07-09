@@ -2,8 +2,6 @@ package goidc
 
 import (
 	"context"
-
-	"github.com/luikyv/go-oidc/internal/timeutil"
 )
 
 // SSFEventStreamManager manages the lifecycle of SSF event streams.
@@ -41,7 +39,7 @@ type SSFEventPollManager interface {
 }
 
 type SSFVerificationManager interface {
-	ScheduleVerificationEvent(ctx context.Context, streamID string, opts SSFStreamVerificationOptions) error
+	ScheduleVerificationEvent(ctx context.Context, streamID string, event SSFEvent) error
 }
 
 // SSFEventStream represents a configured event stream between a transmitter and receiver.
@@ -310,26 +308,5 @@ const (
 	SSFEventStreamStatusPaused   SSFEventStreamStatus = "paused"
 	SSFEventStreamStatusDisabled SSFEventStreamStatus = "disabled"
 )
-
-type SSFStreamVerificationOptions struct {
-	State string
-}
-
-func NewSSFVerificationEvent(id, streamID string, opts SSFStreamVerificationOptions) SSFEvent {
-	claims := make(map[string]any)
-	if opts.State != "" {
-		claims["state"] = opts.State
-	}
-	return SSFEvent{
-		ID:   id,
-		Type: SSFEventTypeVerification,
-		Subject: SSFSubject{
-			Format: SSFSubjectFormatOpaque,
-			ID:     streamID,
-		},
-		Claims:    claims,
-		CreatedAt: timeutil.TimestampNow(),
-	}
-}
 
 type SSFHandleExpiredEventStreamFunc func(context.Context, *SSFEventStream) error

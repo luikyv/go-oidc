@@ -693,8 +693,8 @@ func (ctx Context) SSFAcknowledgeErrors(streamID string, errs []goidc.SSFEventEr
 	return ctx.SSFEventPollManager.AcknowledgeEventErrors(ctx, streamID, errs, opts)
 }
 
-func (ctx Context) SSFScheduleVerificationEvent(streamID string, opts goidc.SSFStreamVerificationOptions) error {
-	return ctx.SSFVerificationManager.ScheduleVerificationEvent(ctx, streamID, opts)
+func (ctx Context) SSFScheduleVerificationEvent(streamID string, event goidc.SSFEvent) error {
+	return ctx.SSFVerificationManager.ScheduleVerificationEvent(ctx, streamID, event)
 }
 
 func (ctx Context) SSFHTTPClient() *http.Client {

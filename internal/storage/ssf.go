@@ -139,7 +139,7 @@ func (m *Manager) AcknowledgeEventErrors(_ context.Context, streamID string, err
 	return nil
 }
 
-func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string, opts goidc.SSFStreamVerificationOptions) error {
+func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
 	oidcCtx, ok := ctx.(oidc.Context)
 	if !ok {
 		return nil
@@ -156,7 +156,6 @@ func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string
 			return
 		}
 
-		event := goidc.NewSSFVerificationEvent(oidcCtx.JWTID(), streamID, opts)
 		if stream.DeliveryMethod == goidc.SSFDeliveryMethodPoll {
 			_ = m.SaveEvent(ctx, streamID, event)
 			return

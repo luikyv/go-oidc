@@ -653,9 +653,22 @@ func scheduleVerificationEvent(ctx oidc.Context, req requestVerificationEvent) e
 		}
 	}
 
-	if err := ctx.SSFScheduleVerificationEvent(stream.ID, goidc.SSFStreamVerificationOptions{
-		State: req.State,
-	}); err != nil {
+	claims := make(map[string]any)
+	if req.State != "" {
+		claims["state"] = req.State
+	}
+	event := goidc.SSFEvent{
+		ID:   ctx.JWTID(),
+		Type: goidc.SSFEventTypeVerification,
+		Subject: goidc.SSFSubject{
+			Format: goidc.SSFSubjectFormatOpaque,
+			ID:     stream.ID,
+		},
+		Claims:    claims,
+		CreatedAt: timeutil.TimestampNow(),
+	}
+
+	if err := ctx.SSFScheduleVerificationEvent(stream.ID, event); err != nil {
 		return fmt.Errorf("could not schedule the verification event: %w", err)
 	}
 	return nil

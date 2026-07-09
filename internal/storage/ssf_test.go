@@ -309,7 +309,7 @@ func TestManager_SSFScheduleVerificationEvent_NoOIDCContext(t *testing.T) {
 	_ = manager.CreateEventStream(context.Background(), &goidc.SSFEventStream{ID: "stream_1"})
 
 	// When - no publish func, should return early without panic.
-	err := manager.ScheduleVerificationEvent(context.Background(), "stream_1", goidc.SSFStreamVerificationOptions{})
+	err := manager.ScheduleVerificationEvent(context.Background(), "stream_1", goidc.SSFEvent{})
 
 	// Then.
 	if err != nil {
