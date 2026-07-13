@@ -146,26 +146,28 @@ func compareSubjects(ctx oidc.Context, a, b *goidc.SSFSubject) error {
 	return nil
 }
 
+var allowedSubjectMembers = map[goidc.SSFSubjectFormat]struct {
+	id, email, phone, uri, iss, sub, url, jti, assertionID, issuer bool
+	ipAddresses, identifiers                                       bool
+	user, tenant, device, session, orgUnit, application, group     bool
+	additionalProperties                                           bool
+}{
+	goidc.SSFSubjectFormatOpaque:            {id: true},
+	goidc.SSFSubjectFormatEmail:             {email: true},
+	goidc.SSFSubjectFormatPhoneNumber:       {phone: true},
+	goidc.SSFSubjectFormatAccount:           {uri: true},
+	goidc.SSFSubjectFormatURI:               {uri: true},
+	goidc.SSFSubjectFormatIssuerSubject:     {iss: true, sub: true},
+	goidc.SSFSubjectDecentralizedIdentifier: {url: true},
+	goidc.SSFSubjectJWTID:                   {jti: true, iss: true},
+	goidc.SSFSubjectSAMLAssertionID:         {assertionID: true, issuer: true},
+	goidc.SSFSubjectIPAddresses:             {ipAddresses: true},
+	goidc.SSFSubjectFormatAliases:           {identifiers: true},
+	goidc.SSFSubjectFormatComplex:           {user: true, tenant: true, device: true, session: true, orgUnit: true, application: true, group: true, additionalProperties: true},
+}
+
 func validateSubject(ctx oidc.Context, sub goidc.SSFSubject) error { //nolint:unparam
-	allowed, ok := map[goidc.SSFSubjectFormat]struct {
-		id, email, phone, uri, iss, sub, url, jti, assertionID, issuer bool
-		ipAddresses, identifiers                                       bool
-		user, tenant, device, session, orgUnit, application, group     bool
-		additionalProperties                                           bool
-	}{
-		goidc.SSFSubjectFormatOpaque:            {id: true},
-		goidc.SSFSubjectFormatEmail:             {email: true},
-		goidc.SSFSubjectFormatPhoneNumber:       {phone: true},
-		goidc.SSFSubjectFormatAccount:           {uri: true},
-		goidc.SSFSubjectFormatURI:               {uri: true},
-		goidc.SSFSubjectFormatIssuerSubject:     {iss: true, sub: true},
-		goidc.SSFSubjectDecentralizedIdentifier: {url: true},
-		goidc.SSFSubjectJWTID:                   {jti: true, iss: true},
-		goidc.SSFSubjectSAMLAssertionID:         {assertionID: true, issuer: true},
-		goidc.SSFSubjectIPAddresses:             {ipAddresses: true},
-		goidc.SSFSubjectFormatAliases:           {identifiers: true},
-		goidc.SSFSubjectFormatComplex:           {user: true, tenant: true, device: true, session: true, orgUnit: true, application: true, group: true, additionalProperties: true},
-	}[sub.Format]
+	allowed, ok := allowedSubjectMembers[sub.Format]
 	if !ok {
 		return fmt.Errorf("subject format %q is not supported", sub.Format)
 	}

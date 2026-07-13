@@ -647,15 +647,15 @@ func (op *Provider) PushSSFEvent(ctx context.Context, streamID string, event goi
 //	nonZeroOrDefault(0, 100)  // returns 100
 //	nonZeroOrDefault("", "default") // returns "default"
 func nonZeroOrDefault[T any](s1 T, s2 T) T {
+	isNil := func(i any) bool {
+		return i == nil
+	}
+
 	if isNil(s1) || reflect.ValueOf(s1).IsZero() {
 		return s2
 	}
 
 	return s1
-}
-
-func isNil(i any) bool {
-	return i == nil
 }
 
 const (

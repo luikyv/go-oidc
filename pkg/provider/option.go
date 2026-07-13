@@ -1911,6 +1911,8 @@ type SSFConfig struct {
 	// (relying party) information. Called on every SSF API request.
 	Receiver goidc.SSFReceiverFunc
 	// EventTypes are the security event types supported by this SSF transmitter.
+	// They are used as the default for receivers that do not provide
+	// [goidc.SSFReceiver.EventTypes].
 	EventTypes []goidc.SSFEventType
 }
 
