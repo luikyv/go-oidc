@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"slices"
+	"strings"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
 	"github.com/luikyv/go-oidc/pkg/goidc"
@@ -16,43 +18,44 @@ func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlew
 		return
 	}
 
-	router.Handle("GET /.well-known/ssf-configuration",
+	issuer, _ := url.Parse(config.SSFIssuer)
+	router.Handle("GET /.well-known/ssf-configuration"+strings.TrimSuffix(issuer.Path, "/"),
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleConfiguration), middlewares...))
-	router.Handle("GET "+config.EndpointPrefix+config.SSFJWKSEndpoint,
+	router.Handle("GET "+config.SSFEndpointPrefix+config.SSFJWKSEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleJWKS), middlewares...))
 
-	router.Handle("POST "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
+	router.Handle("POST "+config.SSFEndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleCreateStream), middlewares...))
-	router.Handle("PUT "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
+	router.Handle("PUT "+config.SSFEndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleUpdateStream), middlewares...))
-	router.Handle("PATCH "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
+	router.Handle("PATCH "+config.SSFEndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handlePatchStream), middlewares...))
-	router.Handle("GET "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
+	router.Handle("GET "+config.SSFEndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleFetchStream), middlewares...))
-	router.Handle("DELETE "+config.EndpointPrefix+config.SSFConfigurationEndpoint,
+	router.Handle("DELETE "+config.SSFEndpointPrefix+config.SSFConfigurationEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleDeleteStream), middlewares...))
 
-	if config.SSFStatusManagementEnabled {
-		router.Handle("GET "+config.EndpointPrefix+config.SSFStatusEndpoint,
+	if config.SSFStatusEnabled {
+		router.Handle("GET "+config.SSFEndpointPrefix+config.SSFStatusEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleFetchStreamStatus), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.SSFStatusEndpoint,
+		router.Handle("POST "+config.SSFEndpointPrefix+config.SSFStatusEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleUpdateStreamStatus), middlewares...))
 	}
 
 	if config.SSFSubjectEnabled {
-		router.Handle("POST "+config.EndpointPrefix+config.SSFSubjectAddEndpoint,
+		router.Handle("POST "+config.SSFEndpointPrefix+config.SSFSubjectAddEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleAddSubject), middlewares...))
-		router.Handle("POST "+config.EndpointPrefix+config.SSFSubjectRemoveEndpoint,
+		router.Handle("POST "+config.SSFEndpointPrefix+config.SSFSubjectRemoveEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleRemoveSubject), middlewares...))
 	}
 
 	if slices.Contains(config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
-		router.Handle("POST "+config.EndpointPrefix+config.SSFPollingEndpoint+"/{stream_id}",
+		router.Handle("POST "+config.SSFEndpointPrefix+config.SSFPollingEndpoint+"/{stream_id}",
 			goidc.ApplyMiddlewares(oidc.Handler(config, handlePollEvents), middlewares...))
 	}
 
 	if config.SSFVerificationEnabled {
-		router.Handle("POST "+config.EndpointPrefix+config.SSFVerificationEndpoint,
+		router.Handle("POST "+config.SSFEndpointPrefix+config.SSFVerificationEndpoint,
 			goidc.ApplyMiddlewares(oidc.Handler(config, handleCreateVerificationEvent), middlewares...))
 	}
 }

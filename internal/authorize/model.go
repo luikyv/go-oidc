@@ -165,12 +165,11 @@ type response struct {
 }
 
 func (resp response) parameters() map[string]string {
-	params := make(map[string]string)
-
 	if resp.response != "" {
-		params["response"] = resp.response
-		return params
+		return map[string]string{"response": resp.response}
 	}
+
+	params := make(map[string]string)
 
 	if resp.issuer != "" {
 		params["iss"] = resp.issuer

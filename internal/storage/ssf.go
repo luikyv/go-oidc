@@ -11,81 +11,78 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-type SSFPushEventFunc func(oidc.Context, string, goidc.SSFEvent) error
-
 // SSFPushEvent is set by the SSF package to deliver verification events for
 // push-based streams without making storage import the SSF package.
-var SSFPushEvent SSFPushEventFunc
+var SSFPushEvent func(oidc.Context, string, goidc.SSFEvent) error
 
-func (m *Manager) CreateEventStream(_ context.Context, stream *goidc.SSFEventStream) error {
+// SSFCompareSubjects is set by the SSF package to compare subjects using SSF
+// subject matching rules without making storage import the SSF package.
+var SSFCompareSubjects func(oidc.Context, goidc.SSFSubject, goidc.SSFSubject) error
+
+func (m *Manager) SaveStream(_ context.Context, stream *goidc.SSFStream) error {
 	m.streamMutex.Lock()
 	defer m.streamMutex.Unlock()
 
-	if len(m.Streams) >= m.maxSize {
-		removeOldest(m.Streams, func(s *goidc.SSFEventStream) int {
+	if len(m.SSFStreams) >= m.maxSize {
+		removeOldest(m.SSFStreams, func(s *goidc.SSFStream) int {
 			return s.CreatedAt
 		})
 	}
 
-	m.Streams[stream.ID] = stream
+	m.SSFStreams[stream.ID] = stream
 	return nil
 }
 
-func (m *Manager) UpdateEventStream(_ context.Context, stream *goidc.SSFEventStream) error {
-	m.streamMutex.Lock()
-	defer m.streamMutex.Unlock()
-	m.Streams[stream.ID] = stream
-	return nil
-}
-
-func (m *Manager) EventStream(_ context.Context, id string) (*goidc.SSFEventStream, error) {
+func (m *Manager) Stream(_ context.Context, id string) (*goidc.SSFStream, error) {
 	m.streamMutex.RLock()
 	defer m.streamMutex.RUnlock()
-	if stream, ok := m.Streams[id]; ok {
-		return stream, nil
+	if stream, ok := m.SSFStreams[id]; ok {
+		streamCopy := *stream
+		return &streamCopy, nil
 	}
 	return nil, goidc.ErrNotFound
 }
 
-func (m *Manager) EventStreams(_ context.Context, receiverID string) ([]*goidc.SSFEventStream, error) {
+func (m *Manager) Streams(_ context.Context, receiverID string) ([]*goidc.SSFStream, error) {
 	m.streamMutex.RLock()
 	defer m.streamMutex.RUnlock()
-	var streams []*goidc.SSFEventStream
-	for _, stream := range m.Streams {
+	var streams []*goidc.SSFStream
+	for _, stream := range m.SSFStreams {
 		if stream.ReceiverID == receiverID {
-			streams = append(streams, stream)
+			streamCopy := *stream
+			streams = append(streams, &streamCopy)
 		}
 	}
 	return streams, nil
 }
 
-func (m *Manager) DeleteEventStream(_ context.Context, id string) error {
+func (m *Manager) DeleteStream(_ context.Context, id string) error {
 	m.streamMutex.Lock()
 	defer m.streamMutex.Unlock()
-	delete(m.Streams, id)
+	delete(m.SSFStreams, id)
 	delete(m.streamSubjects, id)
 	delete(m.streamPollEvents, id)
 	return nil
 }
 
-func (m *Manager) AddStreamSubject(_ context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
+func (m *Manager) AddStreamSubject(ctx context.Context, streamID string, sub goidc.SSFSubject, _ goidc.SSFSubjectOptions) error {
 	m.streamMutex.Lock()
 	defer m.streamMutex.Unlock()
 
 	subjects := m.streamSubjects[streamID]
 	if !slices.ContainsFunc(subjects, func(s goidc.SSFSubject) bool {
-		return compareSSFSubjects(&s, &sub)
+		return subjectsMatch(ctx, s, sub)
 	}) {
 		m.streamSubjects[streamID] = append(subjects, sub)
 	}
 	return nil
 }
 
-func (m *Manager) RemoveStreamSubject(_ context.Context, streamID string, sub goidc.SSFSubject) error {
+func (m *Manager) RemoveStreamSubject(ctx context.Context, streamID string, sub goidc.SSFSubject) error {
 	m.streamMutex.Lock()
 	defer m.streamMutex.Unlock()
 	m.streamSubjects[streamID] = slices.DeleteFunc(m.streamSubjects[streamID], func(s goidc.SSFSubject) bool {
-		return compareSSFSubjects(&s, &sub)
+		return subjectsMatch(ctx, s, sub)
 	})
 	return nil
 }
@@ -150,13 +147,13 @@ func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string
 		defer cancel()
 		oidcCtx = oidc.NewContext(ctx, oidcCtx.Configuration)
 
-		stream, err := m.EventStream(ctx, streamID)
+		stream, err := m.Stream(ctx, streamID)
 		if err != nil {
 			log.Printf("could not fetch stream %s\n", streamID)
 			return
 		}
 
-		if stream.DeliveryMethod == goidc.SSFDeliveryMethodPoll {
+		if stream.Delivery.Method == goidc.SSFDeliveryMethodPoll {
 			_ = m.SaveEvent(ctx, streamID, event)
 			return
 		}
@@ -170,9 +167,21 @@ func (m *Manager) ScheduleVerificationEvent(ctx context.Context, streamID string
 	return nil
 }
 
+func subjectsMatch(ctx context.Context, a, b goidc.SSFSubject) bool {
+	if oidcCtx, ok := ctx.(oidc.Context); ok && SSFCompareSubjects != nil {
+		return SSFCompareSubjects(oidcCtx, a, b) == nil
+	}
+
+	return compareSSFSubjects(&a, &b)
+}
+
 func compareSSFSubjects(a, b *goidc.SSFSubject) bool {
 	if a == nil || b == nil {
 		return true
+	}
+
+	if a.Format != b.Format {
+		return false
 	}
 
 	if a.Format != goidc.SSFSubjectFormatComplex && b.Format != goidc.SSFSubjectFormatComplex {
@@ -201,8 +210,8 @@ func compareSSFSubjects(a, b *goidc.SSFSubject) bool {
 		return false
 	}
 
-	for key, valueA := range a.AdditionalProperties {
-		valueB, ok := b.AdditionalProperties[key]
+	for key, valueA := range a.AdditionalMembers {
+		valueB, ok := b.AdditionalMembers[key]
 		if ok && !compareSSFSubjects(&valueA, &valueB) {
 			return false
 		}

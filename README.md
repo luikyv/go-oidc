@@ -109,7 +109,7 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Scopes](#scopes)
 - [Dynamic Client Registration](#dynamic-client-registration-dcr)
 - [RP Metadata Choices](#rp-metadata-choices)
-- [DPoP](#dpop)
+- [Demonstrating Proof of Possession (DPoP)](#demonstrating-proof-of-possession-dpop)
 - [Mutual TLS](#mutual-tls-mtls)
 - [JWT-Secured Authorization Requests (JAR)](#jwt-secured-authorization-request-jar)
 - [JWT-Secured Authorization Response Mode (JARM)](#jwt-secured-authorization-response-mode-jarm)
@@ -118,6 +118,7 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [OpenID Federation](#openid-federation)
 - [Shared Signals Framework](#shared-signals-framework-ssf)
 - [Form Post Response Mode](#form-post-response-mode)
+- [Developer Notes](#developer-notes)
 
 ## Running the Provider
 
@@ -977,7 +978,7 @@ The server selects the first value from the list it supports and returns the res
 
 If the client also provides the singular field, it must be present in the priority list.
 
-## [DPoP](https://www.rfc-editor.org/rfc/rfc9449.html)
+## [Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
 
 DPoP is enabled with `provider.WithDPoP(...)` and can be made mandatory with
 `provider.DPoPRequired()`.
@@ -1261,7 +1262,20 @@ op, _ := provider.New(
 Clients can then request `response_mode=form_post` at the authorization
 endpoint.
 
-## OpenID For Verifiable Credentials Issuance (OIDC4VCI)
+## Developer Notes
 
-# TODO
-* Document https://www.rfc-editor.org/info/rfc8414.
+### Updating Configuration
+
+Provider configuration is the source of truth for the provider's current
+behavior. When configuration changes, new requests and protocol decisions use
+the updated values. go-oidc does not automatically rewrite persisted state when
+configuration changes. Applications that store clients, grants, tokens, SSF
+streams, or other protocol state should decide how existing records are
+migrated, grandfathered, or rejected.
+
+For example, changing supported signing algorithms requires matching signing
+keys or signer support. Removing an algorithm or key can affect existing clients
+or still-active tokens, depending on the application's validation and key
+retention policy.
+
+## OpenID For Verifiable Credentials Issuance (OIDC4VCI)

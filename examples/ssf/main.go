@@ -39,7 +39,7 @@ func main() {
 			provider.SSFConfig{
 				JWKS:   authutil.PrivateJWKSFunc(),
 				SigAlg: goidc.RS256,
-				AuthenticatedReceiver: func(ctx context.Context) (goidc.SSFReceiver, error) {
+				Receiver: func(ctx context.Context) (goidc.SSFReceiver, error) {
 					clientID := ctx.Value(ctxKeyClientID).(string)
 					if clientID == "" {
 						return goidc.SSFReceiver{}, goidc.NewError(goidc.ErrorCodeInvalidClient, "client id is required")
@@ -54,12 +54,8 @@ func main() {
 			provider.WithSSFSubjectManagement(nil),
 			provider.WithSSFVerification(nil, provider.WithSSFMinVerificationInterval(5)),
 			provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectAll),
-			provider.WithSSFAuthorizationSchemes(goidc.SSFAuthorizationScheme{SpecificationURN: "urn:ietf:rfc:6749"}),
-			provider.WithSSFInactivityTimeout(30, func(ctx context.Context, stream *goidc.SSFEventStream) error {
-				stream.Status = goidc.SSFEventStreamStatusPaused
-				stream.StatusReason = "stream has expired"
-				return nil
-			}),
+			provider.WithSSFAuthorizationSchemes(goidc.SSFAuthScheme{SpecURN: goidc.SSFAuthchemeURNRFC6749}),
+			provider.WithSSFInactivityTimeout(30),
 		),
 		provider.WithErrorHandler(authutil.HandleError),
 	)

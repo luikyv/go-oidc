@@ -11,7 +11,7 @@ type Grant struct {
 	RevokedAt int    `json:"revoked_at,omitempty"`
 	Subject   string `json:"sub"`
 	ClientID  string `json:"client_id"`
-	// [RFC 7662 §2.2] Username is a human-readable identifier for the resource owner.
+	// Username is a human-readable identifier for the resource owner. See [RFC 7662 §2.2].
 	Username    string       `json:"username,omitempty"`
 	Scopes      string       `json:"scopes,omitempty"`
 	AuthDetails []AuthDetail `json:"auth_details,omitempty"`
@@ -23,8 +23,11 @@ type Grant struct {
 	// RefreshTokenExpiresAt stores the expiry deadline of the refresh token
 	// issued for this grant.
 	// A value of 0 means the refresh token does not expire.
-	RefreshTokenExpiresAt int                     `json:"refresh_token_expires_at,omitempty"`
-	AuthParams            AuthorizationParameters `json:"auth_params,omitzero"`
+	RefreshTokenExpiresAt int `json:"refresh_token_expires_at,omitempty"`
+	// AuthParams stores the authorization request parameters that must remain
+	// available after the grant is created, such as nonce, redirect URI, PKCE,
+	// prompt, and resource values used during token issuance and validation.
+	AuthParams AuthorizationParameters `json:"auth_params,omitzero"`
 	// AuthCode is populated when the grant is issued from the authorization
 	// code flow. It is the code later redeemed at the token endpoint.
 	AuthCode string `json:"auth_code,omitempty"`
@@ -71,7 +74,7 @@ type Grant struct {
 	JWKThumbprint string `json:"jwk_thumbprint,omitempty"`
 	// CertThumbprint contains the thumbprint of the certificate used to generate the token.
 	CertThumbprint string `json:"cert_thumbprint,omitempty"`
-	// [RFC 8693 §4.1] Actor represents the acting party in delegation scenarios.
+	// Actor represents the acting party in delegation scenarios. See [RFC 8693 §4.1].
 	Actor *Actor `json:"act,omitempty"`
 	// Store allows storing custom data within the grant.
 	Store map[string]any `json:"store,omitempty"`

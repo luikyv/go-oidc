@@ -79,10 +79,20 @@ func NewError(code ErrorCode, desc string) Error {
 	}
 }
 
+// Errorf returns an OAuth error with a formatted public description.
+// Do not use %w with Errorf, use [WrapError] to preserve an underlying error.
 func Errorf(code ErrorCode, format string, args ...any) Error {
 	return Error{
 		Code:        code,
 		Description: fmt.Sprintf(format, args...),
+	}
+}
+
+func WrapError(code ErrorCode, desc string, err error) Error {
+	return Error{
+		Code:        code,
+		Description: desc,
+		wrapped:     err,
 	}
 }
 
@@ -114,12 +124,4 @@ func (err Error) StatusCode() int {
 
 func (err Error) Unwrap() error {
 	return err.wrapped
-}
-
-func WrapError(code ErrorCode, desc string, err error) Error {
-	return Error{
-		Code:        code,
-		Description: desc,
-		wrapped:     err,
-	}
 }

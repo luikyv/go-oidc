@@ -2732,10 +2732,10 @@ func TestWithSSF(t *testing.T) {
 
 	// When.
 	err := WithSSF(SSFConfig{
-		JWKS:                  jwksFunc,
-		SigAlg:                goidc.RS256,
-		AuthenticatedReceiver: receiverFunc,
-		EventTypes:            eventTypes,
+		JWKS:       jwksFunc,
+		SigAlg:     goidc.RS256,
+		Receiver:   receiverFunc,
+		EventTypes: eventTypes,
 	})(p)
 
 	// Then.
@@ -2755,8 +2755,8 @@ func TestWithSSF(t *testing.T) {
 		t.Errorf("SSFDefaultSigAlg = %s, want %s", p.config.SSFDefaultSigAlg, goidc.RS256)
 	}
 
-	if p.config.SSFAuthenticatedReceiverFunc == nil {
-		t.Error("SSFAuthenticatedReceiverFunc cannot be nil")
+	if p.config.SSFReceiverFunc == nil {
+		t.Error("SSFReceiverFunc cannot be nil")
 	}
 
 	if diff := cmp.Diff(
@@ -2858,7 +2858,7 @@ func TestSSFEventStreamStatusManagement(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFStatusManagementEnabled: true,
+			SSFStatusEnabled: true,
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -2884,12 +2884,35 @@ func TestSSFStatusEndpoint(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFStatusManagementEnabled: true,
-			SSFStatusEndpoint:          "/ssf/status",
+			SSFStatusEnabled:  true,
+			SSFStatusEndpoint: "/ssf/status",
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
 		t.Error(diff)
+	}
+}
+
+func TestSSFStatusHandler(t *testing.T) {
+	// Given.
+	p := &Provider{
+		config: oidc.Configuration{},
+	}
+	handler := func(context.Context, *goidc.SSFStream, goidc.SSFStatusOptions) error {
+		return nil
+	}
+
+	// When.
+	err := WithSSFStatusManagement(
+		WithSSFStatusHandler(handler),
+	)(p)
+
+	// Then.
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.config.SSFStatusHandleFunc == nil {
+		t.Error("SSFStatusHandleFunc cannot be nil")
 	}
 }
 
@@ -3093,7 +3116,7 @@ func TestSSFAuthorizationSchemes(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	scheme := goidc.SSFAuthorizationScheme{SpecificationURN: "bearer"}
+	scheme := goidc.SSFAuthScheme{SpecURN: "bearer"}
 
 	// When.
 	err := WithSSFAuthorizationSchemes(scheme)(p)
@@ -3105,7 +3128,7 @@ func TestSSFAuthorizationSchemes(t *testing.T) {
 
 	want := &Provider{
 		config: oidc.Configuration{
-			SSFAuthorizationSchemes: []goidc.SSFAuthorizationScheme{scheme},
+			SSFAuthorizationSchemes: []goidc.SSFAuthScheme{scheme},
 		},
 	}
 	if diff := cmp.Diff(p, want, cmp.AllowUnexported(Provider{})); diff != "" {
@@ -3118,12 +3141,9 @@ func TestSSFInactivityTimeout(t *testing.T) {
 	p := &Provider{
 		config: oidc.Configuration{},
 	}
-	handleFunc := func(ctx context.Context, stream *goidc.SSFEventStream) error {
-		return nil
-	}
 
 	// When.
-	err := WithSSFInactivityTimeout(3600, handleFunc)(p)
+	err := WithSSFInactivityTimeout(3600)(p)
 
 	// Then.
 	if err != nil {
@@ -3132,10 +3152,6 @@ func TestSSFInactivityTimeout(t *testing.T) {
 
 	if p.config.SSFInactivityTimeoutSecs != 3600 {
 		t.Errorf("got %d, want 3600", p.config.SSFInactivityTimeoutSecs)
-	}
-
-	if p.config.SSFHandleExpiredEventStreamFunc == nil {
-		t.Error("SSFHandleExpiredEventStreamFunc cannot be nil")
 	}
 }
 
@@ -3146,7 +3162,7 @@ func TestSSFInactivityTimeoutNegative(t *testing.T) {
 	}
 
 	// When.
-	err := WithSSFInactivityTimeout(-1, nil)(p)
+	err := WithSSFInactivityTimeout(-1)(p)
 
 	// Then.
 	if err == nil {

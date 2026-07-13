@@ -182,7 +182,7 @@ func NewContext(tb testing.TB) oidc.Context {
 		CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
 			return errors.New("ciba init back auth function is not set")
 		},
-		SSFHandleExpiredEventStreamFunc: func(context.Context, *goidc.SSFEventStream) error {
+		SSFStatusHandleFunc: func(context.Context, *goidc.SSFStream, goidc.SSFStatusOptions) error {
 			return nil
 		},
 		VCIExternalPreAuthCodeHandleFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
@@ -205,7 +205,6 @@ func NewContext(tb testing.TB) oidc.Context {
 		UserInfoSigAlgs:            []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
 		IDTokenDefaultSigAlg:       goidc.SignatureAlgorithm(jwk.Algorithm),
 		IDTokenSigAlgs:             []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(jwk.Algorithm)},
-		WellKnownEndpoint:          "/.well-known/openid-configuration",
 		JWKSEndpoint:               "/jwks",
 		TokenEndpoint:              "/token",
 		AuthorizationEndpoint:      "/authorize",
@@ -224,6 +223,9 @@ func NewContext(tb testing.TB) oidc.Context {
 			return uuid.NewString()
 		},
 		JWTIDFunc: func(context.Context) string {
+			return uuid.NewString()
+		},
+		SSFEventIDFunc: func(context.Context) string {
 			return uuid.NewString()
 		},
 		DeviceCodeFunc: func(context.Context) string {

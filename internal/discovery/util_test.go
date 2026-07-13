@@ -16,7 +16,6 @@ func TestOIDCConfig(t *testing.T) {
 	userKey := oidctest.PrivateRS256JWK(t, "user_signature_key", goidc.KeyUsageSignature)
 	config := &oidc.Configuration{
 		Host:                       "https://example.com",
-		WellKnownEndpoint:          "/.well-known/openid-configuration",
 		JWKSEndpoint:               "/jwks",
 		TokenEndpoint:              "/token",
 		AuthorizationEndpoint:      "/authorize",
@@ -116,7 +115,6 @@ func TestOIDCConfig_WithVariants(t *testing.T) {
 		goidc.KeyUsageSignature)
 	config := &oidc.Configuration{
 		Host:                       "https://example.com",
-		WellKnownEndpoint:          "/.well-known/openid-configuration",
 		JWKSEndpoint:               "/jwks",
 		TokenEndpoint:              "/token",
 		AuthorizationEndpoint:      "/authorize",

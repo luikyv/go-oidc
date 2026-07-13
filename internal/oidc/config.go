@@ -78,10 +78,9 @@ type Configuration struct {
 	// contraining tokens is required, either DPoP or client TLS.
 	TokenBindingRequired bool
 
-	WellKnownEndpoint     string
 	JWKSEndpoint          string
 	AuthorizationEndpoint string
-	EndpointPrefix        string // TODO: Do I need this?
+	EndpointPrefix        string
 
 	UserInfoEndpoint       string
 	UserInfoDefaultSigAlg  goidc.SignatureAlgorithm
@@ -250,15 +249,16 @@ type Configuration struct {
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
 	SSFEnabled                           bool
-	SSFHost                              string
+	SSFIssuer                            string
 	SSFJWKSEndpoint                      string
 	SSFEventTypes                        []goidc.SSFEventType
 	SSFDeliveryMethods                   []goidc.SSFDeliveryMethod
-	SSFEventStreamManager                goidc.SSFEventStreamManager
+	SSFStreamManager                     goidc.SSFStreamManager
 	SSFConfigurationEndpoint             string
 	SSFPollingEndpoint                   string
-	SSFEventPollManager                  goidc.SSFEventPollManager
-	SSFStatusManagementEnabled           bool
+	SSFEventPollManager                  goidc.SSFPollingManager
+	SSFStatusEnabled                     bool
+	SSFStatusHandleFunc                  goidc.SSFStatusHandleFunc
 	SSFStatusEndpoint                    string
 	SSFSubjectEnabled                    bool
 	SSFSubjectManager                    goidc.SSFSubjectManager
@@ -269,17 +269,18 @@ type Configuration struct {
 	SSFVerificationEndpoint              string
 	SSFVerificationMinInterval           int
 	SSFCriticalSubjectMembers            []string
-	SSFAuthorizationSchemes              []goidc.SSFAuthorizationScheme
+	SSFAuthorizationSchemes              []goidc.SSFAuthScheme
 	SSFDefaultSubjects                   goidc.SSFDefaultSubject
 	SSFJWKSFunc                          goidc.JWKSFunc
 	SSFDefaultSigAlg                     goidc.SignatureAlgorithm
 	SSFSignerFunc                        goidc.SignerFunc
-	SSFAuthenticatedReceiverFunc         goidc.SSFAuthenticatedReceiverFunc
+	SSFReceiverFunc                      goidc.SSFReceiverFunc
 	SSFEventStreamIDFunc                 goidc.RandomFunc
+	SSFEventIDFunc                       goidc.RandomFunc
 	SSFHTTPClientFunc                    goidc.HTTPClientFunc
 	SSFInactivityTimeoutSecs             int
-	SSFHandleExpiredEventStreamFunc      goidc.SSFHandleExpiredEventStreamFunc
 	SSFMultipleStreamsPerReceiverEnabled bool
+	SSFEndpointPrefix                    string
 
 	VCIEnabled                           bool
 	VCIIssuers                           []goidc.VCIssuer

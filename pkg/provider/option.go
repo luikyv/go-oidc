@@ -1914,7 +1914,7 @@ type SSFVerificationOption Option
 type SSFConfig struct {
 	// Manager is responsible for persisting event stream configurations created
 	// by receivers. Pass nil only for ad hoc in-memory storage.
-	Manager goidc.SSFEventStreamManager
+	Manager goidc.SSFStreamManager
 	// JWKS returns the provider's SSF JWKS, used to sign Security Event
 	// Tokens (SETs). This JWKS is separate from the provider's regular signing keys.
 	// See [WithSSFSigner] if the private keys are not available.
@@ -1922,9 +1922,9 @@ type SSFConfig struct {
 	// SigAlg is the algorithm used to sign SETs.
 	// The JWKSFunc must return a key matching this algorithm.
 	SigAlg goidc.SignatureAlgorithm
-	// AuthenticatedReceiver authenticates incoming requests and returns the SSF receiver
+	// Receiver authenticates incoming requests and returns the SSF receiver
 	// (relying party) information. Called on every SSF API request.
-	AuthenticatedReceiver goidc.SSFAuthenticatedReceiverFunc
+	Receiver goidc.SSFReceiverFunc
 	// EventTypes are the security event types supported by this SSF transmitter.
 	EventTypes []goidc.SSFEventType
 }
@@ -1943,17 +1943,17 @@ func WithSSF(cfg SSFConfig, opts ...SSFOption) Option {
 		if cfg.SigAlg == "" {
 			return errors.New("a ssf signature algorithm must be provided")
 		}
-		if cfg.AuthenticatedReceiver == nil {
+		if cfg.Receiver == nil {
 			return errors.New("the ssf authenticated receiver function cannot be nil")
 		}
 		if len(cfg.EventTypes) == 0 {
 			return errors.New("at least one ssf event type must be provided")
 		}
 		p.config.SSFEnabled = true
-		p.config.SSFEventStreamManager = cfg.Manager
+		p.config.SSFStreamManager = cfg.Manager
 		p.config.SSFJWKSFunc = cfg.JWKS
 		p.config.SSFDefaultSigAlg = cfg.SigAlg
-		p.config.SSFAuthenticatedReceiverFunc = cfg.AuthenticatedReceiver
+		p.config.SSFReceiverFunc = cfg.Receiver
 		p.config.SSFEventTypes = cfg.EventTypes
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
@@ -1978,7 +1978,7 @@ func WithSSFSigner(f goidc.SignerFunc) SSFOption {
 // WithSSFPoll enables the poll delivery method, where receivers poll the
 // transmitter for events. The manager is responsible for queuing events and
 // tracking acknowledgements.
-func WithSSFPoll(manager goidc.SSFEventPollManager, opts ...SSFPollOption) SSFOption {
+func WithSSFPoll(manager goidc.SSFPollingManager, opts ...SSFPollOption) SSFOption {
 	return func(p *Provider) error {
 		p.config.SSFDeliveryMethods = append(p.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll)
 		p.config.SSFEventPollManager = manager
@@ -2018,7 +2018,7 @@ func WithSSFPushHTTPClient(httpClientFunc goidc.HTTPClientFunc) SSFPushOption {
 // (e.g., enabled, paused, disabled).
 func WithSSFStatusManagement(opts ...SSFStatusOption) SSFOption {
 	return func(p *Provider) error {
-		p.config.SSFStatusManagementEnabled = true
+		p.config.SSFStatusEnabled = true
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -2032,6 +2032,15 @@ func WithSSFStatusManagement(opts ...SSFStatusOption) SSFOption {
 func WithSSFStatusEndpoint(endpoint string) SSFStatusOption {
 	return func(p *Provider) error {
 		p.config.SSFStatusEndpoint = endpoint
+		return nil
+	}
+}
+
+// WithSSFStatusHandler sets a handler called before applying a receiver-requested
+// stream status change.
+func WithSSFStatusHandler(f goidc.SSFStatusHandleFunc) SSFStatusOption {
+	return func(p *Provider) error {
+		p.config.SSFStatusHandleFunc = f
 		return nil
 	}
 }
@@ -2122,7 +2131,7 @@ func WithSSFCriticalSubjectMembers(subs ...string) SSFOption {
 // WithSSFAuthorizationSchemes sets the authorization schemes published in the SSF
 // configuration endpoint. This informs receivers how to authenticate when calling
 // the SSF APIs (e.g., Bearer tokens, OAuth 2.0).
-func WithSSFAuthorizationSchemes(schemes ...goidc.SSFAuthorizationScheme) SSFOption {
+func WithSSFAuthorizationSchemes(schemes ...goidc.SSFAuthScheme) SSFOption {
 	return func(p *Provider) error {
 		if len(schemes) == 0 {
 			return errors.New("at least one authorization scheme is required")
@@ -2132,16 +2141,18 @@ func WithSSFAuthorizationSchemes(schemes ...goidc.SSFAuthorizationScheme) SSFOpt
 	}
 }
 
-// WithSSFInactivityTimeout sets the inactivity timeout for event streams.
-// [SSF 1.0 §8.1.1] If a stream has no activity for this duration, the handleFunc
-// is called to handle the expired stream (e.g., pause or delete it).
-func WithSSFInactivityTimeout(secs int, handleFunc goidc.SSFHandleExpiredEventStreamFunc) SSFOption {
+// WithSSFInactivityTimeout enables the inactivity timeout for SSF streams.
+// go-oidc refreshes the timeout on eligible receiver activity handled
+// by the provider and publishes the remaining timeout in stream responses.
+// Enforcement of inactivity deadlines must be implemented by the
+// configured stream manager or application code.
+// See [SSF 1.0 §8.1.1].
+func WithSSFInactivityTimeout(secs int) SSFOption {
 	return func(p *Provider) error {
 		if secs < 0 {
 			return errors.New("the ssf inactivity timeout cannot be negative")
 		}
 		p.config.SSFInactivityTimeoutSecs = secs
-		p.config.SSFHandleExpiredEventStreamFunc = handleFunc
 		return nil
 	}
 }

@@ -2,18 +2,72 @@ package goidc
 
 import (
 	"context"
+	"encoding/json"
+	"reflect"
+	"strings"
 )
 
-// SSFEventStreamManager manages the lifecycle of SSF event streams.
-type SSFEventStreamManager interface {
-	CreateEventStream(context.Context, *SSFEventStream) error
-	UpdateEventStream(context.Context, *SSFEventStream) error
-	// EventStream returns the event stream identified by id.
+const (
+	SSFClaimEventTimestamp   string = "event_timestamp"
+	SSFClaimInitiatingEntity string = "initiating_entity"
+	SSFClaimReasonAdmin      string = "reason_admin"
+	SSFClaimReasonUser       string = "reason_user"
+	SSFClaimTokenClaims      string = "claims"
+	SSFClaimCredentialType   string = "credential_type" //nolint:gosec
+	SSFClaimChangeType       string = "change_type"
+	SSFClaimFriendlyName     string = "friendly_name"
+	SSFClaimX509Issuer       string = "x509_issuer"
+	SSFClaimX509Serial       string = "x509_serial"
+	SSFClaimFIDO2AAGUID      string = "fido2_aaguid"
+	SSFClaimPreviousStatus   string = "previous_status"
+	SSFClaimCurrentStatus    string = "current_status"
+	SSFClaimPreviousLevel    string = "previous_level"
+	SSFClaimCurrentLevel     string = "current_level"
+	SSFClaimChangeDirection  string = "change_direction"
+)
+
+type SSFInitiatingEntity string
+
+const (
+	SSFInitiatingEntityAdmin  SSFInitiatingEntity = "admin"
+	SSFInitiatingEntityUser   SSFInitiatingEntity = "user"
+	SSFInitiatingEntityPolicy SSFInitiatingEntity = "policy"
+	SSFInitiatingEntitySystem SSFInitiatingEntity = "system"
+)
+
+type SSFCredentialType string
+
+const (
+	SSFCredentialTypePassword             SSFCredentialType = "password"
+	SSFCredentialTypePIN                  SSFCredentialType = "pin"
+	SSFCredentialTypeX509                 SSFCredentialType = "x509"
+	SSFCredentialTypeFIDO2Platform        SSFCredentialType = "fido2-platform"
+	SSFCredentialTypeFIDO2Roaming         SSFCredentialType = "fido2-roaming"
+	SSFCredentialTypeFIDOU2F              SSFCredentialType = "fido-u2f"
+	SSFCredentialTypeVerifiableCredential SSFCredentialType = "verifiable-credential" //nolint:gosec
+	SSFCredentialTypePhoneVoice           SSFCredentialType = "phone-voice"
+	SSFCredentialTypePhoneSMS             SSFCredentialType = "phone-sms"
+	SSFCredentialTypeApp                  SSFCredentialType = "app"
+)
+
+type SSFCredentialChangeType string
+
+const (
+	SSFCredentialChangeTypeCreate SSFCredentialChangeType = "create"
+	SSFCredentialChangeTypeRevoke SSFCredentialChangeType = "revoke"
+	SSFCredentialChangeTypeUpdate SSFCredentialChangeType = "update"
+	SSFCredentialChangeTypeDelete SSFCredentialChangeType = "delete"
+)
+
+// SSFStreamManager manages the lifecycle of SSF event streams.
+type SSFStreamManager interface {
+	SaveStream(context.Context, *SSFStream) error
+	// Stream returns the stream identified by id.
 	// It must return [ErrNotFound] when the stream does not exist.
-	EventStream(context.Context, string) (*SSFEventStream, error)
-	// EventStreams returns the event streams associated with the receiver.
-	EventStreams(ctx context.Context, receiverID string) ([]*SSFEventStream, error)
-	DeleteEventStream(context.Context, string) error
+	Stream(context.Context, string) (*SSFStream, error)
+	// Streams returns the streams associated with the receiver.
+	Streams(ctx context.Context, receiverID string) ([]*SSFStream, error)
+	DeleteStream(context.Context, string) error
 }
 
 // SSFSubjectManager manages the subjects associated with an event stream.
@@ -26,9 +80,9 @@ type SSFSubjectManager interface {
 	RemoveStreamSubject(ctx context.Context, streamID string, sub SSFSubject) error
 }
 
-// SSFEventPollManager manages event queuing and polling for poll-based delivery [RFC 8936].
+// SSFPollingManager manages event queuing and polling for poll-based delivery [RFC 8936].
 // This interface is only used when the stream's delivery method is [SSFDeliveryMethodPoll].
-type SSFEventPollManager interface {
+type SSFPollingManager interface {
 	// PollEvents retrieves pending events without removing them from the queue.
 	// Events remain pending until explicitly acknowledged via [SSFEventPollManager.AcknowledgeEvents].
 	PollEvents(ctx context.Context, streamID string, opts SSFPollOptions) (SSFEvents, error)
@@ -38,30 +92,44 @@ type SSFEventPollManager interface {
 	AcknowledgeEventErrors(ctx context.Context, streamID string, errs []SSFEventError, opts SSFAcknowledgementOptions) error
 }
 
+// SSFVerificationManager schedules SSF verification events for event streams.
 type SSFVerificationManager interface {
+	// ScheduleVerificationEvent schedules the verification event for the stream
+	// identified by streamID.
 	ScheduleVerificationEvent(ctx context.Context, streamID string, event SSFEvent) error
 }
 
-// SSFEventStream represents a configured event stream between a transmitter and receiver.
+// SSFStream represents a configured event stream between a transmitter and receiver.
 // See [SSF 1.0 §8.1.1] for the stream configuration schema.
-type SSFEventStream struct {
+type SSFStream struct {
 	ID         string `json:"id"`
 	ReceiverID string `json:"receiver_id"`
 	// Audiences is a list of audiences for the event stream.
 	// It defaults to a one-element slice containing the receiver ID.
-	Audiences           []string             `json:"audiences"`
-	Status              SSFEventStreamStatus `json:"status"`
-	StatusReason        string               `json:"status_reason,omitempty"`
-	EventsSupported     []SSFEventType       `json:"events_supported"`
-	EventsRequested     []SSFEventType       `json:"events_requested"`
-	EventsDelivered     []SSFEventType       `json:"events_delivered"`
-	DeliveryMethod      SSFDeliveryMethod    `json:"delivery_method"`
-	DeliveryEndpoint    string               `json:"delivery_endpoint,omitempty"`
-	AuthorizationHeader string               `json:"authorization_header,omitempty"`
-	Description         string               `json:"description,omitempty"`
-	CreatedAt           int                  `json:"created_at"`
-	ExpiresAt           int                  `json:"expires_at,omitempty"`
-	VerifiedAt          int                  `json:"verified_at,omitempty"`
+	Audiences    Audiences       `json:"audiences"`
+	Status       SSFStreamStatus `json:"status"`
+	StatusReason string          `json:"status_reason,omitempty"`
+	// EventsSupported is the set of event types supported for this stream when
+	// it was created or last updated.
+	EventsSupported []SSFEventType `json:"events_supported"`
+	// EventsRequested is the set of event types requested by the receiver for
+	// this stream.
+	EventsRequested []SSFEventType `json:"events_requested"`
+	// EventsDelivered is the set of event types the transmitter will include in
+	// this stream. It must be a subset of EventsSupported and EventsRequested.
+	EventsDelivered []SSFEventType `json:"events_delivered"`
+	Delivery        struct {
+		Method              SSFDeliveryMethod `json:"method"`
+		Endpoint            string            `json:"endpoint,omitempty"`
+		AuthorizationHeader string            `json:"authorization_header,omitempty"`
+	} `json:"delivery"`
+	Description string `json:"description,omitempty"`
+	CreatedAt   int    `json:"created_at"`
+	// InactiveAt is the time at which the stream becomes inactive.
+	// A value of 0 means no inactivity deadline is set.
+	InactiveAt int            `json:"inactive_at,omitempty"`
+	VerifiedAt int            `json:"verified_at,omitempty"`
+	Store      map[string]any `json:"store,omitempty"`
 }
 
 type SSFEventType string
@@ -161,15 +229,70 @@ type SSFSubject struct {
 	IPAddresses []string `json:"ip-addresses,omitempty"`
 	// Identifiers is a list of aliases for the subject.
 	// It is used to identify the subject when the format is [SSFSubjectFormatAliases].
-	Identifiers          []SSFSubject          `json:"identifiers,omitempty"`
-	User                 *SSFSubject           `json:"user,omitempty"`
-	Tenant               *SSFSubject           `json:"tenant,omitempty"`
-	Device               *SSFSubject           `json:"device,omitempty"`
-	Session              *SSFSubject           `json:"session,omitempty"`
-	OrganizationalUnit   *SSFSubject           `json:"org_unit,omitempty"`
-	Application          *SSFSubject           `json:"application,omitempty"`
-	Group                *SSFSubject           `json:"group,omitempty"`
-	AdditionalProperties map[string]SSFSubject `json:"additional_properties,omitempty"`
+	Identifiers        []SSFSubject          `json:"identifiers,omitempty"`
+	User               *SSFSubject           `json:"user,omitempty"`
+	Tenant             *SSFSubject           `json:"tenant,omitempty"`
+	Device             *SSFSubject           `json:"device,omitempty"`
+	Session            *SSFSubject           `json:"session,omitempty"`
+	OrganizationalUnit *SSFSubject           `json:"org_unit,omitempty"`
+	Application        *SSFSubject           `json:"application,omitempty"`
+	Group              *SSFSubject           `json:"group,omitempty"`
+	AdditionalMembers  map[string]SSFSubject `json:"-"`
+}
+
+func (s *SSFSubject) UnmarshalJSON(data []byte) error {
+	type subject SSFSubject
+	s.AdditionalMembers = nil
+	if err := json.Unmarshal(data, (*subject)(s)); err != nil {
+		return err
+	}
+
+	var raw map[string]json.RawMessage
+	if err := json.Unmarshal(data, &raw); err != nil {
+		return err
+	}
+
+	t := reflect.TypeFor[subject]()
+	for i := range t.NumField() {
+		tag := t.Field(i).Tag.Get("json")
+		if name, _, _ := strings.Cut(tag, ","); name != "" && name != "-" {
+			delete(raw, name)
+		}
+	}
+
+	if len(raw) == 0 {
+		return nil
+	}
+
+	s.AdditionalMembers = make(map[string]SSFSubject, len(raw))
+	for name, value := range raw {
+		var subject SSFSubject
+		if err := json.Unmarshal(value, &subject); err != nil {
+			return err
+		}
+		s.AdditionalMembers[name] = subject
+	}
+	return nil
+}
+
+func (s SSFSubject) MarshalJSON() ([]byte, error) {
+	type subject SSFSubject
+	attributesBytes, err := json.Marshal(subject(s))
+	if err != nil {
+		return nil, err
+	}
+
+	var rawValues map[string]any
+	if err := json.Unmarshal(attributesBytes, &rawValues); err != nil {
+		return nil, err
+	}
+
+	// Inline additional complex subject members.
+	for name, member := range s.AdditionalMembers {
+		rawValues[name] = member
+	}
+
+	return json.Marshal(rawValues)
 }
 
 type SSFSubjectFormat string
@@ -197,13 +320,26 @@ type SSFSubjectOptions struct {
 	Verified bool
 }
 
-// SSFAuthorizationScheme describes an authorization scheme supported by the
+// SSFAuthScheme describes an authorization scheme supported by the
 // transmitter's SSF management APIs.
 // See [SSF 1.0 §7.1].
-type SSFAuthorizationScheme struct {
-	// SpecificationURN identifies the authorization scheme specification.
-	SpecificationURN string `json:"spec_urn"`
+type SSFAuthScheme struct {
+	// SpecURN identifies the authorization scheme specification.
+	SpecURN SSFAuthSchemeURN `json:"spec_urn"`
 }
+
+type SSFAuthSchemeURN string
+
+const (
+	// SSFAuthchemeURNRFC6749 indicates that the receiver may obtain an access
+	// token using the Client Credentials Grant from RFC 6749 §4.4, or another
+	// method suitable for the receiver and transmitter.
+	SSFAuthchemeURNRFC6749 SSFAuthSchemeURN = "urn:ietf:rfc:6749"
+	// SSFAuthchemeURNRFC8705 indicates that the receiver may authenticate or
+	// use certificate-bound access tokens with OAuth 2.0 Mutual-TLS as defined
+	// by RFC 8705.
+	SSFAuthchemeURNRFC8705 SSFAuthSchemeURN = "urn:ietf:rfc:8705"
+)
 
 // SSFDefaultSubject defines whether newly created streams include subjects by
 // default or require explicit subject registration.
@@ -218,15 +354,20 @@ const (
 	SSFDefaultSubjectNone SSFDefaultSubject = "NONE"
 )
 
-// SSFAuthenticatedReceiverFunc is a function that receives an authenticated request and returns the receiver ID.
+// SSFReceiverFunc is a function that receives an authenticated request and returns the receiver ID.
 // It is used to identify the receiver of the event stream.
-type SSFAuthenticatedReceiverFunc func(context.Context) (SSFReceiver, error)
+type SSFReceiverFunc func(context.Context) (SSFReceiver, error)
 
 type SSFReceiver struct {
 	ID string
 	// Audiences is a list of audiences for the receiver of the event stream.
 	// If empty, the receiver ID will be used as the audience.
 	Audiences []string
+	// EventTypes is the list of event types supported for this receiver.
+	// If nil, the provider's global event types are used. Event types not in
+	// the provider's global configuration are ignored.
+	// If an empty slice, the receiver has not event type allowed.
+	EventTypes []SSFEventType
 }
 
 // SSFEvents is the result of polling pending SETs for an event stream.
@@ -270,12 +411,15 @@ type SSFEvent struct {
 	Type SSFEventType `json:"type"`
 	// Subject identifies the subject of the event.
 	Subject SSFSubject `json:"sub_id"`
-	// Transaction is the transaction ID of the event.
+	// Transaction identifies the underlying cause that produced the SET and
+	// it may be reused across different SETs generated for the same cause.
+	// See [SSF 1.0 §4.1.9].
 	Transaction string `json:"txn,omitempty"`
 	// Claims is the claims of the event.
-	Claims any `json:"claims,omitempty"`
-	// CreatedAt is the event creation time as a Unix timestamp.
-	CreatedAt int `json:"created_at"`
+	Claims map[string]any `json:"claims,omitempty"`
+	// IssuedAt is the time at which the Security Event Token is issued.
+	// It is used as the SET "iat" claim.
+	IssuedAt int `json:"created_at"`
 }
 
 // SSFEventError describes a receiver-reported error for a polled SET.
@@ -298,15 +442,35 @@ const (
 	SSFEventErrorCodeInvalidIssuer        SSFEventErrorCode = "invalid_issuer"
 	SSFEventErrorCodeInvalidAudience      SSFEventErrorCode = "invalid_audience"
 	SSFEventErrorCodeAccessDenied         SSFEventErrorCode = "access_denied"
+	SSFEventErrorCodeInvalidState         SSFEventErrorCode = "invalid_state"
 )
 
-// SSFEventStreamStatus represents the current state of an event stream.
-type SSFEventStreamStatus string
+// SSFStreamStatus represents the current state of an event stream.
+// See [SSF 1.0 §8.1.2].
+type SSFStreamStatus string
 
 const (
-	SSFEventStreamStatusEnabled  SSFEventStreamStatus = "enabled"
-	SSFEventStreamStatusPaused   SSFEventStreamStatus = "paused"
-	SSFEventStreamStatusDisabled SSFEventStreamStatus = "disabled"
+	// SSFStreamStatusEnabled means the transmitter must transmit events
+	// according to the stream's configured delivery method.
+	SSFStreamStatusEnabled SSFStreamStatus = "enabled"
+	// SSFStreamStatusPaused means the transmitter must not transmit events
+	// while paused, but may hold events for later transmission when the stream
+	// becomes enabled again.
+	SSFStreamStatusPaused SSFStreamStatus = "paused"
+	// SSFStreamStatusDisabled means the transmitter must not transmit
+	// events and will not hold them for later transmission.
+	SSFStreamStatusDisabled SSFStreamStatus = "disabled"
 )
 
-type SSFHandleExpiredEventStreamFunc func(context.Context, *SSFEventStream) error
+// SSFStatusHandleFunc is called before applying a receiver-requested stream
+// status change. The handler receives the current stream and the requested
+// status options, and may reject the change by returning an error.
+type SSFStatusHandleFunc func(context.Context, *SSFStream, SSFStatusOptions) error
+
+// SSFStatusOptions carries a receiver-requested stream status update.
+type SSFStatusOptions struct {
+	// Status is the requested stream status.
+	Status SSFStreamStatus
+	// Reason is the optional reason for the requested status change.
+	Reason string
+}

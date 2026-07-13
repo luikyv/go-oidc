@@ -269,6 +269,10 @@ func (ctx Context) JWTID() string {
 	return ctx.JWTIDFunc(ctx)
 }
 
+func (ctx Context) SSFEventID() string {
+	return ctx.SSFEventIDFunc(ctx)
+}
+
 func (ctx Context) AuthCode() string {
 	return ctx.AuthCodeFunc(ctx)
 }
@@ -603,24 +607,20 @@ func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
 	return jwks.Public(), nil
 }
 
-func (ctx Context) SSFCreateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.CreateEventStream(ctx, stream)
+func (ctx Context) SSFSaveStream(stream *goidc.SSFStream) error {
+	return ctx.SSFStreamManager.SaveStream(ctx, stream)
 }
 
-func (ctx Context) SSFUpdateEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFEventStreamManager.UpdateEventStream(ctx, stream)
+func (ctx Context) SSFStream(id string) (*goidc.SSFStream, error) {
+	return ctx.SSFStreamManager.Stream(ctx, id)
 }
 
-func (ctx Context) SSFEventStream(id string) (*goidc.SSFEventStream, error) {
-	return ctx.SSFEventStreamManager.EventStream(ctx, id)
+func (ctx Context) SSFStreams(receiverID string) ([]*goidc.SSFStream, error) {
+	return ctx.SSFStreamManager.Streams(ctx, receiverID)
 }
 
-func (ctx Context) SSFEventStreams(receiverID string) ([]*goidc.SSFEventStream, error) {
-	return ctx.SSFEventStreamManager.EventStreams(ctx, receiverID)
-}
-
-func (ctx Context) SSFDeleteEventStream(id string) error {
-	return ctx.SSFEventStreamManager.DeleteEventStream(ctx, id)
+func (ctx Context) SSFDeleteStream(id string) error {
+	return ctx.SSFStreamManager.DeleteStream(ctx, id)
 }
 
 func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
@@ -635,8 +635,8 @@ func (ctx Context) SSFEventStreamID() string {
 	return ctx.SSFEventStreamIDFunc(ctx)
 }
 
-func (ctx Context) SSFAuthenticatedReceiver() (goidc.SSFReceiver, error) {
-	return ctx.SSFAuthenticatedReceiverFunc(ctx)
+func (ctx Context) SSFReceiver() (goidc.SSFReceiver, error) {
+	return ctx.SSFReceiverFunc(ctx)
 }
 
 func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
@@ -705,8 +705,8 @@ func (ctx Context) SSFHTTPClient() *http.Client {
 	return ctx.SSFHTTPClientFunc(ctx)
 }
 
-func (ctx Context) SSFHandleExpiredEventStream(stream *goidc.SSFEventStream) error {
-	return ctx.SSFHandleExpiredEventStreamFunc(ctx, stream)
+func (ctx Context) SSFHandleStatus(stream *goidc.SSFStream, opts goidc.SSFStatusOptions) error {
+	return ctx.SSFStatusHandleFunc(ctx, stream, opts)
 }
 
 func (ctx Context) VCISelfGrantByPreAuthCode(preAuthCode string) (*goidc.Grant, error) {

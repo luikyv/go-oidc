@@ -21,9 +21,9 @@ var _ goidc.VCOfferManager = &Manager{}
 var _ goidc.VCPreAuthCodeGrantManager = &Manager{}
 var _ goidc.VCDeferralManager = &Manager{}
 var _ goidc.VCNotificationManager = &Manager{}
-var _ goidc.SSFEventStreamManager = &Manager{}
+var _ goidc.SSFStreamManager = &Manager{}
 var _ goidc.SSFSubjectManager = &Manager{}
-var _ goidc.SSFEventPollManager = &Manager{}
+var _ goidc.SSFPollingManager = &Manager{}
 var _ goidc.SSFVerificationManager = &Manager{}
 
 type Manager struct {
@@ -43,7 +43,7 @@ type Manager struct {
 	deferralMutex     sync.RWMutex
 	Notifications     map[string]*goidc.VCNotification
 	notificationMutex sync.RWMutex
-	Streams           map[string]*goidc.SSFEventStream
+	SSFStreams        map[string]*goidc.SSFStream
 	streamSubjects    map[string][]goidc.SSFSubject
 	streamPollEvents  map[string][]goidc.SSFEvent
 	streamMutex       sync.RWMutex
@@ -61,7 +61,7 @@ func NewManager(maxSize int) *Manager {
 		Offers:           make(map[string]*goidc.VCOffer),
 		Deferrals:        make(map[string]*goidc.VCDeferral),
 		Notifications:    make(map[string]*goidc.VCNotification),
-		Streams:          make(map[string]*goidc.SSFEventStream),
+		SSFStreams:       make(map[string]*goidc.SSFStream),
 		streamSubjects:   make(map[string][]goidc.SSFSubject),
 		streamPollEvents: make(map[string][]goidc.SSFEvent),
 		maxPollEvents:    3,

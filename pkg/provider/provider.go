@@ -169,8 +169,6 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 
 	op.config.IDTokenLifetimeSecs = nonZeroOrDefault(op.config.IDTokenLifetimeSecs, defaultIDTokenLifetimeSecs)
 
-	op.config.WellKnownEndpoint = nonZeroOrDefault(op.config.WellKnownEndpoint, defaultEndpointWellKnown)
-
 	op.config.JWKSEndpoint = nonZeroOrDefault(op.config.JWKSEndpoint, defaultEndpointJSONWebKeySet)
 
 	op.config.TokenEndpoint = nonZeroOrDefault(op.config.TokenEndpoint, defaultEndpointToken)
@@ -293,16 +291,17 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	}
 
 	if op.config.SSFEnabled {
-		op.config.SSFHost = nonZeroOrDefault(op.config.SSFHost, op.config.Host)
+		op.config.SSFIssuer = nonZeroOrDefault(op.config.SSFIssuer, op.config.Host)
 		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
 		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
-		op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(inmemoryManager))
-		op.config.SSFAuthenticatedReceiverFunc = nonZeroOrDefault(op.config.SSFAuthenticatedReceiverFunc, goidc.SSFAuthenticatedReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
+		op.config.SSFStreamManager = nonZeroOrDefault(op.config.SSFStreamManager, goidc.SSFStreamManager(inmemoryManager))
+		op.config.SSFReceiverFunc = nonZeroOrDefault(op.config.SSFReceiverFunc, goidc.SSFReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
 		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
-		op.config.SSFHandleExpiredEventStreamFunc = nonZeroOrDefault(op.config.SSFHandleExpiredEventStreamFunc, goidc.SSFHandleExpiredEventStreamFunc(defaultSSFHandleExpiredEventStreamFunc))
-		if op.config.SSFStatusManagementEnabled {
+		op.config.SSFEventIDFunc = nonZeroOrDefault(op.config.SSFEventIDFunc, defaultJWTIDFunc)
+		if op.config.SSFStatusEnabled {
 			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
-			op.config.SSFEventStreamManager = nonZeroOrDefault(op.config.SSFEventStreamManager, goidc.SSFEventStreamManager(inmemoryManager))
+			op.config.SSFStreamManager = nonZeroOrDefault(op.config.SSFStreamManager, goidc.SSFStreamManager(inmemoryManager))
+			op.config.SSFStatusHandleFunc = nonZeroOrDefault(op.config.SSFStatusHandleFunc, goidc.SSFStatusHandleFunc(defaultSSFStatusHandleFunc))
 		}
 		if op.config.SSFSubjectEnabled {
 			op.config.SSFSubjectAddEndpoint = nonZeroOrDefault(op.config.SSFSubjectAddEndpoint, defaultEndpointSSFAddSubject)
@@ -311,7 +310,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		}
 		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
 			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
-			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFEventPollManager(inmemoryManager))
+			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFPollingManager(inmemoryManager))
 		}
 		if op.config.SSFVerificationEnabled {
 			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
@@ -679,7 +678,6 @@ const (
 	defaultOpenIDFedTrustChainMaxDepth = 5
 	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
 
-	defaultEndpointWellKnown                    = "/.well-known/openid-configuration"
 	defaultEndpointJSONWebKeySet                = "/jwks"
 	defaultEndpointPushedAuthorizationRequest   = "/par"
 	defaultEndpointAuthorize                    = "/authorize"
@@ -847,7 +845,7 @@ func defaultSSFAuthenticatedReceiverFunc(context.Context) (goidc.SSFReceiver, er
 	return goidc.SSFReceiver{}, errors.New("authenticated receiver function is not defined")
 }
 
-func defaultSSFHandleExpiredEventStreamFunc(context.Context, *goidc.SSFEventStream) error {
+func defaultSSFStatusHandleFunc(context.Context, *goidc.SSFStream, goidc.SSFStatusOptions) error {
 	return nil
 }
 
