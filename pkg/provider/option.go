@@ -1895,21 +1895,6 @@ func WithOpenIDFedTrustMarks(configs ...goidc.TrustMarkConfig) OpenIDFedOption {
 // See [WithSSF] for more information.
 type SSFOption Option
 
-// SSFPollOption is an optional configuration for SSF poll delivery.
-type SSFPollOption Option
-
-// SSFPushOption is an optional configuration for SSF push delivery.
-type SSFPushOption Option
-
-// SSFStatusOption is an optional configuration for SSF stream status management.
-type SSFStatusOption Option
-
-// SSFSubjectManagementOption is an optional configuration for SSF subject management.
-type SSFSubjectManagementOption Option
-
-// SSFVerificationOption is an optional configuration for SSF stream verification.
-type SSFVerificationOption Option
-
 // SSFConfig holds the required configuration for Shared Signals Framework support.
 type SSFConfig struct {
 	// Manager is responsible for persisting event stream configurations created
@@ -1975,6 +1960,9 @@ func WithSSFSigner(f goidc.SignerFunc) SSFOption {
 	}
 }
 
+// SSFPollOption is an optional configuration for SSF poll delivery.
+type SSFPollOption Option
+
 // WithSSFPoll enables the poll delivery method, where receivers poll the
 // transmitter for events. The manager is responsible for queuing events and
 // tracking acknowledgements.
@@ -1990,6 +1978,9 @@ func WithSSFPoll(manager goidc.SSFPollingManager, opts ...SSFPollOption) SSFOpti
 		return nil
 	}
 }
+
+// SSFPushOption is an optional configuration for SSF push delivery.
+type SSFPushOption Option
 
 // WithSSFPush enables the push delivery method, where the transmitter
 // pushes events to receiver endpoints.
@@ -2012,6 +2003,9 @@ func WithSSFPushHTTPClient(httpClientFunc goidc.HTTPClientFunc) SSFPushOption {
 		return nil
 	}
 }
+
+// SSFStatusOption is an optional configuration for SSF stream status management.
+type SSFStatusOption Option
 
 // WithSSFStatusManagement enables the stream status management API,
 // allowing receivers to read and update the status of their event streams
@@ -2045,6 +2039,9 @@ func WithSSFStatusHandler(f goidc.SSFStatusHandleFunc) SSFStatusOption {
 	}
 }
 
+// SSFSubjectManagementOption is an optional configuration for SSF subject management.
+type SSFSubjectManagementOption Option
+
 // WithSSFSubjectManagement enables the subject management API,
 // allowing receivers to add or remove specific subjects they want to receive
 // events for on a given stream.
@@ -2076,6 +2073,9 @@ func WithSSFRemoveSubjectEndpoint(endpoint string) SSFSubjectManagementOption {
 		return nil
 	}
 }
+
+// SSFVerificationOption is an optional configuration for SSF stream verification.
+type SSFVerificationOption Option
 
 // WithSSFVerification enables the verification API, allowing receivers
 // to request verification events to confirm the stream is working correctly.
@@ -2131,6 +2131,7 @@ func WithSSFCriticalSubjectMembers(subs ...string) SSFOption {
 // WithSSFAuthorizationSchemes sets the authorization schemes published in the SSF
 // configuration endpoint. This informs receivers how to authenticate when calling
 // the SSF APIs (e.g., Bearer tokens, OAuth 2.0).
+// See [SSF 1.0 §7.1.1].
 func WithSSFAuthorizationSchemes(schemes ...goidc.SSFAuthScheme) SSFOption {
 	return func(p *Provider) error {
 		if len(schemes) == 0 {

@@ -659,25 +659,22 @@ func isNil(i any) bool {
 }
 
 const (
-	defaultStorageMaxSize = 100
-
-	defaultAuthnSessionTimeoutSecs        = 1800 // 30 minutes.
-	defaultIDTokenLifetimeSecs            = 600
-	defaultTokenLifetimeSecs              = 300
-	defaultJWTLifetimeSecs                = 600
-	defaultLogoutSessionTimeoutSecs       = 1800 // 30 minutes.
-	defaultPARLifetimeSecs                = 60   // 1 minute.
-	defaultCIBADefaultSessionLifetimeSecs = 60
-	defaultCIBAPollingIntervalSecs        = 5
-	defaultDeviceAuthLifetimeSecs         = 300 // 5 minutes.
-	defaultDeviceAuthPollingIntervalSecs  = 5
-	defaultAuthorizationCodeLifetimeSecs  = 60
-	defaultPreAuthCodeLifetimeSecs        = 60
-	defaultVCIDeferredIntervalSecs        = 5
-
-	defaultOpenIDFedTrustChainMaxDepth = 5
-	defaultOpenIDFedRegType            = goidc.ClientRegistrationTypeAutomatic
-
+	defaultStorageMaxSize                       = 100
+	defaultAuthnSessionTimeoutSecs              = 1800 // 30 minutes.
+	defaultIDTokenLifetimeSecs                  = 600
+	defaultTokenLifetimeSecs                    = 300
+	defaultJWTLifetimeSecs                      = 600
+	defaultLogoutSessionTimeoutSecs             = 1800 // 30 minutes.
+	defaultPARLifetimeSecs                      = 60   // 1 minute.
+	defaultCIBADefaultSessionLifetimeSecs       = 60
+	defaultCIBAPollingIntervalSecs              = 5
+	defaultDeviceAuthLifetimeSecs               = 300 // 5 minutes.
+	defaultDeviceAuthPollingIntervalSecs        = 5
+	defaultAuthorizationCodeLifetimeSecs        = 60
+	defaultPreAuthCodeLifetimeSecs              = 60
+	defaultVCIDeferredIntervalSecs              = 5
+	defaultOpenIDFedTrustChainMaxDepth          = 5
+	defaultOpenIDFedRegType                     = goidc.ClientRegistrationTypeAutomatic
 	defaultEndpointJSONWebKeySet                = "/jwks"
 	defaultEndpointPushedAuthorizationRequest   = "/par"
 	defaultEndpointAuthorize                    = "/authorize"

@@ -34,6 +34,8 @@ type responsePollEvents struct {
 	MoreAvailable       bool              `json:"moreAvailable"`
 }
 
+// PushEvent delivers a security event token using SET push delivery.
+// See [RFC 8935].
 func PushEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 	stream, err := ctx.SSFStream(streamID)
 	if err != nil {
@@ -100,6 +102,8 @@ func PushEvent(ctx oidc.Context, streamID string, event goidc.SSFEvent) error {
 	return nil
 }
 
+// pollEvents returns pending security event tokens using SET poll delivery.
+// See [RFC 8936].
 func pollEvents(ctx oidc.Context, streamID string, req requestPollEvents) (responsePollEvents, error) {
 	stream, _, err := authorizedStream(ctx, streamID)
 	if err != nil {
