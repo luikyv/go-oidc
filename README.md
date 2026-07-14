@@ -114,7 +114,6 @@ Verify the setup at http://localhost/.well-known/openid-configuration.
 - [Rich Authorization Requests (RAR)](#rich-authorization-requests)
 - [Resource Indicators](#resource-indicators)
 - [OpenID Federation](#openid-federation)
-- [Shared Signals Framework](#shared-signals-framework-ssf)
 - [Form Post Response Mode](#form-post-response-mode)
 - [Developer Notes](#developer-notes)
 

@@ -34,7 +34,6 @@ jobs:
           fapi1-op-private-key-par-jarm,
           fapiciba,
           federation,
-          ssf,
         ]
 
     steps:
