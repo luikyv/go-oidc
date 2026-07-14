@@ -248,40 +248,6 @@ type Configuration struct {
 	LogoutSessionIDFunc         goidc.RandomFunc
 	HandleDefaultPostLogoutFunc goidc.HandleDefaultPostLogoutFunc
 
-	SSFEnabled                           bool
-	SSFIssuer                            string
-	SSFJWKSEndpoint                      string
-	SSFEventTypes                        []goidc.SSFEventType
-	SSFDeliveryMethods                   []goidc.SSFDeliveryMethod
-	SSFStreamManager                     goidc.SSFStreamManager
-	SSFConfigurationEndpoint             string
-	SSFPollingEndpoint                   string
-	SSFEventPollManager                  goidc.SSFPollingManager
-	SSFStatusEnabled                     bool
-	SSFStatusHandleFunc                  goidc.SSFStatusHandleFunc
-	SSFStatusEndpoint                    string
-	SSFSubjectEnabled                    bool
-	SSFSubjectManager                    goidc.SSFSubjectManager
-	SSFSubjectAddEndpoint                string
-	SSFSubjectRemoveEndpoint             string
-	SSFVerificationEnabled               bool
-	SSFVerificationManager               goidc.SSFVerificationManager
-	SSFVerificationEndpoint              string
-	SSFVerificationMinInterval           int
-	SSFCriticalSubjectMembers            []string
-	SSFAuthorizationSchemes              []goidc.SSFAuthScheme
-	SSFDefaultSubjects                   goidc.SSFDefaultSubject
-	SSFJWKSFunc                          goidc.JWKSFunc
-	SSFDefaultSigAlg                     goidc.SignatureAlgorithm
-	SSFSignerFunc                        goidc.SignerFunc
-	SSFReceiverFunc                      goidc.SSFReceiverFunc
-	SSFEventStreamIDFunc                 goidc.RandomFunc
-	SSFEventIDFunc                       goidc.RandomFunc
-	SSFHTTPClientFunc                    goidc.HTTPClientFunc
-	SSFInactivityTimeoutSecs             int
-	SSFMultipleStreamsPerReceiverEnabled bool
-	SSFEndpointPrefix                    string
-
 	VCIEnabled                           bool
 	VCIIssuers                           []goidc.VCIssuer
 	VCISelfEnabled                       bool

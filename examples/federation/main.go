@@ -112,7 +112,7 @@ func main() {
 	op, err := provider.New(
 		provider.Config{
 			Issuer:      OPFedID,
-			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			JWKS:        authutil.PrivateJWKSFunc(),
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 		provider.WithOpenIDFederation(

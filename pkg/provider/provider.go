@@ -23,7 +23,6 @@ import (
 	"github.com/luikyv/go-oidc/internal/federation"
 	"github.com/luikyv/go-oidc/internal/logout"
 	"github.com/luikyv/go-oidc/internal/oidc"
-	"github.com/luikyv/go-oidc/internal/ssf"
 	"github.com/luikyv/go-oidc/internal/storage"
 	"github.com/luikyv/go-oidc/internal/strutil"
 	"github.com/luikyv/go-oidc/internal/timeutil"
@@ -41,7 +40,7 @@ type Provider struct {
 type Config struct {
 	Issuer      string
 	Manager     goidc.GrantManager
-	JWKSFunc    goidc.JWKSFunc
+	JWKS        goidc.JWKSFunc
 	IDTokenAlgs []goidc.SignatureAlgorithm
 }
 
@@ -69,7 +68,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		return nil, errors.New("issuer cannot be empty")
 	}
 
-	if cfg.JWKSFunc == nil {
+	if cfg.JWKS == nil {
 		return nil, errors.New("the jwks function cannot be empty")
 	}
 
@@ -81,7 +80,7 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		config: oidc.Configuration{
 			GrantManager:         cfg.Manager,
 			Host:                 cfg.Issuer,
-			JWKSFunc:             cfg.JWKSFunc,
+			JWKSFunc:             cfg.JWKS,
 			IDTokenDefaultSigAlg: cfg.IDTokenAlgs[0],
 			IDTokenSigAlgs:       cfg.IDTokenAlgs,
 		},
@@ -290,34 +289,6 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		op.config.LogoutSessionIDFunc = nonZeroOrDefault(op.config.LogoutSessionIDFunc, defaultSessionIDFunc)
 	}
 
-	if op.config.SSFEnabled {
-		op.config.SSFIssuer = nonZeroOrDefault(op.config.SSFIssuer, op.config.Host)
-		op.config.SSFJWKSEndpoint = nonZeroOrDefault(op.config.SSFJWKSEndpoint, defaultEndpointSSFJWKS)
-		op.config.SSFConfigurationEndpoint = nonZeroOrDefault(op.config.SSFConfigurationEndpoint, defaultEndpointSSFConfiguration)
-		op.config.SSFStreamManager = nonZeroOrDefault(op.config.SSFStreamManager, goidc.SSFStreamManager(inmemoryManager))
-		op.config.SSFReceiverFunc = nonZeroOrDefault(op.config.SSFReceiverFunc, goidc.SSFReceiverFunc(defaultSSFAuthenticatedReceiverFunc))
-		op.config.SSFEventStreamIDFunc = nonZeroOrDefault(op.config.SSFEventStreamIDFunc, defaultSessionIDFunc)
-		op.config.SSFEventIDFunc = nonZeroOrDefault(op.config.SSFEventIDFunc, defaultJWTIDFunc)
-		if op.config.SSFStatusEnabled {
-			op.config.SSFStatusEndpoint = nonZeroOrDefault(op.config.SSFStatusEndpoint, defaultEndpointSSFStatus)
-			op.config.SSFStreamManager = nonZeroOrDefault(op.config.SSFStreamManager, goidc.SSFStreamManager(inmemoryManager))
-			op.config.SSFStatusHandleFunc = nonZeroOrDefault(op.config.SSFStatusHandleFunc, goidc.SSFStatusHandleFunc(defaultSSFStatusHandleFunc))
-		}
-		if op.config.SSFSubjectEnabled {
-			op.config.SSFSubjectAddEndpoint = nonZeroOrDefault(op.config.SSFSubjectAddEndpoint, defaultEndpointSSFAddSubject)
-			op.config.SSFSubjectRemoveEndpoint = nonZeroOrDefault(op.config.SSFSubjectRemoveEndpoint, defaultEndpointSSFRemoveSubject)
-			op.config.SSFSubjectManager = nonZeroOrDefault(op.config.SSFSubjectManager, goidc.SSFSubjectManager(inmemoryManager))
-		}
-		if slices.Contains(op.config.SSFDeliveryMethods, goidc.SSFDeliveryMethodPoll) {
-			op.config.SSFPollingEndpoint = nonZeroOrDefault(op.config.SSFPollingEndpoint, defaultEndpointSSFPolling)
-			op.config.SSFEventPollManager = nonZeroOrDefault(op.config.SSFEventPollManager, goidc.SSFPollingManager(inmemoryManager))
-		}
-		if op.config.SSFVerificationEnabled {
-			op.config.SSFVerificationEndpoint = nonZeroOrDefault(op.config.SSFVerificationEndpoint, defaultEndpointSSFVerification)
-			op.config.SSFVerificationManager = nonZeroOrDefault(op.config.SSFVerificationManager, goidc.SSFVerificationManager(inmemoryManager))
-		}
-	}
-
 	if op.config.RAREnabled {
 		op.config.RARValidateDetailFunc = nonZeroOrDefault(op.config.RARValidateDetailFunc, goidc.RARValidateDetailFunc(defaultRARValidateDetailFunc))
 		op.config.RARCompareDetailsFunc = nonZeroOrDefault(op.config.RARCompareDetailsFunc, defaultCompareAuthDetailsFunc)
@@ -499,7 +470,6 @@ func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.Middl
 	dcr.RegisterHandlers(mux, &op.config, middlewares...)
 	federation.RegisterHandlers(mux, &op.config, middlewares...)
 	logout.RegisterHandlers(mux, &op.config, middlewares...)
-	ssf.RegisterHandlers(mux, &op.config, middlewares...)
 	vc.RegisterHandlers(mux, &op.config, middlewares...)
 }
 
@@ -627,17 +597,6 @@ func (op *Provider) ResolveFederationEntity(ctx context.Context, id string) (goi
 	return federation.Resolve(oidc.NewContext(ctx, &op.config), id)
 }
 
-// PushSSFEvent delivers an SSF event to the push delivery event stream
-// identified by streamID.
-//
-// The event is signed as a Security Event Token (SET) and sent to the stream's
-// configured endpoint. The caller is responsible for selecting the target
-// stream.
-// This method does not discover matching streams or apply subject filtering.
-func (op *Provider) PushSSFEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
-	return ssf.PushEvent(oidc.NewContext(ctx, &op.config), streamID, event)
-}
-
 // nonZeroOrDefault returns the first argument "s1" if it is non-nil and non-zero.
 // Otherwise, it returns the second argument "s2" as the default value.
 //
@@ -687,13 +646,6 @@ const (
 	defaultEndpointOpenIDFederationRegistration = "/federation/register"
 	defaultEndpointOpenIDFederationSignedJWKS   = "/signed-jwks"
 	defaultEndpointEndSession                   = "/logout"
-	defaultEndpointSSFJWKS                      = "/ssf/jwks"
-	defaultEndpointSSFConfiguration             = "/ssf/stream"
-	defaultEndpointSSFStatus                    = "/ssf/status"
-	defaultEndpointSSFAddSubject                = "/ssf/subject:add"
-	defaultEndpointSSFRemoveSubject             = "/ssf/subject:remove"
-	defaultEndpointSSFVerification              = "/ssf/verify"
-	defaultEndpointSSFPolling                   = "/ssf/poll"
 	defaultEndpointDeviceAuthorization          = "/device_authorization"
 	defaultEndpointDeviceVerification           = "/device"
 	defaultEndpointVCICredential                = "/credential"          //nolint:gosec
@@ -835,14 +787,6 @@ func defaultUserInfoClaimsFunc(context.Context, *goidc.Grant) map[string]any {
 }
 
 func defaultTokenClaimsFunc(context.Context, *goidc.Token, *goidc.Grant) map[string]any {
-	return nil
-}
-
-func defaultSSFAuthenticatedReceiverFunc(context.Context) (goidc.SSFReceiver, error) {
-	return goidc.SSFReceiver{}, errors.New("authenticated receiver function is not defined")
-}
-
-func defaultSSFStatusHandleFunc(context.Context, *goidc.SSFStream, goidc.SSFStatusOptions) error {
 	return nil
 }
 

@@ -17,7 +17,7 @@ func main() {
 	tenant1, err := provider.New(
 		provider.Config{
 			Issuer:      "https://auth1.localhost",
-			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			JWKS:        authutil.PrivateJWKSFunc(),
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 		provider.WithScopes(authutil.Scopes...),
@@ -41,7 +41,7 @@ func main() {
 	tenant2, err := provider.New(
 		provider.Config{
 			Issuer:      "https://auth2.localhost",
-			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			JWKS:        authutil.PrivateJWKSFunc(),
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 		},
 		provider.WithScopes(authutil.Scopes...),

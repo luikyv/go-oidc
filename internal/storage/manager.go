@@ -21,10 +21,6 @@ var _ goidc.VCOfferManager = &Manager{}
 var _ goidc.VCPreAuthCodeGrantManager = &Manager{}
 var _ goidc.VCDeferralManager = &Manager{}
 var _ goidc.VCNotificationManager = &Manager{}
-var _ goidc.SSFStreamManager = &Manager{}
-var _ goidc.SSFSubjectManager = &Manager{}
-var _ goidc.SSFPollingManager = &Manager{}
-var _ goidc.SSFVerificationManager = &Manager{}
 
 type Manager struct {
 	Sessions          map[string]*goidc.AuthnSession
@@ -43,29 +39,20 @@ type Manager struct {
 	deferralMutex     sync.RWMutex
 	Notifications     map[string]*goidc.VCNotification
 	notificationMutex sync.RWMutex
-	SSFStreams        map[string]*goidc.SSFStream
-	streamSubjects    map[string][]goidc.SSFSubject
-	streamPollEvents  map[string][]goidc.SSFEvent
-	streamMutex       sync.RWMutex
-	maxPollEvents     int
 	maxSize           int
 }
 
 func NewManager(maxSize int) *Manager {
 	return &Manager{
-		Sessions:         make(map[string]*goidc.AuthnSession),
-		Clients:          make(map[string]*goidc.Client),
-		Grants:           make(map[string]*goidc.Grant),
-		Tokens:           make(map[string]*goidc.Token),
-		LogoutSessions:   make(map[string]*goidc.LogoutSession),
-		Offers:           make(map[string]*goidc.VCOffer),
-		Deferrals:        make(map[string]*goidc.VCDeferral),
-		Notifications:    make(map[string]*goidc.VCNotification),
-		SSFStreams:       make(map[string]*goidc.SSFStream),
-		streamSubjects:   make(map[string][]goidc.SSFSubject),
-		streamPollEvents: make(map[string][]goidc.SSFEvent),
-		maxPollEvents:    3,
-		maxSize:          maxSize,
+		Sessions:       make(map[string]*goidc.AuthnSession),
+		Clients:        make(map[string]*goidc.Client),
+		Grants:         make(map[string]*goidc.Grant),
+		Tokens:         make(map[string]*goidc.Token),
+		LogoutSessions: make(map[string]*goidc.LogoutSession),
+		Offers:         make(map[string]*goidc.VCOffer),
+		Deferrals:      make(map[string]*goidc.VCDeferral),
+		Notifications:  make(map[string]*goidc.VCNotification),
+		maxSize:        maxSize,
 	}
 }
 

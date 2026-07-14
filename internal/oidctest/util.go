@@ -182,9 +182,6 @@ func NewContext(tb testing.TB) oidc.Context {
 		CIBAHandleSessionFunc: func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
 			return errors.New("ciba init back auth function is not set")
 		},
-		SSFStatusHandleFunc: func(context.Context, *goidc.SSFStream, goidc.SSFStatusOptions) error {
-			return nil
-		},
 		VCIExternalPreAuthCodeHandleFunc: func(context.Context, string, goidc.VCPreAuthCodeOptions) (goidc.VCPreAuthCodeResult, error) {
 			return goidc.VCPreAuthCodeResult{}, errors.New("vc pre-authorized code handler is not set")
 		},
@@ -223,9 +220,6 @@ func NewContext(tb testing.TB) oidc.Context {
 			return uuid.NewString()
 		},
 		JWTIDFunc: func(context.Context) string {
-			return uuid.NewString()
-		},
-		SSFEventIDFunc: func(context.Context) string {
 			return uuid.NewString()
 		},
 		DeviceCodeFunc: func(context.Context) string {

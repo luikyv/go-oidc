@@ -32,7 +32,7 @@ func TestNew(t *testing.T) {
 			setup: func() (Config, []Option) {
 				return Config{
 					Issuer:      issuer,
-					JWKSFunc:    jwksFunc,
+					JWKS:        jwksFunc,
 					IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 				}, nil
 			},
@@ -88,7 +88,7 @@ func TestNew(t *testing.T) {
 				manager := storage.NewManager(100)
 				return Config{
 						Issuer:      issuer,
-						JWKSFunc:    jwksFunc,
+						JWKS:        jwksFunc,
 						IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 					}, []Option{
 						WithAuthCodeGrant(AuthCodeGrantConfig{
@@ -263,7 +263,7 @@ func TestNew(t *testing.T) {
 func TestNew_DefaultsVCISelfBatchSize(t *testing.T) {
 	p, err := New(Config{
 		Issuer:      "https://example.com",
-		JWKSFunc:    func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
+		JWKS:        func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
 		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 	}, WithVCI(WithVCISelf(nil)))
 	if err != nil {
@@ -280,7 +280,7 @@ func TestNew_DefaultsVCISelfBatchSize(t *testing.T) {
 func TestNew_DefaultsVCISelfNotification(t *testing.T) {
 	p, err := New(Config{
 		Issuer:      "https://example.com",
-		JWKSFunc:    func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
+		JWKS:        func(context.Context) (goidc.JSONWebKeySet, error) { return goidc.JSONWebKeySet{}, nil },
 		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},
 	}, WithVCI(WithVCISelf(nil, WithVCISelfNotification(nil, func(context.Context, *goidc.VCNotification, goidc.VCNotificationEvent) error {
 		return nil
@@ -410,7 +410,7 @@ func TestNew_ValidationErrors(t *testing.T) {
 
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
-			_, err := New(Config{Issuer: issuer, JWKSFunc: jwksFunc, IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256}}, test.opts...)
+			_, err := New(Config{Issuer: issuer, JWKS: jwksFunc, IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256}}, test.opts...)
 			if err == nil {
 				t.Fatal("New() error = nil, want non-nil")
 			}
@@ -428,7 +428,7 @@ func TestMakeToken(t *testing.T) {
 	op, _ := New(
 		Config{
 			Issuer: issuer,
-			JWKSFunc: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
+			JWKS: func(ctx context.Context) (goidc.JSONWebKeySet, error) {
 				return goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{jwk}}, nil
 			},
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.RS256},

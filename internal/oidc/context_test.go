@@ -604,7 +604,6 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 				ctx.CIBAIDFunc = func(context.Context) string { return "auth_req" }
 				ctx.GrantIDFunc = func(context.Context) string { return "grant" }
 				ctx.JWTIDFunc = func(context.Context) string { return "jwt" }
-				ctx.SSFEventIDFunc = func(context.Context) string { return "ssf_event" }
 				ctx.AuthCodeFunc = func(context.Context) string { return "code" }
 				ctx.RefreshTokenFunc = func(context.Context) string { return "refresh" }
 				ctx.DeviceCodeFunc = func(context.Context) string { return "device" }
@@ -621,9 +620,6 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 				}
 				if got := ctx.JWTID(); got != "jwt" {
 					t.Fatalf("JWTID() = %q, want %q", got, "jwt")
-				}
-				if got := ctx.SSFEventID(); got != "ssf_event" {
-					t.Fatalf("SSFEventID() = %q, want %q", got, "ssf_event")
 				}
 				if got := ctx.AuthCode(); got != "code" {
 					t.Fatalf("AuthCode() = %q, want %q", got, "code")

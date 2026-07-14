@@ -19,7 +19,7 @@ func main() {
 	op, err := provider.New(
 		provider.Config{
 			Issuer:      authutil.Issuer,
-			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			JWKS:        authutil.PrivateJWKSFunc(),
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 		provider.WithProfile(goidc.ProfileFAPI2),

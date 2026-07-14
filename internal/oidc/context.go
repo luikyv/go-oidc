@@ -269,10 +269,6 @@ func (ctx Context) JWTID() string {
 	return ctx.JWTIDFunc(ctx)
 }
 
-func (ctx Context) SSFEventID() string {
-	return ctx.SSFEventIDFunc(ctx)
-}
-
 func (ctx Context) AuthCode() string {
 	return ctx.AuthCodeFunc(ctx)
 }
@@ -585,128 +581,6 @@ func (ctx Context) Err() error {
 
 func (ctx Context) Value(key any) any {
 	return ctx.Context().Value(key)
-}
-
-//---------------------------------------- SSF ----------------------------------------//
-
-func (ctx Context) SSFJWKS() (goidc.JSONWebKeySet, error) {
-	jwks, err := ctx.SSFJWKSFunc(ctx)
-	if err != nil {
-		return goidc.JSONWebKeySet{}, fmt.Errorf("could not load the ssf jwks: %w", err)
-	}
-
-	return jwks, nil
-}
-
-func (ctx Context) SSFPublicJWKS() (goidc.JSONWebKeySet, error) {
-	jwks, err := ctx.SSFJWKS()
-	if err != nil {
-		return goidc.JSONWebKeySet{}, err
-	}
-
-	return jwks.Public(), nil
-}
-
-func (ctx Context) SSFSaveStream(stream *goidc.SSFStream) error {
-	return ctx.SSFStreamManager.SaveStream(ctx, stream)
-}
-
-func (ctx Context) SSFStream(id string) (*goidc.SSFStream, error) {
-	return ctx.SSFStreamManager.Stream(ctx, id)
-}
-
-func (ctx Context) SSFStreams(receiverID string) ([]*goidc.SSFStream, error) {
-	return ctx.SSFStreamManager.Streams(ctx, receiverID)
-}
-
-func (ctx Context) SSFDeleteStream(id string) error {
-	return ctx.SSFStreamManager.DeleteStream(ctx, id)
-}
-
-func (ctx Context) SSFAddSubject(id string, subject goidc.SSFSubject, opts goidc.SSFSubjectOptions) error {
-	return ctx.SSFSubjectManager.AddStreamSubject(ctx, id, subject, opts)
-}
-
-func (ctx Context) SSFRemoveSubject(id string, subject goidc.SSFSubject) error {
-	return ctx.SSFSubjectManager.RemoveStreamSubject(ctx, id, subject)
-}
-
-func (ctx Context) SSFEventStreamID() string {
-	return ctx.SSFEventStreamIDFunc(ctx)
-}
-
-func (ctx Context) SSFReceiver() (goidc.SSFReceiver, error) {
-	return ctx.SSFReceiverFunc(ctx)
-}
-
-func (ctx Context) SSFSign(claims any, opts *jose.SignerOptions) (string, error) {
-	jwks, err := ctx.SSFJWKS()
-	if err != nil {
-		return "", fmt.Errorf("could not load the ssf jwks: %w", err)
-	}
-
-	jwk, err := jwks.KeyByAlg(string(ctx.SSFDefaultSigAlg))
-	if err != nil {
-		return "", fmt.Errorf("could not find a valid ssf signing jwk: %w", err)
-	}
-
-	if ctx.SSFSignerFunc == nil {
-		return joseutil.Sign(claims, jose.SigningKey{
-			Algorithm: jose.SignatureAlgorithm(jwk.Algorithm),
-			Key:       jwk,
-		}, opts)
-	}
-
-	keyID, key, err := ctx.SSFSignerFunc(ctx, goidc.SignatureAlgorithm(jwk.Algorithm))
-	if err != nil {
-		return "", fmt.Errorf("could not load the signer: %w", err)
-	}
-
-	return joseutil.Sign(claims, jose.SigningKey{
-		Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
-		Key: joseutil.OpaqueSigner{
-			ID:        keyID,
-			Algorithm: goidc.SignatureAlgorithm(jwk.Algorithm),
-			Signer:    key,
-		},
-	}, opts)
-}
-
-func (ctx Context) SSFJWKByAlg(alg goidc.SignatureAlgorithm) (goidc.JSONWebKey, error) {
-	jwks, err := ctx.SSFJWKS()
-	if err != nil {
-		return goidc.JSONWebKey{}, err
-	}
-
-	return jwks.KeyByAlg(string(alg))
-}
-
-func (ctx Context) SSFPollEvents(streamID string, opts goidc.SSFPollOptions) (goidc.SSFEvents, error) {
-	return ctx.SSFEventPollManager.PollEvents(ctx, streamID, opts)
-}
-
-func (ctx Context) SSFAcknowledgeEvents(streamID string, ids []string, opts goidc.SSFAcknowledgementOptions) error {
-	return ctx.SSFEventPollManager.AcknowledgeEvents(ctx, streamID, ids, opts)
-}
-
-func (ctx Context) SSFAcknowledgeErrors(streamID string, errs []goidc.SSFEventError, opts goidc.SSFAcknowledgementOptions) error {
-	return ctx.SSFEventPollManager.AcknowledgeEventErrors(ctx, streamID, errs, opts)
-}
-
-func (ctx Context) SSFScheduleVerificationEvent(streamID string, event goidc.SSFEvent) error {
-	return ctx.SSFVerificationManager.ScheduleVerificationEvent(ctx, streamID, event)
-}
-
-func (ctx Context) SSFHTTPClient() *http.Client {
-	if ctx.SSFHTTPClientFunc == nil {
-		return ctx.HTTPClient()
-	}
-
-	return ctx.SSFHTTPClientFunc(ctx)
-}
-
-func (ctx Context) SSFHandleStatus(stream *goidc.SSFStream, opts goidc.SSFStatusOptions) error {
-	return ctx.SSFStatusHandleFunc(ctx, stream, opts)
 }
 
 func (ctx Context) VCISelfGrantByPreAuthCode(preAuthCode string) (*goidc.Grant, error) {

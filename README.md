@@ -36,9 +36,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Federation 1.1](https://openid.net/specs/openid-federation-1_1.html)
 * [OpenID Federation for OpenID Connect 1.1](https://openid.net/specs/openid-federation-connect-1_1.html)
 * [OpenID Connect RP-Initiated Logout 1.0](https://openid.net/specs/openid-connect-rpinitiated-1_0.html)
-* [OpenID Shared Signals Framework Specification 1.0](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
-* [`RFC 8935` - Push-Based Security Event Token (SET) Delivery Using HTTP](https://datatracker.ietf.org/doc/html/rfc8935)
-* [`RFC 8936` - Poll-Based Security Event Token (SET) Delivery Using HTTP](https://datatracker.ietf.org/doc/html/rfc8936)
+
 * [OpenID Connect Relying Party Metadata Choices 1.0](https://openid.net/specs/openid-connect-rp-metadata-choices-1_0-final.html)
 * [OAuth 2.0 Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
 * [OpenID for Verifiable Credential Issuance 1.0](https://openid.net/specs/openid-4-verifiable-credential-issuance-1_0-final.html)
@@ -1169,135 +1167,6 @@ provider.WithOpenIDFederation(
 )
 ```
 
-## [Shared Signals Framework (SSF)](https://openid.net/specs/openid-sharedsignals-framework-1_0.html)
-
-The [Shared Signals Framework](https://openid.net/specs/openid-sharedsignals-framework-1_0.html) lets the provider act as a transmitter: receivers manage event streams, and the provider delivers Security Event Tokens (SETs) through push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) or poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)). go-oidc includes transmitter endpoints for SSF stream management and supports security event types from [CAEP](https://openid.net/specs/openid-caep-1_0.html) and [RISC](https://openid.net/specs/openid-risc-profile-specification-1_0.html).
-
-```go
-op, _ := provider.New(
-  ...,
-  provider.WithSSF(
-    provider.SSFConfig{
-      Manager: nil, // nil uses ad hoc in-memory storage.
-      JWKS: func(_ context.Context) (goidc.JSONWebKeySet, error) {
-        return ssfJWKS, nil
-      },
-      SigAlg: goidc.RS256,
-      Receiver: func(ctx context.Context) (goidc.SSFReceiver, error) {
-        return goidc.SSFReceiver{ID: "receiver"}, nil
-      },
-      EventTypes: []goidc.SSFEventType{
-        goidc.SSFEventTypeCAEPSessionRevoked,
-        goidc.SSFEventTypeCAEPCredentialChange,
-      },
-    },
-    provider.WithSSFPoll(nil),
-    provider.WithSSFPush(),
-  ),
-  ...,
-)
-```
-
-go-oidc is agnostic about receiver authentication. Authenticate SSF API requests in your application or middleware, then use `SSFConfig.Receiver` to return the authenticated `goidc.SSFReceiver`. This follows the [SSF 1.0 §7.1.1](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#name-authorization-scheme), which leaves the mechanism for identifying the receiver from request credentials outside the protocol.
-
-The transmitter configuration is exposed at `GET /.well-known/ssf-configuration`.
-
-Use transmitter metadata and stream policy options to describe how receivers should call the SSF APIs:
-
-`provider.WithSSFAuthorizationSchemes` publishes the authorization schemes supported by the SSF management APIs.
-
-```go
-provider.WithSSFAuthorizationSchemes(
-  goidc.SSFAuthScheme{SpecURN: goidc.SSFAuthchemeURNRFC6749},
-)
-```
-
-`provider.WithSSFCriticalSubjectMembers` publishes subject members that receivers must understand to process events correctly.
-
-```go
-provider.WithSSFCriticalSubjectMembers("tenant", "user")
-```
-
-`provider.WithSSFMultipleStreamsPerReceiver` allows one receiver to create more than one event stream.
-
-```go
-provider.WithSSFMultipleStreamsPerReceiver()
-```
-
-### Delivery Methods
-
-Poll delivery ([RFC 8936](https://datatracker.ietf.org/doc/html/rfc8936)) stores pending SETs until the receiver polls the stream endpoint. Enable it with `provider.WithSSFPoll(...)`; the provider returns the poll endpoint in the stream configuration response.
-
-Push delivery ([RFC 8935](https://datatracker.ietf.org/doc/html/rfc8935)) sends SETs to the receiver's configured `endpoint_url`. Enable it with `provider.WithSSFPush(...)`; receivers provide the endpoint when they create or update a stream.
-
-To push events:
-```go
-op.PushSSFEvent(ctx, streamID, goidc.SSFEvent{
-  ID:       "event-id",
-  Type:     goidc.SSFEventTypeCAEPSessionRevoked,
-  IssuedAt: int(time.Now().Unix()),
-  Subject: goidc.SSFSubject{
-    Format: goidc.SSFSubjectFormatEmail,
-    Email:  "user@example.com",
-  },
-})
-```
-
-### [Status Management](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.2)
-
-Status management lets receivers read and update a stream's status, as described in [SSF 1.0 §8.1.2](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.2). Enable the status endpoint with `provider.WithSSFStatusManagement`.
-
-Streams can be `enabled`, `paused`, or `disabled`. Provide a status handler when status changes should be checked against application policy before go-oidc saves them.
-
-```go
-provider.WithSSFStatusManagement(
-  provider.WithSSFStatusHandler(func(ctx context.Context, stream *goidc.SSFStream, opts goidc.SSFStatusOptions) error {
-    // Reject or audit receiver-requested status changes.
-    return nil
-  }),
-)
-```
-
-### [Subject Management](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.3)
-
-Subject management lets receivers add or remove the subjects they want to receive events for on a stream, as described in [SSF 1.0 §8.1.3](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.3). Enable the subject endpoints with `provider.WithSSFSubjectManagement`.
-
-Use `provider.WithSSFDefaultSubjects` to publish whether new streams include all subjects by default (`ALL`) or require explicit subject registration (`NONE`).
-
-```go
-provider.WithSSFSubjectManagement(subjectManager)
-provider.WithSSFDefaultSubjects(goidc.SSFDefaultSubjectNone)
-```
-
-### [Verification Events](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.4)
-
-Verification lets receivers confirm that a stream is working, as described in [SSF 1.0 §8.1.4](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.4). Enable the verification endpoint with `provider.WithSSFVerification`.
-
-Provide a custom verification manager when verification events should be queued or scheduled by application code. The manager receives the verification event already built by go-oidc and is responsible for scheduling delivery using your deployment's infrastructure.
-
-```go
-type verificationManager struct{}
-
-func (verificationManager) ScheduleVerificationEvent(ctx context.Context, streamID string, event goidc.SSFEvent) error {
-  // Schedule the verification event for async delivery.
-  return nil
-}
-
-provider.WithSSFVerification(verificationManager{}, provider.WithSSFMinVerificationInterval(60))
-```
-
-### [Inactivity Timeout](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.1)
-
-Inactivity timeout lets receivers know how long a stream can remain idle before it becomes inactive, as described by the `inactivity_timeout` stream configuration field in [SSF 1.0 §8.1.1](https://openid.net/specs/openid-sharedsignals-framework-1_0.html#section-8.1.1). Enable it with `provider.WithSSFInactivityTimeout`.
-
-go-oidc refreshes the stream timeout on receiver activity handled by the provider and includes the remaining timeout in stream responses. Your stream manager or application code is responsible for enforcing inactivity deadlines in your deployment.
-
-```go
-provider.WithSSFInactivityTimeout(3600)
-```
-
-For a complete example, see [`examples/ssf`](examples/ssf).
-
 ## [Form Post Response Mode](https://openid.net/specs/oauth-v2-form-post-response-mode-1_0.html)
 
 The `form_post` response mode is enabled with
@@ -1326,17 +1195,9 @@ endpoint.
 
 ### Updating Configuration
 
-Provider configuration is the source of truth for the provider's current
-behavior. When configuration changes, new requests and protocol decisions use
-the updated values. go-oidc does not automatically rewrite persisted state when
-configuration changes. Applications that store clients, grants, tokens, SSF
-streams, or other protocol state should decide how existing records are
-migrated, grandfathered, or rejected.
+Provider configuration is the source of truth for the provider's current behavior. When configuration changes, new requests and protocol decisions use the updated values. go-oidc does not automatically rewrite persisted state when configuration changes. Applications that store clients, grants, tokens, or other protocol state should decide how existing records are migrated, grandfathered, or rejected.
 
-For example, changing supported signing algorithms requires matching signing
-keys or signer support. Removing an algorithm or key can affect existing clients
-or still-active tokens, depending on the application's validation and key
-retention policy.
+For example, changing supported signing algorithms requires matching signing keys or signer support. Removing an algorithm or key can affect existing clients or still-active tokens, depending on the application's validation and key retention policy.
 
 ### Transactional Operations
 

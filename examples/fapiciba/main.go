@@ -21,7 +21,7 @@ func main() {
 	op, _ = provider.New(
 		provider.Config{
 			Issuer:      authutil.Issuer,
-			JWKSFunc:    authutil.PrivateJWKSFunc(),
+			JWKS:        authutil.PrivateJWKSFunc(),
 			IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.PS256},
 		},
 		provider.WithScopes(authutil.Scopes...),

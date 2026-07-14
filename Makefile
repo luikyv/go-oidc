@@ -161,15 +161,6 @@ cs-fapiciba-tests:
 		--export-dir ./examples/fapiciba \
 		--verbose
 
-cs-ssf-tests:
-	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
-		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=push][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		openid-ssf-transmitter-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=poll][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		openid-ssf-transmitter-caep-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=push][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		openid-ssf-transmitter-caep-test-plan[client_auth_type=client_secret_post][ssf_server_metadata=discovery][server_metadata=discovery][ssf_auth_mode=dynamic][ssf_delivery_mode=poll][ssf_profile=default][client_registration=static_client] ./examples/ssf/config.json \
-		--export-dir ./examples/ssf \
-		--verbose
-
 cs-federation-tests:
 	@conformance-suite/venv/bin/python3 conformance-suite/scripts/run-test-plan.py \
 		openid-federation-entity-joined-to-test-federation-op-test-plan[server_metadata=discovery][client_registration=automatic] ./examples/federation/config.json \
