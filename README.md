@@ -978,12 +978,12 @@ If the client also provides the singular field, it must be present in the priori
 ## [Demonstrating Proof of Possession (DPoP)](https://www.rfc-editor.org/rfc/rfc9449.html)
 
 DPoP is enabled with `provider.WithDPoP(...)` and can be made mandatory with
-`provider.DPoPRequired()`.
+`provider.WithDPoPRequired()`.
 
 ```go
 op, _ := provider.New(
   ...,
-  provider.WithDPoP([]goidc.SignatureAlgorithm{goidc.ES256}),
+  provider.WithDPoP([]goidc.SignatureAlgorithm{goidc.SigAlgES256}),
   ...,
 )
 ```
@@ -1002,6 +1002,32 @@ enabled:
 - authorization requests, including PAR
 - token issuance
 - token usage and proof-of-possession validation
+
+Server-provided nonces can be enabled with a `goidc.DPoPNonceManager`:
+
+```go
+provider.WithDPoP(
+  []goidc.SignatureAlgorithm{goidc.SigAlgES256},
+  provider.WithDPoPNonce(nonceManager),
+)
+```
+
+The manager issues unpredictable nonces and validates them independently for
+authorization-server and resource-server scopes. In a multi-instance
+deployment, it should use shared state and retain a window of recent nonces for
+concurrent requests. Reusable recent nonces are supported; a manager that
+chooses single-use nonces must validate and consume them atomically. It can
+optionally return a replacement nonce to rotate it on a successful response.
+Unknown or expired nonces produce the RFC 9449 `use_dpop_nonce` challenge;
+storage failures fail closed as internal errors.
+Nonce handling does not replace `provider.WithJTIConsumer`; JTI tracking
+remains the replay-control mechanism for individual DPoP proofs.
+Browser-facing CORS middleware must expose `DPoP-Nonce` and, for protected
+resources, `WWW-Authenticate` to clients.
+
+RFC 9449 does not define separate discovery metadata for nonce support. DPoP
+algorithm support continues to be advertised through
+`dpop_signing_alg_values_supported`.
 
 ## Mutual TLS (mTLS)
 

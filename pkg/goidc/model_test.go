@@ -517,6 +517,7 @@ func TestErrorCodeStatusCode(t *testing.T) {
 		{goidc.ErrorCodeInvalidToken, http.StatusUnauthorized},
 		{goidc.ErrorCodeUnauthorizedClient, http.StatusUnauthorized},
 		{goidc.ErrorCodeInternalError, http.StatusInternalServerError},
+		{goidc.ErrorCodeUseDPoPNonce, http.StatusBadRequest},
 		{goidc.ErrorCodeInvalidRequest, http.StatusBadRequest},
 		{goidc.ErrorCodeInvalidGrant, http.StatusBadRequest},
 		{goidc.ErrorCodeInvalidScope, http.StatusBadRequest},

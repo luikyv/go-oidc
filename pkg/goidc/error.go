@@ -28,6 +28,7 @@ const (
 	ErrorCodeUnsupportedGrantType     ErrorCode = "unsupported_grant_type"
 	ErrorCodeInvalidRequestObject     ErrorCode = "invalid_request_object"
 	ErrorCodeInvalidToken             ErrorCode = "invalid_token"
+	ErrorCodeUseDPoPNonce             ErrorCode = "use_dpop_nonce"
 	ErrorCodeInternalError            ErrorCode = "internal_error"
 	ErrorCodeInvalidTarget            ErrorCode = "invalid_target"
 	ErrorCodeInvalidRedirectURI       ErrorCode = "invalid_redirect_uri"

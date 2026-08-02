@@ -52,6 +52,7 @@ func validateBindingDPoP(ctx oidc.Context, c *goidc.Client, opts bindindValidati
 
 	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
 		JWKThumbprint: opts.dpopJWKThumbprint,
+		NonceScope:    goidc.DPoPNonceScopeAuthorizationServer,
 	})
 }
 

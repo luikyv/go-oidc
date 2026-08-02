@@ -2,6 +2,7 @@ package token
 
 import (
 	"context"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -182,4 +183,156 @@ func TestTokenHandlersInvalidContentType(t *testing.T) {
 			}
 		})
 	}
+}
+
+func TestTokenEndpointDPoPNonce(t *testing.T) {
+	tests := []struct {
+		name       string
+		nonce      string
+		rotateTo   string
+		wantStatus int
+		wantNonce  string
+		wantError  goidc.ErrorCode
+	}{
+		{
+			name:       "challenge",
+			wantStatus: http.StatusBadRequest,
+			wantNonce:  "challenge_nonce",
+			wantError:  goidc.ErrorCodeUseDPoPNonce,
+		},
+		{
+			name:       "success with reusable nonce",
+			nonce:      "current_nonce",
+			wantStatus: http.StatusOK,
+		},
+		{
+			name:       "success rotates nonce when requested",
+			nonce:      "current_nonce",
+			rotateTo:   "next_nonce",
+			wantStatus: http.StatusOK,
+			wantNonce:  "next_nonce",
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.DPoPEnabled = true
+			ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.SigAlgES256}
+			manager := oidctest.NewDPoPNonceManager(test.wantNonce)
+			ctx.DPoPNonceManager = manager
+			if test.nonce != "" {
+				manager.Add(goidc.DPoPNonceScopeAuthorizationServer, test.nonce)
+			}
+			if test.rotateTo != "" {
+				manager.RotateWith(test.rotateTo)
+			}
+
+			client, secret := oidctest.NewClient(t)
+			ctx.StaticClients = append(ctx.StaticClients, client)
+			form := url.Values{
+				"grant_type":    {string(goidc.GrantClientCredentials)},
+				"client_id":     {client.ID},
+				"client_secret": {secret},
+				"scope":         {"scope1"},
+			}
+			req := httptest.NewRequest(http.MethodPost, ctx.TokenEndpoint, strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			proof, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+				Method: http.MethodPost,
+				URI:    ctx.Host + ctx.TokenEndpoint,
+				Nonce:  test.nonce,
+			})
+			req.Header.Set(goidc.HeaderDPoP, proof)
+			rec := httptest.NewRecorder()
+			mux := http.NewServeMux()
+			RegisterHandlers(mux, ctx.Configuration)
+
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != test.wantStatus {
+				t.Fatalf("status = %d, want %d; body = %s", rec.Code, test.wantStatus, rec.Body.String())
+			}
+			gotNonces := rec.Header().Values(goidc.HeaderDPoPNonce)
+			if test.wantNonce == "" && len(gotNonces) != 0 {
+				t.Fatalf("%s = %v, want empty", goidc.HeaderDPoPNonce, gotNonces)
+			}
+			if test.wantNonce != "" && (len(gotNonces) != 1 || gotNonces[0] != test.wantNonce) {
+				t.Fatalf("%s = %v, want [%s]", goidc.HeaderDPoPNonce, gotNonces, test.wantNonce)
+			}
+			if test.wantError != "" && !strings.Contains(rec.Body.String(), `"error":"`+string(test.wantError)+`"`) {
+				t.Fatalf("body = %s, want error %q", rec.Body.String(), test.wantError)
+			}
+			if got := rec.Header().Get("WWW-Authenticate"); got != "" {
+				t.Fatalf("WWW-Authenticate = %q, want empty", got)
+			}
+		})
+	}
+}
+
+func TestTokenEndpointDPoPNonceStoreFailure(t *testing.T) {
+	storeErr := errors.New("nonce store unavailable")
+	tests := []struct {
+		name  string
+		nonce string
+	}{
+		{name: "issue", nonce: ""},
+		{name: "validate", nonce: "current_nonce"},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			ctx := oidctest.NewContext(t)
+			ctx.DPoPEnabled = true
+			ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.SigAlgES256}
+			ctx.DPoPNonceManager = failingDPoPNonceManager{err: storeErr}
+			client, secret := oidctest.NewClient(t)
+			ctx.StaticClients = append(ctx.StaticClients, client)
+
+			form := url.Values{
+				"grant_type":    {string(goidc.GrantClientCredentials)},
+				"client_id":     {client.ID},
+				"client_secret": {secret},
+				"scope":         {"scope1"},
+			}
+			req := httptest.NewRequest(http.MethodPost, ctx.TokenEndpoint, strings.NewReader(form.Encode()))
+			req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+			proof, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+				Method: http.MethodPost,
+				URI:    ctx.Host + ctx.TokenEndpoint,
+				Nonce:  test.nonce,
+			})
+			req.Header.Set(goidc.HeaderDPoP, proof)
+			rec := httptest.NewRecorder()
+			mux := http.NewServeMux()
+			RegisterHandlers(mux, ctx.Configuration)
+
+			mux.ServeHTTP(rec, req)
+
+			if rec.Code != http.StatusInternalServerError {
+				t.Fatalf("status = %d, want %d; body = %s", rec.Code, http.StatusInternalServerError, rec.Body.String())
+			}
+			if !strings.Contains(rec.Body.String(), `"error":"internal_error"`) {
+				t.Fatalf("body = %s, want internal_error", rec.Body.String())
+			}
+			if strings.Contains(rec.Body.String(), string(goidc.ErrorCodeUseDPoPNonce)) {
+				t.Fatalf("body = %s, must not downgrade to use_dpop_nonce", rec.Body.String())
+			}
+			if got := rec.Header().Get(goidc.HeaderDPoPNonce); got != "" {
+				t.Fatalf("%s = %q, want empty", goidc.HeaderDPoPNonce, got)
+			}
+		})
+	}
+}
+
+type failingDPoPNonceManager struct {
+	err error
+}
+
+func (m failingDPoPNonceManager) IssueNonce(context.Context, goidc.DPoPNonceScope) (string, error) {
+	return "", m.err
+}
+
+func (m failingDPoPNonceManager) ValidateNonce(context.Context, goidc.DPoPNonceScope, string) (goidc.DPoPNonceValidation, error) {
+	return goidc.DPoPNonceValidation{}, m.err
 }

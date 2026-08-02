@@ -563,6 +563,7 @@ func validateCodeBindingDPoP(ctx oidc.Context, params goidc.AuthorizationParamet
 	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
 		// "dpop_jkt" is optional, but it must match the DPoP JWT if present.
 		JWKThumbprint: params.DPoPJKT,
+		NonceScope:    goidc.DPoPNonceScopeAuthorizationServer,
 	})
 }
 

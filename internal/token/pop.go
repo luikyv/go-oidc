@@ -13,7 +13,11 @@ import (
 // prove the client's possession of the token.
 // If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
 func ValidatePoP(ctx oidc.Context, token string, cnf goidc.TokenConfirmation) error {
-	if err := validateDPoP(ctx, token, cnf); err != nil {
+	return validatePoP(ctx, token, cnf, goidc.DPoPNonceScopeResourceServer)
+}
+
+func validatePoP(ctx oidc.Context, token string, cnf goidc.TokenConfirmation, nonceScope goidc.DPoPNonceScope) error {
+	if err := validateDPoPWithNonceScope(ctx, token, cnf, nonceScope); err != nil {
 		return err
 	}
 
@@ -24,6 +28,10 @@ func ValidatePoP(ctx oidc.Context, token string, cnf goidc.TokenConfirmation) er
 // prove the client's possession of the access token with DPoP if applicable.
 // If token is omitted, the validation of the claim 'ath' of DPoP JWTs is skipped.
 func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfirmation) error {
+	return validateDPoPWithNonceScope(ctx, token, confirmation, goidc.DPoPNonceScopeResourceServer)
+}
+
+func validateDPoPWithNonceScope(ctx oidc.Context, token string, confirmation goidc.TokenConfirmation, nonceScope goidc.DPoPNonceScope) error {
 	if confirmation.JWKThumbprint == "" {
 		return nil
 	}
@@ -42,6 +50,7 @@ func validateDPoP(ctx oidc.Context, token string, confirmation goidc.TokenConfir
 	return dpop.ValidateJWT(ctx, dpopJWT, dpop.ValidationOptions{
 		AccessToken:   token,
 		JWKThumbprint: confirmation.JWKThumbprint,
+		NonceScope:    nonceScope,
 	})
 }
 

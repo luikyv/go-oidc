@@ -371,7 +371,8 @@ const (
 )
 
 const (
-	HeaderDPoP string = "DPoP"
+	HeaderDPoP      string = "DPoP"
+	HeaderDPoPNonce string = "DPoP-Nonce"
 )
 
 type Status string

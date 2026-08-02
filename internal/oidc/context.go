@@ -121,6 +121,14 @@ func (ctx Context) ConsumeJTI(jti string) error {
 	return ctx.ConsumeJTIFunc(ctx, jti)
 }
 
+func (ctx Context) IssueDPoPNonce(scope goidc.DPoPNonceScope) (string, error) {
+	return ctx.DPoPNonceManager.IssueNonce(ctx, scope)
+}
+
+func (ctx Context) ValidateDPoPNonce(scope goidc.DPoPNonceScope, nonce string) (goidc.DPoPNonceValidation, error) {
+	return ctx.DPoPNonceManager.ValidateNonce(ctx, scope, nonce)
+}
+
 func (ctx Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
 		// No need to notify error here, since this error will end up being

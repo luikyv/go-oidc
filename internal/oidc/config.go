@@ -190,6 +190,8 @@ type Configuration struct {
 	DPoPEnabled  bool
 	DPoPRequired bool
 	DPoPSigAlgs  []goidc.SignatureAlgorithm
+	// DPoPNonceManager enables server-provided DPoP nonces.
+	DPoPNonceManager goidc.DPoPNonceManager
 
 	PKCEEnabled                bool
 	PKCERequired               bool

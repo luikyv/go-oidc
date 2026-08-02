@@ -3,6 +3,8 @@ package token
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/luikyv/go-oidc/internal/oidc"
@@ -10,6 +12,84 @@ import (
 	"github.com/luikyv/go-oidc/internal/timeutil"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
+
+func TestGeneratePreAuthCodeTokenValidatesDPoPNonceOnce(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	ctx.GrantTypes = append(ctx.GrantTypes, goidc.GrantPreAuthorizedCode)
+	ctx.VCIPreAuthCodeAnonymousAccessEnabled = true
+	ctx.VCIEnabled = true
+	ctx.VCISelfEnabled = true
+	ctx.VCISelfPreAuthCodeGrantEnabled = true
+	ctx.VCISelfPreAuthCodeGrantManager = oidctest.Manager(t, ctx)
+	ctx.VCISelfHost = "https://issuer.example.com"
+	ctx.Scopes = []goidc.Scope{goidc.NewScope("vc_scope1")}
+	ctx.VCIIssuers = []goidc.VCIssuer{
+		{
+			Issuer: ctx.VCISelfHost,
+			Configurations: []goidc.VCConfiguration{
+				{ID: "cred1", Scope: goidc.NewScope("vc_scope1")},
+			},
+		},
+	}
+
+	nonceManager := &singleUseDPoPNonceManager{nonce: "current_nonce"}
+	ctx.DPoPEnabled = true
+	ctx.DPoPSigAlgs = []goidc.SignatureAlgorithm{goidc.SigAlgES256}
+	ctx.DPoPNonceManager = nonceManager
+	proof, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+		Method: http.MethodPost,
+		URI:    "https://example.com/token",
+		Nonce:  "current_nonce",
+	})
+	req := httptest.NewRequest(http.MethodPost, "/token", nil)
+	req.Header.Set(goidc.HeaderDPoP, proof)
+	ctx = oidc.NewHTTPContext(httptest.NewRecorder(), req, ctx.Configuration)
+
+	grant := &goidc.Grant{
+		ID:                   "grant_id",
+		Subject:              "subject",
+		Scopes:               "vc_scope1",
+		PreAuthCode:          "pre_auth_code",
+		PreAuthCodeExpiresAt: timeutil.TimestampNow() + 60,
+		JWKThumbprint:        thumbprint,
+	}
+	if err := ctx.SaveGrant(grant); err != nil {
+		t.Fatalf("SaveGrant() error = %v", err)
+	}
+
+	resp, err := generatePreAuthCodeToken(ctx, request{
+		preAuthCode: "pre_auth_code",
+		scopes:      "vc_scope1",
+	})
+
+	if err != nil {
+		t.Fatalf("generatePreAuthCodeToken() error = %v", err)
+	}
+	if resp.AccessToken == "" {
+		t.Fatal("AccessToken is empty")
+	}
+	if nonceManager.validateCalls != 1 {
+		t.Fatalf("ValidateNonce() calls = %d, want 1", nonceManager.validateCalls)
+	}
+}
+
+type singleUseDPoPNonceManager struct {
+	nonce         string
+	validateCalls int
+}
+
+func (*singleUseDPoPNonceManager) IssueNonce(context.Context, goidc.DPoPNonceScope) (string, error) {
+	return "fresh_nonce", nil
+}
+
+func (m *singleUseDPoPNonceManager) ValidateNonce(_ context.Context, _ goidc.DPoPNonceScope, nonce string) (goidc.DPoPNonceValidation, error) {
+	m.validateCalls++
+	if nonce != m.nonce {
+		return goidc.DPoPNonceValidation{}, goidc.ErrNotFound
+	}
+	m.nonce = ""
+	return goidc.DPoPNonceValidation{}, nil
+}
 
 func TestGeneratePreAuthCodeToken(t *testing.T) {
 	tests := []struct {

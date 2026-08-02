@@ -1569,6 +1569,19 @@ func WithDPoPRequired() DPoPOption {
 	}
 }
 
+// WithDPoPNonce enables server-provided DPoP nonces.
+// The manager must use shared state when the provider has multiple
+// instances. See [goidc.DPoPNonceManager] for its atomicity requirements.
+func WithDPoPNonce(manager goidc.DPoPNonceManager) DPoPOption {
+	return func(p *Provider) error {
+		if manager == nil {
+			return errors.New("a DPoP nonce manager is required")
+		}
+		p.config.DPoPNonceManager = manager
+		return nil
+	}
+}
+
 // WithTokenBindingRequired makes at least one sender constraining mechanism
 // (TLS or DPoP) be required in order to issue an access token to a client.
 // For more info, see [WithMTLSTokenBinding] and [WithDPoP].
