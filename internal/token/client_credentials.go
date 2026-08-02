@@ -29,6 +29,11 @@ func generateClientCredentialsToken(ctx oidc.Context, req request) (response, er
 		return response{}, err
 	}
 
+	if ctx.ResourceIndicatorsEnabled && ctx.ResourceIndicatorsRequired && req.resources == nil {
+		return response{}, goidc.WrapError(goidc.ErrorCodeInvalidTarget, "invalid target",
+			errors.New("the resource parameter is required"))
+	}
+
 	if err := validateResources(ctx, req, nil); err != nil {
 		return response{}, err
 	}

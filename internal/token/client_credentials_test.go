@@ -117,6 +117,53 @@ func TestGenerateClientCredentialsToken(t *testing.T) {
 			},
 		},
 		{
+			name: "required resource indicator is missing",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicatorsRequired = true
+				ctx.ResourceIndicators = []string{"https://resource.com"}
+				return ctx, req, c
+			},
+			wantErr: goidc.ErrorCodeInvalidTarget,
+		},
+		{
+			name: "required resource indicator is empty",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicatorsRequired = true
+				ctx.ResourceIndicators = []string{"https://resource.com"}
+				req.resources = []string{""}
+				return ctx, req, c
+			},
+			wantErr: goidc.ErrorCodeInvalidTarget,
+		},
+		{
+			name: "multiple required resource indicators",
+			setup: func() (oidc.Context, request, *goidc.Client) {
+				ctx, req, c := setup(t)
+				ctx.ResourceIndicatorsEnabled = true
+				ctx.ResourceIndicatorsRequired = true
+				ctx.ResourceIndicators = []string{"https://resource.com", "https://other-resource.com"}
+				req.resources = []string{"https://resource.com", "https://other-resource.com"}
+				return ctx, req, c
+			},
+			validate: func(t *testing.T, ctx oidc.Context, resp response, _ *goidc.Client) {
+				want := goidc.Resources{"https://resource.com", "https://other-resource.com"}
+				grants := oidctest.Grants(t, ctx)
+				if len(grants) != 1 {
+					t.Fatalf("len(grants) = %d, want 1", len(grants))
+				}
+				if diff := cmp.Diff(grants[0].Resources, want); diff != "" {
+					t.Error(diff)
+				}
+				if diff := cmp.Diff(resp.Resources, want); diff != "" {
+					t.Error(diff)
+				}
+			},
+		},
+		{
 			name: "auth details",
 			setup: func() (oidc.Context, request, *goidc.Client) {
 				ctx, req, c := setup(t)

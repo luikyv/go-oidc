@@ -412,34 +412,38 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 			}
 		}
 
-		if op.config.AuthCodeLifetimeSecs > 60 {
-			return nil, errors.New("[FAPI 2.0 5.3.1] authorization code lifetime must be less than 60 seconds")
-		}
+		if slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
+			if slices.ContainsFunc(op.config.ResponseTypes, func(responseType goidc.ResponseType) bool {
+				return responseType != goidc.ResponseTypeCode
+			}) {
+				return nil, errors.New("[FAPI 2.0 5.3.2.2] only the code response type may be enabled")
+			}
 
-		if !slices.Contains(op.config.GrantTypes, goidc.GrantAuthorizationCode) {
-			return nil, errors.New("[FAPI 2.0 5.3.1] authorization_code grant must be required")
-		}
+			if op.config.AuthCodeLifetimeSecs > 60 {
+				return nil, errors.New("[FAPI 2.0 5.3.1] authorization code lifetime must be less than 60 seconds")
+			}
 
-		if !op.config.PARRequired {
-			return nil, errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
-		}
+			if !op.config.PARRequired {
+				return nil, errors.New("[FAPI 2.0 5.3.1] pushed authorization request must be required")
+			}
 
-		if !op.config.PKCERequired {
-			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be required")
-		}
+			if !op.config.PKCERequired {
+				return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be required")
+			}
 
-		if slices.ContainsFunc(op.config.PKCEChallengeMethods, func(method goidc.CodeChallengeMethod) bool {
-			return method != goidc.CodeChallengeMethodSHA256
-		}) {
-			return nil, errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
-		}
+			if slices.ContainsFunc(op.config.PKCEChallengeMethods, func(method goidc.CodeChallengeMethod) bool {
+				return method != goidc.CodeChallengeMethodSHA256
+			}) {
+				return nil, errors.New("[FAPI 2.0 5.3.1] only pkce S256 code challenge method must be available")
+			}
 
-		if !op.config.IssuerRespParamEnabled {
-			return nil, errors.New("[FAPI 2.0 5.3.1] pkce must be enabled")
-		}
+			if !op.config.IssuerRespParamEnabled {
+				return nil, errors.New("[FAPI 2.0 5.3.1] issuer response parameter must be enabled")
+			}
 
-		if op.config.PARLifetimeSecs > 600 {
-			return nil, errors.New("[FAPI 2.0 5.3.1] par request_uri lifetime must be less than 600 seconds")
+			if op.config.PARLifetimeSecs >= 600 {
+				return nil, errors.New("[FAPI 2.0 5.3.1] par request_uri lifetime must be less than 600 seconds")
+			}
 		}
 	}
 

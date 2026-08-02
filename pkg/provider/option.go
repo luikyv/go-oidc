@@ -3,6 +3,7 @@ package provider
 import (
 	"errors"
 	"fmt"
+	"net/url"
 	"slices"
 	"strings"
 
@@ -1589,8 +1590,19 @@ type ResourceIndicatorOption Option
 // to access.
 func WithResourceIndicators(resources []goidc.ResourceIndicator, opts ...ResourceIndicatorOption) Option {
 	return func(p *Provider) error {
+		seen := make(map[string]struct{}, len(resources))
+		for _, resource := range resources {
+			parsed, err := url.Parse(resource)
+			if err != nil || !parsed.IsAbs() || parsed.Fragment != "" {
+				return fmt.Errorf("resource indicator %q must be an absolute URI without a fragment", resource)
+			}
+			if _, exists := seen[resource]; exists {
+				return fmt.Errorf("resource indicator %q is configured more than once", resource)
+			}
+			seen[resource] = struct{}{}
+		}
 		p.config.ResourceIndicatorsEnabled = true
-		p.config.ResourceIndicators = resources
+		p.config.ResourceIndicators = slices.Clone(resources)
 		for _, opt := range opts {
 			if err := opt(p); err != nil {
 				return err
@@ -1600,7 +1612,8 @@ func WithResourceIndicators(resources []goidc.ResourceIndicator, opts ...Resourc
 	}
 }
 
-// WithResourceIndicatorsRequired makes resource indicators required.
+// WithResourceIndicatorsRequired makes resource indicators required for
+// authorization requests and client credentials token requests.
 func WithResourceIndicatorsRequired() ResourceIndicatorOption {
 	return func(p *Provider) error {
 		p.config.ResourceIndicatorsRequired = true

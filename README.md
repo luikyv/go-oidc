@@ -1118,8 +1118,9 @@ requests, the client may ask for a subset of the originally granted resources.
 The provider rejects resources that were not granted or that are not part of
 the configured allowed list.
 
-Use `provider.ResourceIndicatorsRequired()` if every authorization
-request must include a `resource` parameter.
+Pass `provider.WithResourceIndicatorsRequired()` to
+`provider.WithResourceIndicators(...)` if every authorization request and
+client credentials token request must include a `resource` parameter.
 
 ## [OpenID Federation](https://openid.net/specs/openid-federation-1_0.html)
 
