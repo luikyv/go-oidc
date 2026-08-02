@@ -207,8 +207,11 @@ type Configuration struct {
 	ResourceIndicatorsRequired bool
 	ResourceIndicators         []goidc.ResourceIndicator
 
-	HTTPClientFunc goidc.HTTPClientFunc
-	ConsumeJTIFunc goidc.ConsumeJTIFunc
+	HTTPClientFunc    goidc.HTTPClientFunc
+	ConsumeJTIFunc    goidc.ConsumeJTIFunc
+	ConsumeJTIUseFunc goidc.ConsumeJTIUseFunc
+
+	PrivateKeyJWTAssertionPolicyFunc goidc.PrivateKeyJWTAssertionPolicyFunc
 
 	JWTBearerClientAuthnRequired bool
 	JWTBearerHandleAssertionFunc goidc.JWTBearerHandleAssertionFunc

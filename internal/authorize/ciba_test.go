@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
@@ -214,11 +215,30 @@ func TestInitBackAuth(t *testing.T) {
 				}
 
 				now := timeutil.TimestampNow()
+				expiresAt := now + 10
+				consumed := false
+				ctx.ConsumeJTIUseFunc = func(_ context.Context, use goidc.JTIUse) error {
+					if use.ID != "random_id" || use.Issuer != client.ID || use.Purpose != goidc.JTIUsePurposeRequestObject {
+						t.Fatalf("JTI use = %#v, want CIBA request-object reservation", use)
+					}
+					wantExpiry := time.Unix(int64(expiresAt+ctx.JWTLeewayTimeSecs), 0).UTC()
+					if !use.ExpiresAt.Equal(wantExpiry) {
+						t.Fatalf("JTI expiry = %v, want %v", use.ExpiresAt, wantExpiry)
+					}
+					consumed = true
+					return nil
+				}
+				ctx.CIBAHandleSessionFunc = func(context.Context, *goidc.AuthnSession, *goidc.Client) error {
+					if !consumed {
+						t.Fatal("CIBA session was handled before its request-object JTI was reserved")
+					}
+					return nil
+				}
 				requestObject := oidctest.Sign(t, map[string]any{
 					goidc.ClaimIssuer:           client.ID,
 					goidc.ClaimAudience:         ctx.Issuer(),
 					goidc.ClaimIssuedAt:         now,
-					goidc.ClaimExpiry:           now + 10,
+					goidc.ClaimExpiry:           expiresAt,
 					goidc.ClaimNotBefore:        now - 10,
 					goidc.ClaimTokenID:          "random_id",
 					"client_id":                 client.ID,

@@ -9,6 +9,7 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+	"time"
 )
 
 type Configuration struct {
@@ -535,6 +536,55 @@ func NewDynamicScope(scope string, matchingFunc MatchScopeFunc) Scope {
 
 // ConsumeJTIFunc defines a function to verify when a JTI is safe to use.
 type ConsumeJTIFunc func(context.Context, string) error
+
+// JTIUsePurpose identifies the protocol artifact whose JWT ID is consumed.
+type JTIUsePurpose string
+
+const (
+	JTIUsePurposeClientAssertion      JTIUsePurpose = "client_assertion"
+	JTIUsePurposeDPoPProof            JTIUsePurpose = "dpop_proof"
+	JTIUsePurposeRequestObject        JTIUsePurpose = "request_object"
+	JTIUsePurposeClientAttestationPoP JTIUsePurpose = "client_attestation_pop"
+)
+
+// JTIUse describes a validated JWT ID reservation. ExpiresAt is the time after
+// which the artifact can no longer be accepted by the provider. It is zero when
+// the artifact does not declare an upper acceptance bound.
+type JTIUse struct {
+	ID        string
+	Issuer    string
+	Purpose   JTIUsePurpose
+	ExpiresAt time.Time
+}
+
+// ConsumeJTIUseFunc atomically reserves a validated JWT ID. Implementations
+// must be safe for concurrent calls. They should return ErrJTIReplay when the
+// use was already reserved and any other error, including ErrNotFound, for an
+// operational failure.
+type ConsumeJTIUseFunc func(context.Context, JTIUse) error
+
+// VerifiedClientAssertionHeader is the bounded subset of a JOSE header exposed
+// to a private_key_jwt assertion policy after signature verification.
+type VerifiedClientAssertionHeader struct {
+	Algorithm SignatureAlgorithm
+	KeyID     string
+	Type      string
+}
+
+// VerifiedClientAssertion contains the protected header fields and claims of a
+// client assertion whose signature and standard claims have been verified.
+// Custom headers and claims remain client-controlled: validate them before use,
+// and do not log the raw claims because they may contain sensitive values.
+type VerifiedClientAssertion struct {
+	Header VerifiedClientAssertionHeader
+	Claims json.RawMessage
+}
+
+// PrivateKeyJWTAssertionPolicyFunc applies deployment-specific policy to a
+// signature-verified private_key_jwt client assertion. Policy rejections are
+// exposed as invalid_client. Return an Error with ErrorCodeInternalError for an
+// operational failure that must fail closed as an internal server error.
+type PrivateKeyJWTAssertionPolicyFunc func(context.Context, VerifiedClientAssertion) error
 
 // HTTPClientFunc defines a function that generates an HTTP client for performing
 // requests.

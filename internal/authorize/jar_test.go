@@ -214,6 +214,51 @@ func TestJARFromRequestObject(t *testing.T) {
 	}
 }
 
+func TestJARFromRequestObjectConsumesTypedJTIWithoutExpiry(t *testing.T) {
+	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
+	var got goidc.JTIUse
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			Host:       "https://server.example.com",
+			JAREnabled: true,
+			JARSigAlgs: []goidc.SignatureAlgorithm{goidc.SignatureAlgorithm(privateJWK.Algorithm)},
+			ConsumeJTIUseFunc: func(_ context.Context, use goidc.JTIUse) error {
+				got = use
+				return nil
+			},
+		},
+		Request: &http.Request{Method: http.MethodPost},
+	}
+	client := &goidc.Client{
+		ID: "test_client",
+		ClientMeta: goidc.ClientMeta{JWKS: &goidc.JSONWebKeySet{
+			Keys: []goidc.JSONWebKey{privateJWK.Public()},
+		}},
+	}
+	requestObject := oidctest.Sign(t, map[string]any{
+		goidc.ClaimIssuer:   client.ID,
+		goidc.ClaimAudience: ctx.Issuer(),
+		goidc.ClaimIssuedAt: timeutil.TimestampNow(),
+		goidc.ClaimTokenID:  "request-object-id",
+		"client_id":         client.ID,
+		"redirect_uri":      "https://example.com",
+		"response_type":     goidc.ResponseTypeCode,
+		"scope":             "scope",
+	}, privateJWK)
+
+	if _, err := jarFromRequestObject(ctx, requestObject, client, nil); err != nil {
+		t.Fatalf("jarFromRequestObject() error = %v", err)
+	}
+	want := goidc.JTIUse{
+		ID:      "request-object-id",
+		Issuer:  client.ID,
+		Purpose: goidc.JTIUsePurposeRequestObject,
+	}
+	if got != want {
+		t.Fatalf("JTI use = %#v, want %#v", got, want)
+	}
+}
+
 func TestJARFromRequestURI(t *testing.T) {
 	privateJWK := oidctest.PrivateRS256JWK(t, "client_key_id", goidc.KeyUsageSignature)
 	ctx := oidc.Context{

@@ -404,8 +404,9 @@ func Sign(tb testing.TB, claims map[string]any, jwk goidc.JSONWebKey) string {
 
 // DPoPProofOptions configures DPoP proof generation.
 type DPoPProofOptions struct {
-	Method string
-	URI    string
+	Method   string
+	URI      string
+	IssuedAt time.Time
 	// Key is the private key used to sign the proof. If nil, a fresh ES256 key
 	// is generated.
 	Key crypto.PrivateKey
@@ -453,11 +454,15 @@ func DPoPProof(tb testing.TB, opts DPoPProofOptions) (dpopJWT string, thumbprint
 		tb.Fatalf("could not create DPoP signer: %v", err)
 	}
 
+	issuedAt := opts.IssuedAt
+	if issuedAt.IsZero() {
+		issuedAt = time.Now()
+	}
 	claims := map[string]any{
 		"jti": uuid.NewString(),
 		"htm": opts.Method,
 		"htu": opts.URI,
-		"iat": time.Now().Unix(),
+		"iat": issuedAt.Unix(),
 	}
 	payload, err := json.Marshal(claims)
 	if err != nil {

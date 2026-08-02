@@ -130,8 +130,12 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		return nil, errors.New("dcr secret rotation requires a secret-based token authentication method")
 	}
 
-	if op.config.ConsumeJTIFunc == nil {
-		slog.Warn("ConsumeJTIFunc is not configured; JTI replay protection is disabled. Configure provider.WithJTIConsumer for production use.")
+	if op.config.ConsumeJTIFunc != nil && op.config.ConsumeJTIUseFunc != nil {
+		return nil, errors.New("legacy and typed JTI consumers are mutually exclusive")
+	}
+
+	if op.config.ConsumeJTIFunc == nil && op.config.ConsumeJTIUseFunc == nil {
+		slog.Warn("JTI consumer is not configured; JTI replay protection is disabled. Configure provider.WithJTIUseConsumer for production use.")
 	}
 
 	inmemoryManager := storage.NewManager(defaultStorageMaxSize)
@@ -150,7 +154,9 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 	op.config.TokenOptionsFunc = nonZeroOrDefault(op.config.TokenOptionsFunc, defaultTokenOptionsFunc(op.config.IDTokenDefaultSigAlg))
 
 	op.config.VerifyClientSecretFunc = nonZeroOrDefault(op.config.VerifyClientSecretFunc, goidc.VerifyClientSecretFunc(defaultVerifyClientSecretFunc))
-	op.config.ConsumeJTIFunc = nonZeroOrDefault(op.config.ConsumeJTIFunc, goidc.ConsumeJTIFunc(defaultConsumeJTIFunc))
+	if op.config.ConsumeJTIFunc == nil && op.config.ConsumeJTIUseFunc == nil {
+		op.config.ConsumeJTIFunc = defaultConsumeJTIFunc
+	}
 	op.config.HandleErrorFunc = nonZeroOrDefault(op.config.HandleErrorFunc, goidc.HandleErrorFunc(defaultHandleErrorFunc))
 	op.config.HandleGrantFunc = nonZeroOrDefault(op.config.HandleGrantFunc, goidc.HandleGrantFunc(defaultHandleGrantFunc))
 	op.config.HandleTokenFunc = nonZeroOrDefault(op.config.HandleTokenFunc, goidc.HandleTokenFunc(defaultHandleTokenFunc))

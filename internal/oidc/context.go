@@ -121,6 +121,45 @@ func (ctx Context) ConsumeJTI(jti string) error {
 	return ctx.ConsumeJTIFunc(ctx, jti)
 }
 
+func (ctx Context) ConsumeJTIUse(use goidc.JTIUse) error {
+	if ctx.ConsumeJTIUseFunc != nil {
+		return ctx.ConsumeJTIUseFunc(ctx, use)
+	}
+	return ctx.ConsumeJTIFunc(ctx, use.ID)
+}
+
+func (ctx Context) UsesTypedJTIConsumer() bool {
+	return ctx.ConsumeJTIUseFunc != nil
+}
+
+// ReserveJTI atomically reserves a validated JTI and maps typed-consumer replay
+// and operational failures to their appropriate protocol errors. Legacy
+// consumers retain their historical behavior, where every callback error is a
+// protocol rejection.
+func (ctx Context) ReserveJTI(use goidc.JTIUse, replayCode goidc.ErrorCode, replayDescription string) error {
+	err := ctx.ConsumeJTIUse(use)
+	if err == nil {
+		return nil
+	}
+	if ctx.UsesTypedJTIConsumer() {
+		if errors.Is(err, goidc.ErrJTIReplay) {
+			return goidc.WrapError(replayCode, replayDescription, err)
+		}
+		return goidc.WrapError(goidc.ErrorCodeInternalError, "internal server error", err)
+	}
+	if errors.Is(err, goidc.ErrNotFound) {
+		return nil
+	}
+	return goidc.WrapError(replayCode, replayDescription, err)
+}
+
+func (ctx Context) ApplyPrivateKeyJWTAssertionPolicy(assertion goidc.VerifiedClientAssertion) error {
+	if ctx.PrivateKeyJWTAssertionPolicyFunc == nil {
+		return nil
+	}
+	return ctx.PrivateKeyJWTAssertionPolicyFunc(ctx, assertion)
+}
+
 func (ctx Context) RenderError(err error) error {
 	if ctx.RenderErrorFunc == nil {
 		// No need to notify error here, since this error will end up being

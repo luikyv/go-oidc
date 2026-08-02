@@ -168,13 +168,23 @@ func WithJWTLeewayTime(secs int) Option {
 	}
 }
 
-// WithJTIConsumer registers a function to validate JWT IDs (JTI) during JWT
-// processing.
+// WithJTIConsumer registers the legacy function to validate JWT IDs (JTI)
+// during JWT processing. It cannot be combined with WithJTIUseConsumer.
 // This function is used to prevent replay attacks by ensuring that each JTI is
 // unique and not reused.
 func WithJTIConsumer(f goidc.ConsumeJTIFunc) Option {
 	return func(p *Provider) error {
 		p.config.ConsumeJTIFunc = f
+		return nil
+	}
+}
+
+// WithJTIUseConsumer registers a typed, atomic JWT ID consumer. Unlike the
+// legacy JTI consumer, operational errors are distinguished from ErrJTIReplay.
+// It cannot be combined with WithJTIConsumer.
+func WithJTIUseConsumer(f goidc.ConsumeJTIUseFunc) Option {
+	return func(p *Provider) error {
+		p.config.ConsumeJTIUseFunc = f
 		return nil
 	}
 }
@@ -389,6 +399,16 @@ func WithPrivateKeyJWTAuthn(algs ...goidc.SignatureAlgorithm) Option {
 		}
 		p.config.AuthnMethods = append(p.config.AuthnMethods, goidc.AuthnMethodPrivateKeyJWT)
 		p.config.AuthnMethodPrivateKeyJWTSigAlgs = algs
+		return nil
+	}
+}
+
+// WithPrivateKeyJWTAssertionPolicy registers deployment-specific validation
+// that runs after a private_key_jwt assertion signature is verified and before
+// its JTI is consumed.
+func WithPrivateKeyJWTAssertionPolicy(f goidc.PrivateKeyJWTAssertionPolicyFunc) Option {
+	return func(p *Provider) error {
+		p.config.PrivateKeyJWTAssertionPolicyFunc = f
 		return nil
 	}
 }

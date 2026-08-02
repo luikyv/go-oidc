@@ -149,6 +149,10 @@ func Authenticated(ctx oidc.Context, authnCtx AuthnContext) (*goidc.Client, erro
 	}
 
 	if err := Authenticate(ctx, c, authnCtx); err != nil {
+		var oidcErr goidc.Error
+		if errors.As(err, &oidcErr) && oidcErr.Code == goidc.ErrorCodeInternalError {
+			return nil, err
+		}
 		return nil, goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
@@ -258,11 +262,33 @@ func authenticatePrivateKeyJWT(ctx oidc.Context, c *goidc.Client, authnCtx Authn
 	}
 
 	claims := jwt.Claims{}
-	if err := parsedAssertion.Claims(jwk.Key, &claims); err != nil {
+	var rawClaims json.RawMessage
+	if err := parsedAssertion.Claims(jwk.Key, &claims, &rawClaims); err != nil {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	return areClaimsValid(ctx, claims, c, authnCtx)
+	if err := areClaimsValid(ctx, claims, c, authnCtx); err != nil {
+		return err
+	}
+
+	header := parsedAssertion.Headers[0]
+	typ, _ := header.ExtraHeaders[jose.HeaderType].(string)
+	if err := ctx.ApplyPrivateKeyJWTAssertionPolicy(goidc.VerifiedClientAssertion{
+		Header: goidc.VerifiedClientAssertionHeader{
+			Algorithm: goidc.SignatureAlgorithm(header.Algorithm),
+			KeyID:     header.KeyID,
+			Type:      typ,
+		},
+		Claims: rawClaims,
+	}); err != nil {
+		var oidcErr goidc.Error
+		if errors.As(err, &oidcErr) && oidcErr.Code == goidc.ErrorCodeInternalError {
+			return err
+		}
+		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
+	}
+
+	return consumeClientAssertionJTI(ctx, claims)
 }
 
 func JWKMatchingHeader(ctx oidc.Context, c *goidc.Client, header jose.Header) (goidc.JSONWebKey, error) {
@@ -306,7 +332,7 @@ func authenticateSecretJWT(ctx oidc.Context, c *goidc.Client, authnCtx AuthnCont
 		return err
 	}
 
-	return nil
+	return consumeClientAssertionJTI(ctx, claims)
 }
 
 func authnSigAlgs(c *goidc.Client, authnCtx AuthnContext, algs []goidc.SignatureAlgorithm) []goidc.SignatureAlgorithm {
@@ -357,10 +383,6 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 			errors.New("the audience claim is invalid"))
 	}
 
-	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
-	}
-
 	secsToExpiry := int(claims.Expiry.Time().Sub(timeutil.Now()).Seconds())
 	if secsToExpiry > ctx.JWTLifetimeSecs {
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client",
@@ -384,6 +406,15 @@ func areClaimsValid(ctx oidc.Context, claims jwt.Claims, client *goidc.Client, _
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 	return nil
+}
+
+func consumeClientAssertionJTI(ctx oidc.Context, claims jwt.Claims) error {
+	return ctx.ReserveJTI(goidc.JTIUse{
+		ID:        claims.ID,
+		Issuer:    claims.Issuer,
+		Purpose:   goidc.JTIUsePurposeClientAssertion,
+		ExpiresAt: claims.Expiry.Time().Add(time.Duration(ctx.JWTLeewayTimeSecs) * time.Second),
+	}, goidc.ErrorCodeInvalidClient, "invalid client")
 }
 
 func authenticateSelfSignedTLSCert(ctx oidc.Context, c *goidc.Client) error {
@@ -703,10 +734,6 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 			errors.New("the jti claim is required in the attestation PoP"))
 	}
 
-	if err := ctx.ConsumeJTI(popClaims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
-	}
-
 	if err := popClaims.ValidateWithLeeway(jwt.Expected{
 		Issuer:      c.ID,
 		AnyAudience: []string{ctx.Issuer()},
@@ -714,7 +741,12 @@ func authenticateAttestationJWT(ctx oidc.Context, c *goidc.Client, authnCtx Auth
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client", err)
 	}
 
-	return nil
+	return ctx.ReserveJTI(goidc.JTIUse{
+		ID:        popClaims.ID,
+		Issuer:    popClaims.Issuer,
+		Purpose:   goidc.JTIUsePurposeClientAttestationPoP,
+		ExpiresAt: popClaims.Expiry.Time().Add(time.Duration(ctx.JWTLeewayTimeSecs) * time.Second),
+	}, goidc.ErrorCodeInvalidClient, "invalid client")
 }
 
 func comparePublicKeys(k1 any, k2 any) bool {
