@@ -92,6 +92,14 @@ func New(cfg Config, opts ...Option) (*Provider, error) {
 		}
 	}
 
+	if op.config.ResolveClientFunc != nil && op.config.DCREnabled {
+		return nil, errors.New("client resolver cannot be combined with dynamic client registration")
+	}
+
+	if op.config.ResolveClientFunc != nil && op.config.OpenIDFedEnabled {
+		return nil, errors.New("client resolver cannot be combined with OpenID Federation")
+	}
+
 	if op.config.AuthnMethodDefault != "" && !slices.Contains(op.config.AuthnMethods, op.config.AuthnMethodDefault) {
 		return nil, fmt.Errorf("default authn method %q is not among the enabled authn methods", op.config.AuthnMethodDefault)
 	}

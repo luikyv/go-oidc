@@ -53,6 +53,9 @@ func initAuth(ctx oidc.Context, req request) error {
 		return c, nil
 	}()
 	if err != nil {
+		if ctx.ResolveClientFunc != nil && !errors.Is(err, goidc.ErrNotFound) {
+			return fmt.Errorf("could not load the client: %w", err)
+		}
 		return goidc.WrapError(goidc.ErrorCodeInvalidClient, "invalid client_id", fmt.Errorf("could not load the client: %w", err))
 	}
 

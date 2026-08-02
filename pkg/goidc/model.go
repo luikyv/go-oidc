@@ -121,6 +121,17 @@ type DCRManager interface {
 	DeleteClient(context.Context, string) error
 }
 
+// ResolveClientFunc resolves the current client configuration by identifier.
+// It must return [ErrNotFound] only when the client does not exist. Other
+// errors are treated as operational failures and returned to the caller.
+//
+// The provider invokes this function for every client lookup and does not
+// cache the returned client or its JWKS. Implementations should therefore
+// return the latest client state, including key rotations and disablement.
+// The function may be called concurrently and must return a snapshot that is
+// safe for the provider to read for the duration of the request.
+type ResolveClientFunc func(context.Context, string) (*Client, error)
+
 // OpenIDFedManager stores OpenID Federation clients.
 type OpenIDFedManager interface {
 	SaveClient(context.Context, *Client) error

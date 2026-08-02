@@ -1699,6 +1699,24 @@ func WithStaticClients(cs ...*goidc.Client) Option {
 	}
 }
 
+// WithClientResolver configures a dynamic source of client metadata without
+// enabling Dynamic Client Registration. The resolver is invoked for every
+// client lookup, after static clients are checked, and its results are not
+// cached by the provider.
+//
+// A client resolver cannot be combined with Dynamic Client Registration or
+// OpenID Federation because those features provide their own dynamic client
+// sources. Static clients may be combined with a resolver and take precedence.
+func WithClientResolver(f goidc.ResolveClientFunc) Option {
+	return func(p *Provider) error {
+		if f == nil {
+			return errors.New("client resolver cannot be nil")
+		}
+		p.config.ResolveClientFunc = f
+		return nil
+	}
+}
+
 // ── OpenID Federation ─────────────────────────────────────────────────────────
 
 // OpenIDFedOption is an optional configuration for OpenID Federation.

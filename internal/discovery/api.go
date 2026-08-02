@@ -11,8 +11,10 @@ import (
 
 func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	issuer, _ := url.Parse(config.Host)
-	router.Handle("GET /.well-known/openid-configuration"+strings.TrimSuffix(issuer.Path, "/"),
-		goidc.ApplyMiddlewares(oidc.Handler(config, handleWellKnown), middlewares...))
+	issuerPath := strings.TrimSuffix(issuer.Path, "/")
+	metadataHandler := goidc.ApplyMiddlewares(oidc.Handler(config, handleWellKnown), middlewares...)
+	router.Handle("GET "+issuerPath+"/.well-known/openid-configuration", metadataHandler)
+	router.Handle("GET /.well-known/oauth-authorization-server"+issuerPath, metadataHandler)
 
 	router.Handle("GET "+config.EndpointPrefix+config.JWKSEndpoint,
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleJWKS), middlewares...))

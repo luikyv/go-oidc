@@ -1312,6 +1312,23 @@ func TestContinueAuthentication(t *testing.T) {
 	}
 }
 
+func TestInitAuthPropagatesClientResolverOperationalFailure(t *testing.T) {
+	resolverFailure := errors.New("client store unavailable")
+	ctx := oidctest.NewContext(t)
+	ctx.ResolveClientFunc = func(context.Context, string) (*goidc.Client, error) {
+		return nil, resolverFailure
+	}
+
+	err := initAuth(ctx, request{ClientID: "client"})
+	if !errors.Is(err, resolverFailure) {
+		t.Fatalf("initAuth() error = %v, want resolver failure", err)
+	}
+	var oidcErr goidc.Error
+	if errors.As(err, &oidcErr) {
+		t.Fatalf("initAuth() mapped operational failure to protocol error %s", oidcErr.Code)
+	}
+}
+
 func setUpAuth(t *testing.T) (oidc.Context, *goidc.Client) {
 	t.Helper()
 

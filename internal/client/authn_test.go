@@ -1217,6 +1217,25 @@ func TestAuthenticated(t *testing.T) {
 	}
 }
 
+func TestAuthenticated_PreservesClientResolverOperationalError(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	ctx.Request.PostForm = map[string][]string{"client_id": {"client"}}
+	resolverErr := errors.New("client store unavailable")
+	ctx.ResolveClientFunc = func(context.Context, string) (*goidc.Client, error) {
+		return nil, resolverErr
+	}
+
+	_, err := client.Authenticated(ctx, client.AuthnContextToken)
+
+	if !errors.Is(err, resolverErr) {
+		t.Fatalf("Authenticated() error = %v, want wrapped %v", err, resolverErr)
+	}
+	var oidcErr goidc.Error
+	if errors.As(err, &oidcErr) {
+		t.Fatalf("operational error was converted to protocol error %q", oidcErr.Code)
+	}
+}
+
 func TestExtractID(t *testing.T) {
 	tests := []struct {
 		name    string

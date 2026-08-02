@@ -2,6 +2,7 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -359,6 +360,31 @@ func TestNew_ValidationErrors(t *testing.T) {
 			wantErr: "dcr secret rotation requires a secret-based token authentication method",
 		},
 		{
+			name: "client resolver and dcr are mutually exclusive",
+			opts: []Option{
+				WithClientResolver(func(context.Context, string) (*goidc.Client, error) {
+					return nil, goidc.ErrNotFound
+				}),
+				WithDCR(nil),
+			},
+			wantErr: "client resolver cannot be combined with dynamic client registration",
+		},
+		{
+			name: "client resolver and federation are mutually exclusive",
+			opts: []Option{
+				WithClientResolver(func(context.Context, string) (*goidc.Client, error) {
+					return nil, goidc.ErrNotFound
+				}),
+				WithOpenIDFederation(OpenIDFedConfig{
+					JWKSFunc:       jwksFunc,
+					SigAlg:         goidc.SigAlgRS256,
+					AuthorityHints: []string{"https://authority.example.com"},
+					TrustedAnchors: []string{"https://trust-anchor.example.com"},
+				}),
+			},
+			wantErr: "client resolver cannot be combined with OpenID Federation",
+		},
+		{
 			name: "dc sd-jwt credential configuration requires type",
 			opts: []Option{
 				WithVCI(WithVCISelf([]goidc.VCConfiguration{
@@ -418,6 +444,40 @@ func TestNew_ValidationErrors(t *testing.T) {
 				t.Fatalf("New() error = %q, want %q", got, test.wantErr)
 			}
 		})
+	}
+}
+
+func TestClientResolverDoesNotExposeDynamicRegistration(t *testing.T) {
+	op, err := New(Config{
+		Issuer: "https://example.com",
+		JWKS: func(context.Context) (goidc.JSONWebKeySet, error) {
+			return goidc.JSONWebKeySet{}, nil
+		},
+		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.SigAlgRS256},
+	}, WithClientResolver(func(context.Context, string) (*goidc.Client, error) {
+		return nil, goidc.ErrNotFound
+	}))
+	if err != nil {
+		t.Fatalf("New() error = %v", err)
+	}
+
+	metadataResponse := httptest.NewRecorder()
+	op.Handler().ServeHTTP(metadataResponse, httptest.NewRequest(http.MethodGet, "/.well-known/oauth-authorization-server", nil))
+	if metadataResponse.Code != http.StatusOK {
+		t.Fatalf("metadata status = %d, want %d", metadataResponse.Code, http.StatusOK)
+	}
+	var metadata map[string]any
+	if err := json.Unmarshal(metadataResponse.Body.Bytes(), &metadata); err != nil {
+		t.Fatalf("decode metadata: %v", err)
+	}
+	if _, advertised := metadata["registration_endpoint"]; advertised {
+		t.Fatal("registration_endpoint advertised with only a client resolver configured")
+	}
+
+	registrationResponse := httptest.NewRecorder()
+	op.Handler().ServeHTTP(registrationResponse, httptest.NewRequest(http.MethodPost, defaultEndpointDynamicClient, nil))
+	if registrationResponse.Code != http.StatusNotFound {
+		t.Fatalf("registration status = %d, want %d", registrationResponse.Code, http.StatusNotFound)
 	}
 }
 
