@@ -1,8 +1,10 @@
 package client
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -15,12 +17,61 @@ import (
 )
 
 func TestClient(t *testing.T) {
+	resolverErr := errors.New("client store unavailable")
 	tests := []struct {
 		name         string
 		setup        func(*testing.T) (oidc.Context, string)
 		wantClientID string
+		wantSecret   string
 		wantErr      error
 	}{
+		{
+			name: "resolved client",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				ctx := oidctest.NewContext(t)
+				ctx.ClientFunc = func(_ context.Context, id string) (*goidc.Client, error) {
+					return &goidc.Client{ID: id}, nil
+				}
+				return ctx, "resolved_client"
+			},
+			wantClientID: "resolved_client",
+		},
+		{
+			name: "static client takes precedence over resolver",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				ctx := oidctest.NewContext(t)
+				staticClient := &goidc.Client{ID: "shared_client", Secret: "static"}
+				ctx.StaticClients = append(ctx.StaticClients, staticClient)
+				ctx.ClientFunc = func(_ context.Context, id string) (*goidc.Client, error) {
+					return &goidc.Client{ID: id, Secret: "resolved"}, nil
+				}
+				return ctx, staticClient.ID
+			},
+			wantClientID: "shared_client",
+			wantSecret:   "static",
+		},
+		{
+			name: "resolver not found",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				ctx := oidctest.NewContext(t)
+				ctx.ClientFunc = func(context.Context, string) (*goidc.Client, error) {
+					return nil, fmt.Errorf("lookup failed: %w", goidc.ErrNotFound)
+				}
+				return ctx, "missing_client"
+			},
+			wantErr: goidc.ErrNotFound,
+		},
+		{
+			name: "resolver operational error",
+			setup: func(t *testing.T) (oidc.Context, string) {
+				ctx := oidctest.NewContext(t)
+				ctx.ClientFunc = func(context.Context, string) (*goidc.Client, error) {
+					return nil, resolverErr
+				}
+				return ctx, "client"
+			},
+			wantErr: resolverErr,
+		},
 		{
 			name: "static client",
 			setup: func(t *testing.T) (oidc.Context, string) {
@@ -153,7 +204,50 @@ func TestClient(t *testing.T) {
 			if got.ID != test.wantClientID {
 				t.Fatalf("client ID = %q, want %q", got.ID, test.wantClientID)
 			}
+			if test.wantSecret != "" && got.Secret != test.wantSecret {
+				t.Fatalf("client secret = %q, want %q", got.Secret, test.wantSecret)
+			}
 		})
+	}
+}
+
+func TestClient_ResolverIsConsultedForEveryLookup(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	clientID := "client"
+	current := &goidc.Client{ID: clientID, Secret: "first"}
+	calls := 0
+	ctx.ClientFunc = func(context.Context, string) (*goidc.Client, error) {
+		calls++
+		if current == nil {
+			return nil, goidc.ErrNotFound
+		}
+		copy := *current
+		return &copy, nil
+	}
+
+	first, err := Client(ctx, clientID)
+	if err != nil {
+		t.Fatalf("first Client() error = %v", err)
+	}
+	if first.Secret != "first" {
+		t.Fatalf("first secret = %q, want %q", first.Secret, "first")
+	}
+
+	current = &goidc.Client{ID: clientID, Secret: "rotated"}
+	second, err := Client(ctx, clientID)
+	if err != nil {
+		t.Fatalf("second Client() error = %v", err)
+	}
+	if second.Secret != "rotated" {
+		t.Fatalf("second secret = %q, want %q", second.Secret, "rotated")
+	}
+
+	current = nil
+	if _, err := Client(ctx, clientID); !errors.Is(err, goidc.ErrNotFound) {
+		t.Fatalf("disabled Client() error = %v, want %v", err, goidc.ErrNotFound)
+	}
+	if calls != 3 {
+		t.Fatalf("resolver calls = %d, want 3", calls)
 	}
 }
 
@@ -195,6 +289,70 @@ func TestFetchPublicJWKS(t *testing.T) {
 		if c.CachedJWKS() == nil {
 			t.Errorf("the jwks was not cached. attempt %d", i+1)
 		}
+	}
+}
+
+func TestJWKS_ClientFuncReturnsFreshSnapshot(t *testing.T) {
+	ctx := oidctest.NewContext(t)
+	firstPrivateKey := oidctest.PrivatePS256JWK(t, "first_key", goidc.KeyUsageSignature)
+	rotatedPrivateKey := oidctest.PrivatePS256JWK(t, "rotated_key", goidc.KeyUsageSignature)
+	firstKey := firstPrivateKey.Public()
+	rotatedKey := rotatedPrivateKey.Public()
+	currentKey := firstKey
+	requests := 0
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		requests++
+		if err := json.NewEncoder(w).Encode(goidc.JSONWebKeySet{Keys: []goidc.JSONWebKey{currentKey}}); err != nil {
+			t.Fatal(err)
+		}
+	}))
+	defer server.Close()
+
+	resolvedClient := &goidc.Client{
+		ID: "client",
+		ClientMeta: goidc.ClientMeta{
+			JWKSURI: server.URL,
+		},
+	}
+	ctx.ClientFunc = func(context.Context, string) (*goidc.Client, error) {
+		copy := *resolvedClient
+		return &copy, nil
+	}
+
+	first, err := Client(ctx, resolvedClient.ID)
+	if err != nil {
+		t.Fatalf("first Client() error = %v", err)
+	}
+	firstJWKS, err := JWKS(ctx, first)
+	if err != nil {
+		t.Fatalf("first JWKS() error = %v", err)
+	}
+	if firstJWKS.Keys[0].KeyID != firstKey.KeyID {
+		t.Fatalf("first key ID = %q, want %q", firstJWKS.Keys[0].KeyID, firstKey.KeyID)
+	}
+
+	// Reuse keys within this snapshot, then observe rotation on the next lookup.
+	if _, err := JWKS(ctx, first); err != nil {
+		t.Fatalf("cached JWKS() error = %v", err)
+	}
+	if requests != 1 {
+		t.Fatalf("JWKS requests within one snapshot = %d, want 1", requests)
+	}
+
+	currentKey = rotatedKey
+	second, err := Client(ctx, resolvedClient.ID)
+	if err != nil {
+		t.Fatalf("second Client() error = %v", err)
+	}
+	secondJWKS, err := JWKS(ctx, second)
+	if err != nil {
+		t.Fatalf("second JWKS() error = %v", err)
+	}
+	if secondJWKS.Keys[0].KeyID != rotatedKey.KeyID {
+		t.Fatalf("rotated key ID = %q, want %q", secondJWKS.Keys[0].KeyID, rotatedKey.KeyID)
+	}
+	if requests != 2 {
+		t.Fatalf("JWKS requests = %d, want 2", requests)
 	}
 }
 

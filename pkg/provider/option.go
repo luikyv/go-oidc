@@ -1699,6 +1699,22 @@ func WithStaticClients(cs ...*goidc.Client) Option {
 	}
 }
 
+// WithClientFunc configures an external source of client metadata without
+// enabling Dynamic Client Registration. Static clients take precedence.
+// See [goidc.ClientFunc] for the callback and JWKS caching contract.
+//
+// It cannot be combined with Dynamic Client Registration or OpenID Federation,
+// which provide their own dynamic client sources.
+func WithClientFunc(f goidc.ClientFunc) Option {
+	return func(p *Provider) error {
+		if f == nil {
+			return errors.New("client function cannot be nil")
+		}
+		p.config.ClientFunc = f
+		return nil
+	}
+}
+
 // ── OpenID Federation ─────────────────────────────────────────────────────────
 
 // OpenIDFedOption is an optional configuration for OpenID Federation.

@@ -1807,6 +1807,35 @@ func TestWithStaticClients(t *testing.T) {
 	}
 }
 
+func TestWithClientFunc(t *testing.T) {
+	p := &Provider{config: oidc.Configuration{}}
+	resolver := func(context.Context, string) (*goidc.Client, error) {
+		return nil, goidc.ErrNotFound
+	}
+
+	err := WithClientFunc(resolver)(p)
+
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if p.config.ClientFunc == nil {
+		t.Fatal("ClientFunc must be set")
+	}
+	if p.config.DCREnabled {
+		t.Fatal("client resolver must not enable DCR")
+	}
+}
+
+func TestWithClientFunc_Nil(t *testing.T) {
+	p := &Provider{config: oidc.Configuration{}}
+
+	err := WithClientFunc(nil)(p)
+
+	if err == nil {
+		t.Fatal("WithClientFunc(nil) error = nil, want non-nil")
+	}
+}
+
 func TestWithAuthPolicies(t *testing.T) {
 	p := &Provider{}
 	policy := goidc.AuthnPolicy{

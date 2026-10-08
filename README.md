@@ -11,6 +11,7 @@ A configurable OpenID Connect Provider for Go.
 * [OpenID Connect Core 1.0](https://openid.net/specs/openid-connect-core-1_0.html)
 * [OpenID Connect Discovery 1.0](https://openid.net/specs/openid-connect-discovery-1_0.html)
 * [`RFC 6749` - The OAuth 2.0 Authorization Framework](https://www.rfc-editor.org/rfc/rfc6749.html)
+* [`RFC 8414` - OAuth 2.0 Authorization Server Metadata](https://www.rfc-editor.org/rfc/rfc8414.html)
 * [`RFC 9068` - JSON Web Token (JWT) Profile for OAuth 2.0 Access Tokens](https://www.rfc-editor.org/rfc/rfc9068.html)
 * [OpenID Connect Dynamic Client Registration 1.0](https://openid.net/specs/openid-connect-registration-1_0.html)
 * [`RFC 7591` - OAuth 2.0 Dynamic Client Registration Protocol (DCR)](https://www.rfc-editor.org/rfc/rfc7591.html)
@@ -906,6 +907,28 @@ op, _ := provider.New(
   ...,
 )
 ```
+
+## Client resolution
+
+Use `provider.WithClientFunc` when clients live in an external store but
+must not be allowed to register themselves:
+
+```go
+op, _ := provider.New(
+  ...,
+  provider.WithClientFunc(func(ctx context.Context, id string) (*goidc.Client, error) {
+    return clientStore.Client(ctx, id)
+  }),
+)
+```
+
+The callback must return a non-nil client with the requested ID on success,
+`goidc.ErrNotFound` only for unknown clients, and other lookup errors unchanged.
+It may be called concurrently. Return a fresh client snapshot on each lookup
+so disablement and key rotation take effect. Fetched JWKS are cached on that
+snapshot; implementations that reuse client pointers own cache invalidation
+and synchronization. Static clients take precedence. The callback cannot be
+combined with DCR or OpenID Federation, which provide their own client sources.
 
 ## [Dynamic Client Registration (DCR)](https://www.rfc-editor.org/rfc/rfc7591.html)
 

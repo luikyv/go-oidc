@@ -20,6 +20,10 @@ func Client(ctx oidc.Context, id string) (*goidc.Client, error) {
 		}
 	}
 
+	if ctx.ClientFunc != nil {
+		return ctx.Client(id)
+	}
+
 	if ctx.OpenIDFedEnabled && strutil.IsURL(id) {
 		return ctx.OpenIDFedClient(id)
 	}
