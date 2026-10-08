@@ -479,6 +479,25 @@ func TestTokenAndPolicyHooks(t *testing.T) {
 			},
 		},
 		{
+			name: "check typed jti",
+			run: func(t *testing.T, ctx oidc.Context) {
+				want := goidc.JTIUse{
+					ID:      "jti",
+					Issuer:  "issuer",
+					Purpose: goidc.JTIUsePurposeClientAssertion,
+				}
+				ctx.ConsumeJTIUseFunc = func(_ context.Context, got goidc.JTIUse) error {
+					if got != want {
+						t.Fatalf("ConsumeJTIUse() use = %#v, want %#v", got, want)
+					}
+					return nil
+				}
+				if err := ctx.ConsumeJTIUse(want); err != nil {
+					t.Fatalf("ConsumeJTIUse() error = %v", err)
+				}
+			},
+		},
+		{
 			name: "render error",
 			run: func(t *testing.T, ctx oidc.Context) {
 				err := errors.New("error")

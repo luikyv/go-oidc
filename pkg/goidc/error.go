@@ -14,6 +14,11 @@ import (
 // operational failures and to produce the correct protocol behavior.
 var ErrNotFound = errors.New("not found")
 
+// ErrJTIReplay signals that a JWT ID has already been consumed. JTI consumer
+// implementations should return this error, or wrap it, for a replay. Other
+// errors are treated as operational failures by the provider.
+var ErrJTIReplay = errors.New("jti replay")
+
 type ErrorCode string
 
 const (
@@ -28,6 +33,7 @@ const (
 	ErrorCodeUnsupportedGrantType     ErrorCode = "unsupported_grant_type"
 	ErrorCodeInvalidRequestObject     ErrorCode = "invalid_request_object"
 	ErrorCodeInvalidToken             ErrorCode = "invalid_token"
+	ErrorCodeUseDPoPNonce             ErrorCode = "use_dpop_nonce"
 	ErrorCodeInternalError            ErrorCode = "internal_error"
 	ErrorCodeInvalidTarget            ErrorCode = "invalid_target"
 	ErrorCodeInvalidRedirectURI       ErrorCode = "invalid_redirect_uri"

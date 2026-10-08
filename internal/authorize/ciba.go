@@ -82,10 +82,6 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", errors.New("claim 'jti' is required in the request object"))
 			}
 
-			if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-				return nil, goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid request object", fmt.Errorf("could not validate the request object jti: %w", err))
-			}
-
 			if err := claims.ValidateWithLeeway(jwt.Expected{
 				Issuer:      c.ID,
 				AnyAudience: []string{ctx.Issuer()},
@@ -94,6 +90,15 @@ func initBackAuth(ctx oidc.Context, req request) (cibaResponse, error) {
 			}
 
 			if err := validateCIBARequest(ctx, requestObject, c); err != nil {
+				return nil, err
+			}
+
+			if err := ctx.ReserveJTI(goidc.JTIUse{
+				ID:        claims.ID,
+				Issuer:    claims.Issuer,
+				Purpose:   goidc.JTIUsePurposeRequestObject,
+				ExpiresAt: claims.Expiry.Time().Add(time.Duration(ctx.JWTLeewayTimeSecs) * time.Second),
+			}, goidc.ErrorCodeInvalidRequest, "invalid request object"); err != nil {
 				return nil, err
 			}
 

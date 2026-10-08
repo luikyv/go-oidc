@@ -4,8 +4,11 @@ import (
 	"crypto"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/go-jose/go-jose/v4/jwt"
@@ -20,12 +23,14 @@ type ValidationOptions struct {
 	// AccessToken should be filled when the DPoP "ath" claim is expected and should be validated.
 	AccessToken   string
 	JWKThumbprint string
+	NonceScope    goidc.DPoPNonceScope
 }
 
 type Claims struct {
 	HTTPMethod      string `json:"htm"`
 	HTTPURI         string `json:"htu"`
 	AccessTokenHash string `json:"ath"`
+	Nonce           string `json:"nonce"`
 }
 
 // JWKThumbprint generates a JWK thumbprint for a valid DPoP JWT.
@@ -84,8 +89,13 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 	}
 
 	// Validate that the "iat" claim is present and it is not too far in the past.
-	if claims.IssuedAt == nil ||
-		int(timeutil.Now().Sub(claims.IssuedAt.Time()).Seconds()) > ctx.JWTLifetimeSecs {
+	if claims.IssuedAt == nil {
+		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
+			errors.New("the DPoP proof issuance time is invalid"))
+	}
+	acceptedUntil := claims.IssuedAt.Time().Add(time.Duration(ctx.JWTLifetimeSecs) * time.Second)
+	now := timeutil.Now()
+	if !now.Before(acceptedUntil) {
 		return goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client",
 			errors.New("the DPoP proof issuance time is invalid"))
 	}
@@ -93,10 +103,6 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 	if claims.ID == "" {
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof",
 			errors.New("the jti claim is required"))
-	}
-
-	if err := ctx.ConsumeJTI(claims.ID); err != nil && !errors.Is(err, goidc.ErrNotFound) {
-		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
 	if dpopClaims.HTTPMethod != ctx.RequestMethod() {
@@ -128,5 +134,115 @@ func ValidateJWT(ctx oidc.Context, dpopJWT string, opts ValidationOptions) error
 		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
 	}
 
+	if ctx.DPoPNonceManager != nil {
+		if opts.NonceScope == "" {
+			return errors.New("a DPoP nonce scope is required when nonce validation is enabled")
+		}
+		if err := validateNonce(ctx, opts.NonceScope, dpopClaims.Nonce); err != nil {
+			return err
+		}
+	}
+
+	thumbprint, err := jwk.Thumbprint(crypto.SHA256)
+	if err != nil {
+		return goidc.WrapError(goidc.ErrorCodeInvalidRequest, "invalid DPoP proof", err)
+	}
+	err = ctx.ReserveJTI(goidc.JTIUse{
+		ID:        claims.ID,
+		Issuer:    base64.RawURLEncoding.EncodeToString(thumbprint),
+		Purpose:   goidc.JTIUsePurposeDPoPProof,
+		ExpiresAt: acceptedUntil,
+	}, goidc.ErrorCodeInvalidRequest, "invalid DPoP proof")
+	if err != nil {
+		return err
+	}
+
 	return nil
+}
+
+func validateNonce(ctx oidc.Context, scope goidc.DPoPNonceScope, nonce string) error {
+	if scope != goidc.DPoPNonceScopeAuthorizationServer && scope != goidc.DPoPNonceScopeResourceServer {
+		return fmt.Errorf("invalid DPoP nonce scope %q", scope)
+	}
+	if ctx.Response == nil {
+		return errors.New("cannot use DPoP nonces without a response writer")
+	}
+
+	if !validNonce(nonce) {
+		return nonceChallenge(ctx, scope)
+	}
+
+	validation, err := ctx.ValidateDPoPNonce(scope, nonce)
+	if err != nil {
+		if errors.Is(err, goidc.ErrNotFound) {
+			return nonceChallenge(ctx, scope)
+		}
+		return fmt.Errorf("could not validate DPoP nonce: %w", err)
+	}
+	if validation.NextNonce == "" {
+		return nil
+	}
+	return setNonceHeader(ctx, validation.NextNonce)
+}
+
+func nonceChallenge(ctx oidc.Context, scope goidc.DPoPNonceScope) error {
+	if _, err := issueNonce(ctx, scope); err != nil {
+		return err
+	}
+
+	description := "authorization server requires a fresh nonce in the DPoP proof"
+	status := http.StatusBadRequest
+	if scope == goidc.DPoPNonceScopeResourceServer {
+		description = "resource server requires a fresh nonce in the DPoP proof"
+		status = http.StatusUnauthorized
+		challenge := "DPoP error=" + strconv.Quote(string(goidc.ErrorCodeUseDPoPNonce)) +
+			", error_description=" + strconv.Quote(description)
+		if len(ctx.DPoPSigAlgs) != 0 {
+			algs := make([]string, len(ctx.DPoPSigAlgs))
+			for i, alg := range ctx.DPoPSigAlgs {
+				algs[i] = string(alg)
+			}
+			challenge += ", algs=" + strconv.Quote(strings.Join(algs, " "))
+		}
+		ctx.Response.Header().Add("WWW-Authenticate", challenge)
+	}
+
+	return goidc.NewError(goidc.ErrorCodeUseDPoPNonce, description).WithStatusCode(status)
+}
+
+func issueNonce(ctx oidc.Context, scope goidc.DPoPNonceScope) (string, error) {
+	nonce, err := ctx.IssueDPoPNonce(scope)
+	if err != nil {
+		return "", fmt.Errorf("could not issue DPoP nonce: %w", err)
+	}
+	if err := setNonceHeader(ctx, nonce); err != nil {
+		return "", err
+	}
+	return nonce, nil
+}
+
+func setNonceHeader(ctx oidc.Context, nonce string) error {
+	if !validNonce(nonce) {
+		return errors.New("DPoP nonce manager issued an invalid DPoP nonce")
+	}
+	// Set, rather than Add, guarantees that the response never contains more
+	// than one DPoP-Nonce field value as required by RFC 9449 Section 8.
+	ctx.Response.Header().Set(goidc.HeaderDPoPNonce, nonce)
+	ctx.Response.Header().Set("Cache-Control", "no-store")
+	return nil
+}
+
+func validNonce(nonce string) bool {
+	if nonce == "" {
+		return false
+	}
+
+	for i := range len(nonce) {
+		c := nonce[i]
+		if c == 0x21 || (c >= 0x23 && c <= 0x5b) || (c >= 0x5d && c <= 0x7e) {
+			continue
+		}
+		return false
+	}
+	return true
 }

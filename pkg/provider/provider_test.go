@@ -260,6 +260,22 @@ func TestNew(t *testing.T) {
 	}
 }
 
+func TestNewRejectsLegacyAndTypedJTIConsumers(t *testing.T) {
+	_, err := New(Config{
+		Issuer: "https://example.com",
+		JWKS: func(context.Context) (goidc.JSONWebKeySet, error) {
+			return goidc.JSONWebKeySet{}, nil
+		},
+		IDTokenAlgs: []goidc.SignatureAlgorithm{goidc.SigAlgRS256},
+	},
+		WithJTIConsumer(func(context.Context, string) error { return nil }),
+		WithJTIUseConsumer(func(context.Context, goidc.JTIUse) error { return nil }),
+	)
+	if err == nil {
+		t.Fatal("New() error = nil, want mutually exclusive JTI consumer error")
+	}
+}
+
 func TestNew_DefaultsVCISelfBatchSize(t *testing.T) {
 	p, err := New(Config{
 		Issuer:      "https://example.com",

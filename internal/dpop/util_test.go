@@ -2,13 +2,16 @@ package dpop_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/luikyv/go-oidc/internal/dpop"
 	"github.com/luikyv/go-oidc/internal/oidc"
+	"github.com/luikyv/go-oidc/internal/oidctest"
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
@@ -71,6 +74,131 @@ func TestValidateJWT(t *testing.T) {
 				}
 			},
 		)
+	}
+}
+
+func TestValidateJWTConsumesTypedJTIOnlyAfterProofValidation(t *testing.T) {
+	const lifetime = 60
+	proof, thumbprint := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+		Method: http.MethodPost,
+		URI:    "https://server.example.com/token",
+	})
+	request := httptest.NewRequest(http.MethodPost, "/token", nil)
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			Host:            "https://server.example.com",
+			DPoPEnabled:     true,
+			DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.SigAlgES256},
+			JWTLifetimeSecs: lifetime,
+		},
+		Request: request,
+	}
+
+	before := time.Now().UTC().Add(lifetime * time.Second)
+	var got goidc.JTIUse
+	ctx.ConsumeJTIUseFunc = func(_ context.Context, use goidc.JTIUse) error {
+		got = use
+		return nil
+	}
+	if err := dpop.ValidateJWT(ctx, proof, dpop.ValidationOptions{}); err != nil {
+		t.Fatalf("ValidateJWT() error = %v", err)
+	}
+	after := time.Now().UTC().Add(lifetime * time.Second)
+
+	if got.ID == "" {
+		t.Fatal("typed JTI consumer was not called")
+	}
+	if got.Issuer != thumbprint {
+		t.Errorf("JTI issuer = %q, want DPoP key thumbprint %q", got.Issuer, thumbprint)
+	}
+	if got.Purpose != goidc.JTIUsePurposeDPoPProof {
+		t.Errorf("JTI purpose = %q, want %q", got.Purpose, goidc.JTIUsePurposeDPoPProof)
+	}
+	if got.ExpiresAt.Before(before.Add(-time.Second)) || got.ExpiresAt.After(after) {
+		t.Errorf("JTI expiry = %v, want between %v and %v", got.ExpiresAt, before, after)
+	}
+
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/token", nil)
+	ctx.ConsumeJTIUseFunc = func(context.Context, goidc.JTIUse) error {
+		t.Fatal("JTI consumer called before HTTP method validation")
+		return nil
+	}
+	if err := dpop.ValidateJWT(ctx, proof, dpop.ValidationOptions{}); err == nil {
+		t.Fatal("ValidateJWT() error = nil for invalid HTTP method")
+	}
+}
+
+func TestValidateJWTTypedJTIConsumerErrors(t *testing.T) {
+	proof, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+		Method: http.MethodPost,
+		URI:    "https://server.example.com/token",
+	})
+	for _, tc := range []struct {
+		name     string
+		consume  error
+		wantCode goidc.ErrorCode
+	}{
+		{name: "replay", consume: goidc.ErrJTIReplay, wantCode: goidc.ErrorCodeInvalidRequest},
+		{name: "operational failure", consume: errors.New("store unavailable"), wantCode: goidc.ErrorCodeInternalError},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := oidc.Context{
+				Configuration: &oidc.Configuration{
+					Host:            "https://server.example.com",
+					DPoPEnabled:     true,
+					DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.SigAlgES256},
+					JWTLifetimeSecs: 60,
+					ConsumeJTIUseFunc: func(context.Context, goidc.JTIUse) error {
+						return tc.consume
+					},
+				},
+				Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+			}
+
+			err := dpop.ValidateJWT(ctx, proof, dpop.ValidationOptions{})
+			var oidcErr goidc.Error
+			if !errors.As(err, &oidcErr) {
+				t.Fatalf("error = %v, want goidc.Error", err)
+			}
+			if oidcErr.Code != tc.wantCode {
+				t.Fatalf("error code = %q, want %q (error: %v)", oidcErr.Code, tc.wantCode, err)
+			}
+			if oidcErr.StatusCode() != tc.wantCode.StatusCode() {
+				t.Fatalf("HTTP status = %d, want %d", oidcErr.StatusCode(), tc.wantCode.StatusCode())
+			}
+		})
+	}
+}
+
+func TestValidateJWTRejectsProofAtReservationExpiryBoundary(t *testing.T) {
+	const lifetime = 60
+	issuedAt := time.Now().UTC().Truncate(time.Second).Add(-lifetime * time.Second)
+	proof, _ := oidctest.DPoPProof(t, oidctest.DPoPProofOptions{
+		Method:   http.MethodPost,
+		URI:      "https://server.example.com/token",
+		IssuedAt: issuedAt,
+	})
+	ctx := oidc.Context{
+		Configuration: &oidc.Configuration{
+			Host:            "https://server.example.com",
+			DPoPEnabled:     true,
+			DPoPSigAlgs:     []goidc.SignatureAlgorithm{goidc.SigAlgES256},
+			JWTLifetimeSecs: lifetime,
+			ConsumeJTIUseFunc: func(context.Context, goidc.JTIUse) error {
+				t.Fatal("expired DPoP proof was reserved")
+				return nil
+			},
+		},
+		Request: httptest.NewRequest(http.MethodPost, "/token", nil),
+	}
+
+	err := dpop.ValidateJWT(ctx, proof, dpop.ValidationOptions{})
+	var oidcErr goidc.Error
+	if !errors.As(err, &oidcErr) {
+		t.Fatalf("error = %v, want goidc.Error", err)
+	}
+	if oidcErr.Code != goidc.ErrorCodeUnauthorizedClient {
+		t.Fatalf("error code = %q, want %q", oidcErr.Code, goidc.ErrorCodeUnauthorizedClient)
 	}
 }
 

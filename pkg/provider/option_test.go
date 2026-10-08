@@ -1533,6 +1533,36 @@ func TestWithDPoPRequired(t *testing.T) {
 	}
 }
 
+func TestWithDPoPNonce(t *testing.T) {
+	manager := &dpopNonceManagerStub{}
+	p := &Provider{config: oidc.Configuration{}}
+
+	err := WithDPoP(
+		[]goidc.SignatureAlgorithm{goidc.SigAlgPS256},
+		WithDPoPNonce(manager),
+	)(p)
+
+	if err != nil {
+		t.Fatalf("WithDPoP() error = %v", err)
+	}
+	if p.config.DPoPNonceManager != manager {
+		t.Fatal("DPoPNonceManager was not configured")
+	}
+}
+
+func TestWithDPoPNonceRejectsNilManager(t *testing.T) {
+	p := &Provider{config: oidc.Configuration{}}
+
+	err := WithDPoP(
+		[]goidc.SignatureAlgorithm{goidc.SigAlgPS256},
+		WithDPoPNonce(nil),
+	)(p)
+
+	if err == nil {
+		t.Fatal("WithDPoP() error = nil, want an error")
+	}
+}
+
 func TestWithTokenBindingRequired(t *testing.T) {
 	// Given.
 	p := &Provider{
@@ -1906,6 +1936,30 @@ func TestWithJTIConsumer(t *testing.T) {
 
 	if p.config.ConsumeJTIFunc == nil {
 		t.Error("ConsumeJTIFunc cannot be nil")
+	}
+}
+
+func TestWithJTIUseConsumer(t *testing.T) {
+	p := &Provider{config: oidc.Configuration{}}
+	consumer := func(context.Context, goidc.JTIUse) error { return nil }
+
+	if err := WithJTIUseConsumer(consumer)(p); err != nil {
+		t.Fatalf("WithJTIUseConsumer() error = %v", err)
+	}
+	if p.config.ConsumeJTIUseFunc == nil {
+		t.Fatal("ConsumeJTIUseFunc cannot be nil")
+	}
+}
+
+func TestWithPrivateKeyJWTAssertionPolicy(t *testing.T) {
+	p := &Provider{config: oidc.Configuration{}}
+	policy := func(context.Context, goidc.VerifiedClientAssertion) error { return nil }
+
+	if err := WithPrivateKeyJWTAssertionPolicy(policy)(p); err != nil {
+		t.Fatalf("WithPrivateKeyJWTAssertionPolicy() error = %v", err)
+	}
+	if p.config.PrivateKeyJWTAssertionPolicyFunc == nil {
+		t.Fatal("PrivateKeyJWTAssertionPolicyFunc cannot be nil")
 	}
 }
 
@@ -3268,4 +3322,14 @@ func TestWithScopes_OpenIDScopeAlreadyPresent(t *testing.T) {
 	if openIDCount != 1 {
 		t.Errorf("expected 1 openid scope, got %d", openIDCount)
 	}
+}
+
+type dpopNonceManagerStub struct{}
+
+func (*dpopNonceManagerStub) IssueNonce(context.Context, goidc.DPoPNonceScope) (string, error) {
+	return "nonce", nil
+}
+
+func (*dpopNonceManagerStub) ValidateNonce(context.Context, goidc.DPoPNonceScope, string) (goidc.DPoPNonceValidation, error) {
+	return goidc.DPoPNonceValidation{}, nil
 }

@@ -168,5 +168,5 @@ func validateRefreshTokenPoP(ctx oidc.Context, c *goidc.Client, cnf goidc.TokenC
 		return nil
 	}
 
-	return ValidatePoP(ctx, "", cnf)
+	return validatePoP(ctx, "", cnf, goidc.DPoPNonceScopeAuthorizationServer)
 }

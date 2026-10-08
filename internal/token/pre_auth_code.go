@@ -50,10 +50,6 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		return response{}, goidc.WrapError(goidc.ErrorCodeUnauthorizedClient, "unauthorized client", errors.New("the client is not allowed to use the urn:ietf:params:oauth:grant-type:pre-authorized_code grant type"))
 	}
 
-	if err := ValidateBinding(ctx, c, nil); err != nil {
-		return response{}, err
-	}
-
 	if err := validateScopes(ctx, req, c, nil); err != nil {
 		return response{}, err
 	}
@@ -135,6 +131,9 @@ func generatePreAuthCodeToken(ctx oidc.Context, req request) (response, error) {
 		if !ctx.VCIExternalPreAuthCodeGrantEnabled {
 			return response{}, goidc.WrapError(goidc.ErrorCodeInvalidGrant, "invalid grant",
 				errors.New("external credential issuers do not support the pre-authorized code grant"))
+		}
+		if err := ValidateBinding(ctx, c, nil); err != nil {
+			return response{}, err
 		}
 
 		opts := goidc.VCPreAuthCodeOptions{
