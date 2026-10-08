@@ -1934,6 +1934,17 @@ func TestWithResourceIndicators(t *testing.T) {
 	}
 }
 
+func TestWithResourceIndicatorsRejectsInvalidAbsoluteURIs(t *testing.T) {
+	for _, resource := range []string{"", "/relative", "https://resource.com/path#fragment"} {
+		t.Run(resource, func(t *testing.T) {
+			p := &Provider{config: oidc.Configuration{}}
+			if err := WithResourceIndicators([]string{resource})(p); err == nil {
+				t.Fatalf("WithResourceIndicators(%q) error = nil, want invalid resource", resource)
+			}
+		})
+	}
+}
+
 func TestWithResourceIndicatorsRequired(t *testing.T) {
 	// Given.
 	p := &Provider{

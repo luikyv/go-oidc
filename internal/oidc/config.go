@@ -203,7 +203,8 @@ type Configuration struct {
 
 	ResourceIndicatorsEnabled bool
 	// ResourceIndicatorsRequired indicates that the resource parameter is
-	// required during authorization requests.
+	// required during authorization requests and client credentials token
+	// requests.
 	ResourceIndicatorsRequired bool
 	ResourceIndicators         []goidc.ResourceIndicator
 

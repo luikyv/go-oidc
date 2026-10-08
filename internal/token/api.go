@@ -33,6 +33,10 @@ func handleCreate(ctx oidc.Context) {
 	req := newRequest(ctx.Request)
 	tokenResp, err := generateToken(ctx, req)
 	if err != nil {
+		var oidcErr goidc.Error
+		if errors.As(err, &oidcErr) && oidcErr.Code == goidc.ErrorCodeUnauthorizedClient {
+			err = oidcErr.WithStatusCode(http.StatusBadRequest)
+		}
 		ctx.WriteError(err)
 		return
 	}
