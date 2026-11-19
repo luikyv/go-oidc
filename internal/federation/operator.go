@@ -1,6 +1,7 @@
 package federation
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"reflect"
@@ -489,7 +490,7 @@ func mergeSlices[T any](slice1, slice2 T) (T, error) {
 	unique := make(map[any]struct{})
 
 	for i := 0; i < v1.Len(); i++ {
-		elem := v1.Index(i).Interface()
+		elem := sliceKey(v1.Index(i).Interface())
 		if _, exists := unique[elem]; !exists {
 			unique[elem] = struct{}{}
 			result = reflect.Append(result, v1.Index(i))
@@ -497,7 +498,7 @@ func mergeSlices[T any](slice1, slice2 T) (T, error) {
 	}
 
 	for i := 0; i < v2.Len(); i++ {
-		elem := v2.Index(i).Interface()
+		elem := sliceKey(v2.Index(i).Interface())
 		if _, exists := unique[elem]; !exists {
 			unique[elem] = struct{}{}
 			result = reflect.Append(result, v2.Index(i))
@@ -521,14 +522,14 @@ func intersectSlices[T any](slice1, slice2 T) (T, error) {
 	unique := make(map[any]struct{})
 
 	for i := 0; i < v1.Len(); i++ {
-		elem := v1.Index(i).Interface()
+		elem := sliceKey(v1.Index(i).Interface())
 		if _, exists := unique[elem]; !exists {
 			unique[elem] = struct{}{}
 		}
 	}
 
 	for i := 0; i < v2.Len(); i++ {
-		elem := v2.Index(i).Interface()
+		elem := sliceKey(v2.Index(i).Interface())
 		if _, exists := unique[elem]; exists {
 			unique[elem] = struct{}{}
 			result = reflect.Append(result, v2.Index(i))
@@ -557,17 +558,30 @@ func isSubset[T any](subset, superset T) bool {
 	// Use a map to track elements in superset.
 	set := make(map[any]struct{})
 	for i := 0; i < supersetV.Len(); i++ {
-		set[supersetV.Index(i).Interface()] = struct{}{}
+		set[sliceKey(supersetV.Index(i).Interface())] = struct{}{}
 	}
 
 	// Check if all elements of slice1 are in slice2.
 	for i := 0; i < subsetV.Len(); i++ {
-		if _, exists := set[subsetV.Index(i).Interface()]; !exists {
+		if _, exists := set[sliceKey(subsetV.Index(i).Interface())]; !exists {
 			return false
 		}
 	}
 
 	return true
+}
+
+// jsonKey keeps JSON-encoded keys apart from plain string elements.
+type jsonKey string
+
+// sliceKey returns a map key for a slice element. Values decoded from JSON
+// objects or arrays are not hashable, so they are keyed by their encoding.
+func sliceKey(v any) any {
+	if v == nil || reflect.TypeOf(v).Comparable() {
+		return v
+	}
+	b, _ := json.Marshal(v)
+	return jsonKey(b)
 }
 
 func isSlice(v any) bool {
@@ -597,11 +611,11 @@ func compareSlices(x, y any) bool {
 
 	match := make(map[any]struct{})
 	for i := 0; i < vx.Len(); i++ {
-		match[vx.Index(i).Interface()] = struct{}{}
+		match[sliceKey(vx.Index(i).Interface())] = struct{}{}
 	}
 
 	for i := 0; i < vy.Len(); i++ {
-		val := vy.Index(i).Interface()
+		val := sliceKey(vy.Index(i).Interface())
 		if _, ok := match[val]; !ok {
 			return false
 		}
