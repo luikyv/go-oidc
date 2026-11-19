@@ -574,8 +574,7 @@ func isSubset[T any](subset, superset T) bool {
 // jsonKey keeps JSON-encoded keys apart from plain string elements.
 type jsonKey string
 
-// sliceKey returns a map key for a slice element. Values decoded from JSON
-// objects or arrays are not hashable, so they are keyed by their encoding.
+// sliceKey keys JSON objects and arrays, which are not hashable, by their encoding.
 func sliceKey(v any) any {
 	if v == nil || reflect.TypeOf(v).Comparable() {
 		return v
