@@ -409,3 +409,31 @@ func TestOpenIDClientMetadataPolicy_UnmarshalJSON_CustomAttributes(t *testing.T)
 		t.Fatal("client_name should not be captured as custom attribute")
 	}
 }
+
+func TestMetadataPolicy_ObjectValuesInCustomAttribute(t *testing.T) {
+	// Given.
+	var high, low metadataPolicy
+	if err := json.Unmarshal([]byte(`{"openid_relying_party":{"x_custom":{"add":[{"a":1}],"subset_of":[{"a":1},"b","c"]}}}`), &high); err != nil {
+		t.Fatal(err)
+	}
+	if err := json.Unmarshal([]byte(`{"openid_relying_party":{"x_custom":{"add":["b"]}}}`), &low); err != nil {
+		t.Fatal(err)
+	}
+
+	// When.
+	policy, err := metadataPolicy{}.Merge(high)
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err = policy.Merge(low)
+	if err != nil {
+		t.Fatal(err)
+	}
+	value, err := policy.OpenIDClient.CustomAttributes["x_custom"].Apply([]any{"c"})
+
+	// Then.
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Logf("x_custom after policy: %v", value)
+}
