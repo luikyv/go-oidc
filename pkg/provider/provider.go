@@ -461,7 +461,7 @@ func (op *Provider) Handler(middlewares ...goidc.MiddlewareFunc) http.Handler {
 	return mux
 }
 
-func (op Provider) RegisterRoutes(mux *http.ServeMux, middlewares ...goidc.MiddlewareFunc) {
+func (op Provider) RegisterRoutes(mux goidc.HttpMux, middlewares ...goidc.MiddlewareFunc) {
 	middlewares = append(middlewares, cacheControlMiddleware)
 	discovery.RegisterHandlers(mux, &op.config, middlewares...)
 	token.RegisterHandlers(mux, &op.config, middlewares...)

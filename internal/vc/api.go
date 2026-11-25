@@ -10,7 +10,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
+func RegisterHandlers(router goidc.HttpMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	if !config.VCISelfEnabled {
 		return
 	}

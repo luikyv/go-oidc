@@ -9,7 +9,7 @@ import (
 	"github.com/luikyv/go-oidc/pkg/goidc"
 )
 
-func RegisterHandlers(router *http.ServeMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
+func RegisterHandlers(router goidc.HttpMux, config *oidc.Configuration, middlewares ...goidc.MiddlewareFunc) {
 	issuer, _ := url.Parse(config.Host)
 	router.Handle("GET /.well-known/openid-configuration"+strings.TrimSuffix(issuer.Path, "/"),
 		goidc.ApplyMiddlewares(oidc.Handler(config, handleWellKnown), middlewares...))
