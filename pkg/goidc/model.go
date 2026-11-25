@@ -456,6 +456,10 @@ type ClientCertFunc func(context.Context) (*x509.Certificate, error)
 
 type MiddlewareFunc func(next http.Handler) http.Handler
 
+type HttpMux interface {
+	Handle(pattern string, handler http.Handler)
+}
+
 func ApplyMiddlewares(h http.Handler, middlewares ...MiddlewareFunc) http.Handler {
 	for _, middleware := range middlewares {
 		h = middleware(h)
